@@ -7,7 +7,8 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "db:seed": "tsx src/lib/server/db/seed.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.33.0",
@@ -23,6 +24,7 @@
     "tslib": "^2.6.0",
     "typescript": "^5.4.0",
     "drizzle-kit": "^0.24.0",
+    "tsx": "^4.19.0",
     "dotenv": "^16.4.0",
     "vite": "^5.2.0"
   }
