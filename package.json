@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "db:seed": "tsx src/lib/server/db/seed.ts"
+    "db:seed": "tsx src/lib/server/db/seed.ts",
+    "verify:engine": "tsx script/verify-engine.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.33.0",
