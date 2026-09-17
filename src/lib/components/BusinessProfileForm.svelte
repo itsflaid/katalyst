@@ -21,9 +21,9 @@
 </script>
 
 <form on:submit|preventDefault={save} class="flex flex-col gap-3 max-w-sm">
-  <label class="flex flex-col gap-1 text-sm">
+  <label for="business-name" class="flex flex-col gap-1 text-sm">
     Nama Bisnis
-    <Input bind:value={name} required />
+    <Input id="business-name" bind:value={name} required />
   </label>
   <Button type="submit" disabled={saving}>{saving ? 'Menyimpan...' : 'Simpan'}</Button>
   {#if saved}<p class="text-sm text-green-600">Tersimpan.</p>{/if}

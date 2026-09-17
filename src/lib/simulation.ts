@@ -1,5 +1,5 @@
 
-import { calculateMargin, calculateRevenue, calculateCost, TransactionItemLike } from "./analytics";
+import { calculateMargin, calculateRevenue, calculateCost, type TransactionItemLike } from "./analytics";
 
 export interface ProductLike {
     id: string;

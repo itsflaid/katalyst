@@ -20,10 +20,10 @@
       {/each}
     </select>
   </label>
-  <label class="flex flex-col gap-1 text-sm">Harga jual baru (opsional)<Input name="newSellingPrice" type="number" /></label>
-  <label class="flex flex-col gap-1 text-sm">Harga modal baru (opsional)<Input name="newCostPrice" type="number" /></label>
-  <label class="flex flex-col gap-1 text-sm">Diskon % (opsional)<Input name="discountPercent" type="number" /></label>
-  <label class="flex flex-col gap-1 text-sm">Override quantity (opsional)<Input name="quantityOverride" type="number" /></label>
+  <label for="sim-price" class="flex flex-col gap-1 text-sm">Harga jual baru (opsional)<Input id="sim-price" name="newSellingPrice" type="number" /></label>
+  <label for="sim-cost" class="flex flex-col gap-1 text-sm">Harga modal baru (opsional)<Input id="sim-cost" name="newCostPrice" type="number" /></label>
+  <label for="sim-discount" class="flex flex-col gap-1 text-sm">Diskon % (opsional)<Input id="sim-discount" name="discountPercent" type="number" /></label>
+  <label for="sim-qty" class="flex flex-col gap-1 text-sm">Override quantity (opsional)<Input id="sim-qty" name="quantityOverride" type="number" /></label>
   <Button type="submit">Simulasikan</Button>
 </form>
 

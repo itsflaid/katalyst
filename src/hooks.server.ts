@@ -1,6 +1,7 @@
 import { auth } from '$lib/server/auth';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
+import { building } from '$app/environment';
 
 // Padanan proxy.ts di versi Next: di sana Next.js 16 diam-diam mengabaikan
 // file bernama middleware.ts (harus proxy.ts), jadi proteksi Owner-only
@@ -32,5 +33,5 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   // Delegasi ke better-auth buat nangani route /api/auth/* secara internal
   // (refresh session cookie, dll) sebelum lanjut ke resolve() SvelteKit biasa.
-  return svelteKitHandler({ event, resolve, auth });
+  return svelteKitHandler({ event, resolve, auth, building });
 };

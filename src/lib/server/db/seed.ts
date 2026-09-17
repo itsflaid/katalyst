@@ -1,8 +1,43 @@
-import { db } from './db';
+import 'dotenv/config';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import { betterAuth } from 'better-auth';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import * as schema from './schema';
 import { business, user, product, transaction, transactionItem } from './schema';
-import { auth } from '../auth';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+
+// -----------------------------------------------------------------------
+// Script ini di-run standalone lewat `tsx` (bukan lewat SvelteKit/Vite), jadi
+// TIDAK bisa import src/lib/server/db/index.ts atau src/lib/server/auth.ts
+// apa adanya — keduanya pakai `$env/dynamic/private`, virtual module yang
+// cuma ke-resolve di dalam Vite runtime (sudah kebukti langsung: `tsx` bakal
+// lempar ERR_MODULE_NOT_FOUND). Makanya di sini dibikin db client & instance
+// betterAuth sendiri dari process.env (pola sama kayak drizzle.config.ts).
+// Password hash (scrypt) yang dihasilkan tetap kompatibel dibaca app utama,
+// karena keduanya baca dari tabel `account` yang sama.
+// -----------------------------------------------------------------------
+
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL belum di-set. Cek .env / .env.example.');
+}
+
+const client = postgres(process.env.DATABASE_URL);
+const db = drizzle(client, { schema });
+
+const auth = betterAuth({
+  secret: process.env.BETTER_AUTH_SECRET,
+  baseURL: process.env.BETTER_AUTH_URL ?? 'http://localhost:5173',
+  database: drizzleAdapter(db, { provider: 'pg', schema }),
+  emailAndPassword: { enabled: true, minPasswordLength: 6 },
+  user: {
+    additionalFields: {
+      role: { type: 'string', required: false, defaultValue: 'OWNER', input: false },
+      businessId: { type: 'string', required: false, input: false }
+    }
+  }
+});
 
 // -----------------------------------------------------------------------
 // Seed data: "Resto Etam" — resto makanan khas Kalimantan, dipakai sebagai

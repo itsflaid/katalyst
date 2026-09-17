@@ -6,7 +6,7 @@
 
 {#if data.user}
   <div class="app-shell">
-    <Sidebar role={data.user.role} businessName={data.user.businessName ?? 'Bisnis Kamu'} />
+    <Sidebar role={data.user.role} businessName={data.businessName ?? 'Bisnis Kamu'} />
     <main>
       <slot />
     </main>
