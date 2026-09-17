@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,8 +7,8 @@
 /* Plus Jakarta Sans — satu-satunya typeface dipakai di seluruh app
    (headline & body), sesuai design.md "Executive Precision". Cuma bobot
    yang dipakai spec yang di-load, biar gak nge-fetch weight yang gak
-   kepake. */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap');
+   kepake. NOTE: @import ini WAJIB di baris paling atas file — spec CSS
+   (dan Vite) nolak @import yang muncul setelah statement lain. */
 
 body {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
