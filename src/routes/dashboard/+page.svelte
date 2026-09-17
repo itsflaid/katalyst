@@ -2,6 +2,8 @@
   import Card from '$lib/components/ui/Card.svelte';
   import LineChart from '$lib/components/ui/LineChart.svelte';
   import BarChart from '$lib/components/ui/BarChart.svelte';
+  import Badge from '$lib/components/ui/Badge.svelte';
+  import Table from '$lib/components/ui/Table.svelte';
   export let data;
 
   const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
@@ -15,6 +17,13 @@
   const revenueTrend = [3.1, 3.6, 2.4, 4.2, 6.8, 4.9, 5.3];
   const profitTrend = [1.1, 1.3, 0.9, 1.7, 2.7, 1.9, 2.1];
 
+  // Dummy juga — belum ada query "periode sebelumnya" buat bandingin.
+  // Begitu ada, ganti angka statis ini dengan hasil hitung asli:
+  // (nilai sekarang - nilai lalu) / nilai lalu.
+  const kpiDeltas = { revenue: 8.4, transactions: -2.1, profit: 11.9, margin: 1.5 };
+  const deltaTone = (d: number) => (d >= 0 ? 'positive' : 'negative');
+  const fmtDelta = (d: number) => `${d >= 0 ? '+' : ''}${d.toFixed(1)}% vs bulan lalu`;
+
   $: topProductLabels = data.topByRevenue.map((p) => p.name);
   $: topProductRevenue = data.topByRevenue.map((p) => p.revenue);
 </script>
@@ -25,21 +34,25 @@
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
   <Card>
     <p class="text-label-sm uppercase text-muted mb-1">Revenue</p>
-    <p class="text-num-display text-ink tabular">{idr(data.summary.revenue)}</p>
+    <p class="text-num-display text-ink tabular mb-1.5">{idr(data.summary.revenue)}</p>
+    <Badge tone={deltaTone(kpiDeltas.revenue)}>{fmtDelta(kpiDeltas.revenue)}</Badge>
   </Card>
   <Card>
     <p class="text-label-sm uppercase text-muted mb-1">Jumlah Transaksi</p>
-    <p class="text-num-display text-ink tabular">{num(data.transactionCount)}</p>
+    <p class="text-num-display text-ink tabular mb-1.5">{num(data.transactionCount)}</p>
+    <Badge tone={deltaTone(kpiDeltas.transactions)}>{fmtDelta(kpiDeltas.transactions)}</Badge>
   </Card>
   <Card>
     <p class="text-label-sm uppercase text-muted mb-1">Profit</p>
-    <p class="text-num-display text-ink tabular">{idr(data.summary.profit)}</p>
+    <p class="text-num-display text-ink tabular mb-1.5">{idr(data.summary.profit)}</p>
+    <Badge tone={deltaTone(kpiDeltas.profit)}>{fmtDelta(kpiDeltas.profit)}</Badge>
   </Card>
   <Card>
     <p class="text-label-sm uppercase text-muted mb-1">Margin</p>
-    <p class="text-num-display tabular" class:text-status-positive={data.summary.margin >= 0.3} class:text-ink={data.summary.margin < 0.3}>
-      {(data.summary.margin * 100).toFixed(1)}%
-    </p>
+    <p class="text-num-display text-ink tabular mb-1.5">{(data.summary.margin * 100).toFixed(1)}%</p>
+    <Badge tone={data.summary.margin >= 0.3 ? 'positive' : 'warning'}>
+      {data.summary.margin >= 0.3 ? 'Sehat' : 'Perlu perhatian'}
+    </Badge>
   </Card>
 </div>
 
@@ -65,36 +78,56 @@
 <div class="flex flex-col lg:flex-row gap-6 items-start">
   <div class="flex-1 min-w-0 w-full">
     <h2 class="text-headline-sm text-ink mb-3">Transaksi Terbaru</h2>
-    <Card class="!p-0 overflow-hidden">
-      <ul>
-        {#each data.recentTransactions as t, i}
-          <li
-            class="flex justify-between items-center gap-4 px-5 py-3 text-body-md"
-            class:border-b={i < data.recentTransactions.length - 1}
-            class:border-table-divider={i < data.recentTransactions.length - 1}
-          >
-            <div class="min-w-0">
-              <p class="text-ink truncate">{t.productName}</p>
-              <p class="text-body-sm text-muted">{t.quantity}× · {fmtDate(t.createdAt)}</p>
-            </div>
-            <span class="tabular text-ink whitespace-nowrap">{idr(t.quantity * t.priceAtSale)}</span>
-          </li>
-        {:else}
-          <li class="px-5 py-4 text-body-md text-muted">Belum ada transaksi.</li>
+    {#if data.recentTransactions.length === 0}
+      <Card class="text-center py-8">
+        <p class="text-body-md text-muted">Belum ada transaksi.</p>
+      </Card>
+    {:else}
+      <Table headers={['Produk', 'Qty', 'Waktu', 'Total']}>
+        {#each data.recentTransactions as t}
+          <tr>
+            <td class="px-3 py-2 text-ink">{t.productName}</td>
+            <td class="px-3 py-2 tabular text-muted">{t.quantity}×</td>
+            <td class="px-3 py-2 text-body-sm text-muted whitespace-nowrap">{fmtDate(t.createdAt)}</td>
+            <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(t.quantity * t.priceAtSale)}</td>
+          </tr>
         {/each}
-      </ul>
-      {#if data.recentTransactions.length > 0}
-        <div class="border-t border-table-divider px-5 py-3 text-right">
-          <a href="/transactions" class="text-body-md font-semibold text-status-positive hover:underline no-underline">Lihat lainnya →</a>
-        </div>
-      {/if}
-    </Card>
+      </Table>
+      <div class="text-right mt-2">
+        <a href="/transactions" class="text-body-md font-semibold text-status-positive hover:underline no-underline">Lihat lainnya →</a>
+      </div>
+    {/if}
   </div>
 
-  <!-- Kolom kanan: shell Copilot, belum ada konten -->
+  <!-- Kolom kanan: Copilot — diisi teaser + quick prompts, bukan cuma judul kosong -->
   <div class="w-full lg:w-80 flex-shrink-0">
-    <div class="rounded-panel bg-ink-navy p-5 shadow-level1 min-h-[280px]">
-      <h2 class="text-headline-sm text-white">Katalyst Copilot</h2>
+    <div class="relative overflow-hidden rounded-panel bg-ink-navy p-5 shadow-level1 min-h-[280px] flex flex-col">
+      <div class="flex items-center gap-2.5 mb-3">
+        <span class="grid h-8 w-8 flex-shrink-0 place-items-center rounded bg-white/15 text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" />
+            <path d="M20 2v4" /><path d="M22 4h-4" /><circle cx="4" cy="20" r="2" />
+          </svg>
+        </span>
+        <h2 class="text-headline-sm text-white">Katalyst Copilot</h2>
+      </div>
+      <p class="text-body-sm text-white/65 mb-4">Tanya apa aja soal performa bisnismu bulan ini.</p>
+
+      <div class="flex flex-col gap-2 mb-4">
+        <a href="/copilot" class="block rounded border border-white/10 bg-white/5 px-3 py-2 text-body-sm text-white/85 no-underline hover:bg-white/10">
+          "Produk mana yang marginnya paling tipis?"
+        </a>
+        <a href="/copilot" class="block rounded border border-white/10 bg-white/5 px-3 py-2 text-body-sm text-white/85 no-underline hover:bg-white/10">
+          "Kenapa profit bulan ini turun?"
+        </a>
+      </div>
+
+      
+      <a  href="/copilot"
+        class="mt-auto flex items-center justify-center gap-2 rounded bg-status-positive text-white text-body-md font-semibold py-2 no-underline hover:opacity-90"
+      >
+        Buka Copilot
+      </a>
     </div>
   </div>
 </div>

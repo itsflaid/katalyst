@@ -4,15 +4,14 @@
 
 <div class="overflow-x-auto rounded-panel border border-border-cool">
   <table class="w-full text-body-md">
-    <thead class="bg-table-header border-b border-border-input">
+    <thead class="bg-ink-navy border-b border-ink-navy">
       <tr>
         {#each headers as h}
-          <th class="px-3 py-2 text-left text-label-md text-muted">{h}</th>
+          <th class="px-3 py-2 text-left text-label-md uppercase text-white">{h}</th>
         {/each}
       </tr>
     </thead>
-    <!-- Zebra fill sengaja dimatiin (design.md eksplisit minta clean divider
-         1px, bukan alternating row) -->
+    <!-- Body selang-seling putih standar: ganjil #FFFFFF, genap #F8FAFC -->
     <tbody class="divide-y divide-table-divider">
       <slot />
     </tbody>
@@ -20,7 +19,13 @@
 </div>
 
 <style>
+  :global(table tbody tr:nth-child(odd)) {
+    background-color: #ffffff;
+  }
+  :global(table tbody tr:nth-child(even)) {
+    background-color: #f8fafc;
+  }
   :global(table tbody tr:hover) {
-    background-color: #F8FAFC;
+    background-color: #eff6ff;
   }
 </style>

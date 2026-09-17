@@ -49,6 +49,23 @@ export const actions: Actions = {
     return { success: true };
   },
 
+  toggle: async ({ request, locals }) => {
+    const businessId = locals.user!.businessId as string;
+    const form = await request.formData();
+    const id = String(form.get('id') ?? '');
+    const isActive = form.get('isActive') === 'on';
+    const [existing] = await db
+      .select({ id: product.id })
+      .from(product)
+      .where(and(eq(product.id, id), eq(product.businessId, businessId)));
+    if (!existing) return fail(404, { message: 'Produk tidak ditemukan.' });
+    await db
+      .update(product)
+      .set({ isActive, updatedAt: new Date() })
+      .where(eq(product.id, id));
+    return { success: true };
+  },
+
   delete: async ({ request, locals }) => {
     const businessId = locals.user!.businessId as string;
     const form = await request.formData();

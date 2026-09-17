@@ -1,7 +1,7 @@
 <script lang="ts">
   import { cn } from '$lib/utils';
 
-  // Nama tone dipetakan 1:1 ke 4 status semantik di design.md — bukan
+  // Nama tone mengikuti 4 status semantik tema — bukan
   // "success/warning/danger" generik Tailwind, biar konsisten sama
   // bahasa yang dipakai di lib/analytics.ts (insight type, dsb).
   export let tone: 'positive' | 'warning' | 'negative' | 'neutral' = 'neutral';

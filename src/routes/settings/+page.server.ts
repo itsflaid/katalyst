@@ -7,7 +7,7 @@ export const load: PageServerLoad = async ({ locals }) => {
   const businessId = locals.user!.businessId as string;
   const [b] = await db.select().from(business).where(eq(business.id, businessId));
   const staffList = await db
-    .select({ id: user.id, name: user.name, email: user.email })
+    .select({ id: user.id, name: user.name, email: user.email, role: user.role })
     .from(user)
     .where(eq(user.businessId, businessId));
 

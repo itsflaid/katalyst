@@ -3,9 +3,8 @@ export default {
   content: ['./src/**/*.{html,js,svelte,ts}'],
   theme: {
     extend: {
-      // Token dari design.md ("Executive Precision") — bukan Tailwind
-      // default palette. Nama key sengaja niru penamaan di design.md biar
-      // gampang di-cross-reference pas nambah komponen baru.
+      // Token warna tema "Executive Precision" — bukan Tailwind
+      // default palette.
       colors: {
         canvas: '#F7F3EA',
         surface: {

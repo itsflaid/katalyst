@@ -9,7 +9,6 @@
 
 <!--
   Sengaja gak ada rounded-full sama sekali di seluruh komponen ini —
-  design.md eksplisit larang pill button ("No rounded pill buttons"),
   harus solid structural corner (radius 4px) buat kesan institusional.
 -->
 <button

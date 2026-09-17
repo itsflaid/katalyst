@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { transaction, transactionItem, product, user } from '$lib/server/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -23,5 +23,11 @@ export const load: PageServerLoad = async ({ locals }) => {
     .orderBy(desc(transaction.createdAt))
     .limit(100);
 
-  return { transactions: rows };
+  // Buat dropdown produk di panel "Transaksi Baru" — hanya produk aktif.
+  const products = await db
+    .select({ id: product.id, name: product.name, sellingPrice: product.sellingPrice })
+    .from(product)
+    .where(and(eq(product.businessId, businessId), eq(product.isActive, true)));
+
+  return { transactions: rows, products };
 };

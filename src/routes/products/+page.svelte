@@ -1,217 +1,377 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
-  import type { SubmitFunction } from '@sveltejs/kit';
-  import Table from '$lib/components/ui/Table.svelte';
-  import Card from '$lib/components/ui/Card.svelte';
-  import Badge from '$lib/components/ui/Badge.svelte';
-  import Button from '$lib/components/ui/Button.svelte';
-  import Input from '$lib/components/ui/Input.svelte';
+  import { enhance } from "$app/forms";
+  import type { SubmitFunction } from "@sveltejs/kit";
+  import Input from "$lib/components/ui/Input.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import Badge from "$lib/components/ui/Badge.svelte";
+  import Table from "$lib/components/ui/Table.svelte";
+  import SlideOver from "$lib/components/ui/SlideOver.svelte";
+  import { fade, scale } from "svelte/transition";
   export let data;
   export let form;
 
-  const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
+  const idr = (n: number) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 0,
+    }).format(n);
 
   const marginOf = (p: { costPrice: number; sellingPrice: number }) =>
-    p.sellingPrice > 0 ? (p.sellingPrice - p.costPrice) / p.sellingPrice : null;
-  const marginTone = (m: number | null): 'positive' | 'warning' | 'negative' | 'neutral' =>
-    m === null ? 'neutral' : m >= 0.3 ? 'positive' : m >= 0.1 ? 'warning' : 'negative';
+    p.sellingPrice > 0
+      ? Math.round(((p.sellingPrice - p.costPrice) / p.sellingPrice) * 100)
+      : null;
+  const marginTone = (m: number | null) =>
+    m === null ? "neutral" : m >= 30 ? "positive" : "warning";
 
-  // Search client-side (tanpa roundtrip server)
-  let query = '';
-  $: filtered = data.products.filter((p) =>
-    p.name.toLowerCase().includes(query.trim().toLowerCase())
-  );
+  const statusOptions = [
+    { value: "all", label: "Semua" },
+    { value: "active", label: "Aktif" },
+    { value: "inactive", label: "Nonaktif" },
+  ] as const;
+  type StatusFilter = (typeof statusOptions)[number]["value"];
 
-  // State modal
+  let query = "";
+  let statusFilter: StatusFilter = "all";
+  $: filtered = data.products.filter((p) => {
+    const q = query.trim().toLowerCase();
+    const matchQuery = !q || p.name.toLowerCase().includes(q);
+    const matchStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" ? p.isActive : !p.isActive);
+    return matchQuery && matchStatus;
+  });
+  $: activeCount = data.products.filter((p) => p.isActive).length;
+
   let showCreate = false;
-  let editing: { id: string; name: string; costPrice: string; sellingPrice: string; isActive: boolean } | null = null;
+  let editing: {
+    id: string;
+    name: string;
+    costPrice: string;
+    sellingPrice: string;
+    isActive: boolean;
+  } | null = null;
+  let pendingDelete: { id: string; name: string } | null = null;
 
-  // Field form tambah (di-reset tiap sukses) — string karena <input> selalu string
-  let cName = '';
-  let cCost = '';
-  let cSell = '';
+  let cName = "";
+  let cCost = "";
+  let cSell = "";
   let cActive = true;
 
-  function openEdit(p: { id: string; name: string; costPrice: number; sellingPrice: number; isActive: boolean }) {
-    editing = { id: p.id, name: p.name, costPrice: String(p.costPrice), sellingPrice: String(p.sellingPrice), isActive: p.isActive };
+  function openEdit(p: {
+    id: string;
+    name: string;
+    costPrice: number;
+    sellingPrice: number;
+    isActive: boolean;
+  }) {
+    editing = {
+      id: p.id,
+      name: p.name,
+      costPrice: String(p.costPrice),
+      sellingPrice: String(p.sellingPrice),
+      isActive: p.isActive,
+    };
   }
   function closeModals() {
     showCreate = false;
     editing = null;
+    pendingDelete = null;
   }
   function resetCreate() {
-    cName = '';
-    cCost = '';
-    cSell = '';
+    cName = "";
+    cCost = "";
+    cSell = "";
     cActive = true;
   }
 
-  // Modal tetap terbuka kalau validasi gagal (form.message tampil),
-  // tertutup + field di-reset kalau sukses. update() me-refresh tabel.
-  const afterSubmit: SubmitFunction = () => async ({ result, update }) => {
-    await update();
-    if (result.type === 'success') {
-      closeModals();
-      resetCreate();
-    }
-  };
+  const afterSubmit: SubmitFunction =
+    () =>
+    async ({ result, update }) => {
+      await update();
+      if (result.type === "success") {
+        closeModals();
+        resetCreate();
+      }
+    };
 
   function onKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') closeModals();
+    if (e.key === "Escape") closeModals();
   }
 </script>
 
 <svelte:window on:keydown={onKeydown} />
 
-<div class="flex items-center justify-between gap-4 mb-2">
+<div class="mb-1">
   <h1 class="text-headline-lg text-ink">Produk</h1>
-  <Button on:click={() => (showCreate = true)}>+ Tambah Produk</Button>
+  <p class="text-body-md text-muted">
+    {data.products.length} produk terdaftar · {activeCount} aktif
+  </p>
 </div>
-<p class="text-body-md text-muted mb-6">{data.products.length} produk terdaftar</p>
 
-<Input bind:value={query} placeholder="Cari nama produk…" class="max-w-sm mb-4" />
+<div class="flex flex-wrap items-center gap-3 my-4">
+  <Input
+    bind:value={query}
+    placeholder="Cari nama produk…"
+    class="max-w-sm flex-1 min-w-[200px]"
+    aria-label="Cari nama produk"
+  />
+  <div
+    class="flex rounded border border-border-input overflow-hidden"
+    role="group"
+    aria-label="Filter status"
+  >
+    {#each statusOptions as o}
+      <button
+        type="button"
+        on:click={() => (statusFilter = o.value)}
+        aria-pressed={statusFilter === o.value}
+        class="px-3 h-9 text-body-md border-none cursor-pointer {statusFilter === o.value
+          ? 'bg-ink-navy text-white font-semibold'
+          : 'bg-white text-muted hover:bg-table-header'}"
+      >
+        {o.label}
+      </button>
+    {/each}
+  </div>
+  <Button on:click={() => (showCreate = true)} class="flex-shrink-0 ml-auto">+ Tambah</Button>
+</div>
 
 {#if data.products.length === 0}
-  <Card class="text-center py-10">
-    <p class="text-body-md text-muted mb-4">Belum ada produk. Tambahkan produk pertama untuk mulai mencatat transaksi.</p>
+  <div class="rounded-panel border-2 border-dashed border-border-input text-center py-12 px-4">
+    <p class="text-body-md text-muted mb-4">
+      Belum ada produk. Tambahkan produk pertama untuk mulai mencatat transaksi.
+    </p>
     <Button on:click={() => (showCreate = true)}>+ Tambah Produk</Button>
-  </Card>
+  </div>
 {:else if filtered.length === 0}
-  <Card class="text-center py-10">
-    <p class="text-body-md text-muted">Tidak ada produk yang cocok dengan “{query.trim()}”.</p>
-  </Card>
+  <div class="rounded-panel border-2 border-dashed border-border-input text-center py-12 px-4">
+    <p class="text-body-md text-muted">
+      Tidak ada produk yang cocok dengan filter ini.
+    </p>
+  </div>
 {:else}
-  <Table headers={['Produk', 'Harga Modal', 'Harga Jual', 'Margin', 'Status', 'Aksi']}>
+  <Table headers={["Produk", "Modal", "Jual", "Margin", "Status", "Aksi"]}>
     {#each filtered as p}
       {@const m = marginOf(p)}
-      <tr>
+      <tr class={!p.isActive ? "opacity-60" : ""}>
+        <td class="px-3 py-2 text-ink font-semibold whitespace-nowrap">{p.name}</td>
+        <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{idr(p.costPrice)}</td>
+        <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(p.sellingPrice)}</td>
         <td class="px-3 py-2">
-          <a href={`/products/${p.id}`} class="font-semibold text-ink-navy no-underline hover:underline">{p.name}</a>
-        </td>
-        <td class="px-3 py-2 tabular">{idr(p.costPrice)}</td>
-        <td class="px-3 py-2 tabular">{idr(p.sellingPrice)}</td>
-        <td class="px-3 py-2">
-          {#if m === null}
-            <span class="text-muted">—</span>
-          {:else}
-            <Badge tone={marginTone(m)}>{(m * 100).toFixed(0)}%</Badge>
-          {/if}
+          <Badge tone={marginTone(m)}>{m === null ? "—" : `${m}%`}</Badge>
         </td>
         <td class="px-3 py-2">
-          {#if p.isActive}
-            <Badge tone="positive">Aktif</Badge>
-          {:else}
-            <Badge tone="neutral">Nonaktif</Badge>
-          {/if}
-        </td>
-        <td class="px-3 py-2">
-          <div class="flex items-center gap-2">
-            <a href={`/simulator?productId=${p.id}`} class="text-body-sm text-ink-navy underline whitespace-nowrap">Simulasikan</a>
-            <Button size="compact" variant="secondary" on:click={() => openEdit(p)}>Edit</Button>
-            <form
-              method="POST"
-              action="?/delete"
-              on:submit={(e) => {
-                if (!confirm(`Hapus "${p.name}"?`)) e.preventDefault();
-              }}
+          <form method="POST" action="?/toggle" use:enhance={afterSubmit}>
+            <input type="hidden" name="id" value={p.id} />
+            <input type="hidden" name="isActive" value={p.isActive ? "off" : "on"} />
+            <button
+              type="submit"
+              role="switch"
+              aria-checked={p.isActive}
+              aria-label={p.isActive ? `Nonaktifkan ${p.name}` : `Aktifkan ${p.name}`}
+              title={p.isActive ? "Klik untuk menonaktifkan" : "Klik untuk mengaktifkan"}
+              class="relative block h-6 w-10 rounded-full border transition-colors cursor-pointer {p.isActive
+                ? 'bg-status-positive border-status-positive'
+                : 'bg-surface-dim border-border-input'}"
             >
-              <input type="hidden" name="id" value={p.id} />
-              <Button size="compact" variant="destructive" type="submit">Hapus</Button>
-            </form>
+              <span
+                class="absolute top-0.5 h-[18px] w-[18px] rounded-full bg-white shadow transition-all {p.isActive
+                  ? 'left-[18px]'
+                  : 'left-0.5'}"
+              ></span>
+            </button>
+          </form>
+        </td>
+        <td class="px-3 py-2 whitespace-nowrap">
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              on:click={() => openEdit(p)}
+              class="text-body-sm font-semibold text-ink-navy hover:underline bg-transparent border-none cursor-pointer p-0"
+            >
+              Edit
+            </button>
+            <a href={`/simulator?productId=${p.id}`} class="text-body-sm text-muted hover:underline">
+              Simulasikan
+            </a>
+            <button
+              type="button"
+              on:click={() => (pendingDelete = { id: p.id, name: p.name })}
+              class="text-body-sm font-semibold text-status-negative hover:underline bg-transparent border-none cursor-pointer p-0"
+            >
+              Hapus
+            </button>
           </div>
         </td>
       </tr>
     {/each}
   </Table>
+  <p class="text-body-sm text-muted mt-2">
+    Menampilkan {filtered.length} dari {data.products.length} produk.
+  </p>
 {/if}
 
-<!-- Modal tambah -->
 {#if showCreate}
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
-    role="button"
-    tabindex="0"
-    aria-label="Tutup dialog tambah produk"
-    on:click|self={closeModals}
-    on:keydown={(e) => {
-      if (e.target === e.currentTarget && (e.key === 'Escape' || e.key === 'Enter')) closeModals();
-    }}
-  >
-    <Card class="w-full max-w-md">
-      <h2 class="text-headline-sm text-ink mb-4">Tambah Produk</h2>
-      <form method="POST" action="?/create" use:enhance={afterSubmit} class="flex flex-col gap-3">
-        <label for="c-name" class="flex flex-col gap-1 text-body-md text-ink">
-          Nama produk
-          <Input id="c-name" name="name" bind:value={cName} placeholder="Contoh: Kopi Susu" required />
-        </label>
-        <div class="grid grid-cols-2 gap-3">
-          <label for="c-cost" class="flex flex-col gap-1 text-body-md text-ink">
-            Harga modal
-            <Input id="c-cost" name="costPrice" type="number" min="0" bind:value={cCost} placeholder="15000" required />
-          </label>
-          <label for="c-sell" class="flex flex-col gap-1 text-body-md text-ink">
-            Harga jual
-            <Input id="c-sell" name="sellingPrice" type="number" min="1" bind:value={cSell} placeholder="25000" required />
-          </label>
-        </div>
-        <label class="flex items-center gap-2 text-body-md text-ink">
-          <input type="checkbox" name="isActive" bind:checked={cActive} class="h-4 w-4 accent-ink-navy" />
-          Aktif dijual
-        </label>
-        {#if form?.for === 'create'}
-          <p class="text-body-sm text-status-negative">{form.message}</p>
-        {/if}
-        <div class="flex justify-end gap-2 mt-1">
-          <Button variant="secondary" type="button" on:click={closeModals}>Batal</Button>
-          <Button type="submit">Simpan</Button>
-        </div>
-      </form>
-    </Card>
-  </div>
+  <SlideOver title="Tambah Produk" onClose={closeModals}>
+    <form
+      method="POST"
+      action="?/create"
+      use:enhance={afterSubmit}
+      class="flex flex-col gap-3"
+    >
+      <label for="c-name" class="flex flex-col gap-1 text-body-md text-ink">
+        Nama produk
+        <Input
+          id="c-name"
+          name="name"
+          bind:value={cName}
+          placeholder="Contoh: Kopi Susu"
+          required
+        />
+      </label>
+      <label for="c-cost" class="flex flex-col gap-1 text-body-md text-ink">
+        Harga modal
+        <Input
+          id="c-cost"
+          name="costPrice"
+          type="number"
+          min="0"
+          bind:value={cCost}
+          placeholder="15000"
+          required
+        />
+      </label>
+      <label for="c-sell" class="flex flex-col gap-1 text-body-md text-ink">
+        Harga jual
+        <Input
+          id="c-sell"
+          name="sellingPrice"
+          type="number"
+          min="1"
+          bind:value={cSell}
+          placeholder="25000"
+          required
+        />
+      </label>
+      <label class="flex items-center gap-2 text-body-md text-ink">
+        <input
+          type="checkbox"
+          name="isActive"
+          bind:checked={cActive}
+          class="h-4 w-4 accent-ink-navy"
+        />
+        Aktif dijual
+      </label>
+      {#if form?.for === "create"}<p class="text-body-sm text-status-negative">
+          {form.message}
+        </p>{/if}
+      <div class="flex justify-end gap-2 mt-1">
+        <Button variant="secondary" type="button" on:click={closeModals}
+          >Batal</Button
+        >
+        <Button type="submit">Simpan</Button>
+      </div>
+    </form>
+  </SlideOver>
 {/if}
 
-<!-- Modal edit -->
 {#if editing}
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
-    role="button"
-    tabindex="0"
-    aria-label="Tutup dialog edit produk"
-    on:click|self={closeModals}
-    on:keydown={(e) => {
-      if (e.target === e.currentTarget && (e.key === 'Escape' || e.key === 'Enter')) closeModals();
-    }}
-  >
-    <Card class="w-full max-w-md">
-      <h2 class="text-headline-sm text-ink mb-4">Edit Produk</h2>
-      <form method="POST" action="?/update" use:enhance={afterSubmit} class="flex flex-col gap-3">
-        <input type="hidden" name="id" value={editing.id} />
-        <label for="e-name" class="flex flex-col gap-1 text-body-md text-ink">
-          Nama produk
-          <Input id="e-name" name="name" bind:value={editing.name} required />
-        </label>
-        <div class="grid grid-cols-2 gap-3">
-          <label for="e-cost" class="flex flex-col gap-1 text-body-md text-ink">
-            Harga modal
-            <Input id="e-cost" name="costPrice" type="number" min="0" bind:value={editing.costPrice} required />
-          </label>
-          <label for="e-sell" class="flex flex-col gap-1 text-body-md text-ink">
-            Harga jual
-            <Input id="e-sell" name="sellingPrice" type="number" min="1" bind:value={editing.sellingPrice} required />
-          </label>
-        </div>
-        <label class="flex items-center gap-2 text-body-md text-ink">
-          <input type="checkbox" name="isActive" bind:checked={editing.isActive} class="h-4 w-4 accent-ink-navy" />
-          Aktif dijual
-        </label>
-        {#if form?.for === 'update'}
-          <p class="text-body-sm text-status-negative">{form.message}</p>
-        {/if}
-        <div class="flex justify-end gap-2 mt-1">
-          <Button variant="secondary" type="button" on:click={closeModals}>Batal</Button>
+  <SlideOver title="Edit Produk" onClose={closeModals}>
+    <form
+      method="POST"
+      action="?/update"
+      use:enhance={afterSubmit}
+      class="flex flex-col gap-3"
+    >
+      <input type="hidden" name="id" value={editing.id} />
+      <label for="e-name" class="flex flex-col gap-1 text-body-md text-ink">
+        Nama produk
+        <Input id="e-name" name="name" bind:value={editing.name} required />
+      </label>
+      <label for="e-cost" class="flex flex-col gap-1 text-body-md text-ink">
+        Harga modal
+        <Input
+          id="e-cost"
+          name="costPrice"
+          type="number"
+          min="0"
+          bind:value={editing.costPrice}
+          required
+        />
+      </label>
+      <label for="e-sell" class="flex flex-col gap-1 text-body-md text-ink">
+        Harga jual
+        <Input
+          id="e-sell"
+          name="sellingPrice"
+          type="number"
+          min="1"
+          bind:value={editing.sellingPrice}
+          required
+        />
+      </label>
+      <label class="flex items-center gap-2 text-body-md text-ink">
+        <input
+          type="checkbox"
+          name="isActive"
+          bind:checked={editing.isActive}
+          class="h-4 w-4 accent-ink-navy"
+        />
+        Aktif dijual
+      </label>
+      {#if form?.for === "update"}<p class="text-body-sm text-status-negative">
+          {form.message}
+        </p>{/if}
+      <div class="flex items-center justify-between gap-2 mt-1">
+        <a
+          href={`/simulator?productId=${editing.id}`}
+          class="text-body-sm text-ink-navy underline">Simulasikan</a
+        >
+        <div class="flex gap-2">
+          <Button variant="secondary" type="button" on:click={closeModals}
+            >Batal</Button
+          >
           <Button type="submit">Simpan</Button>
         </div>
-      </form>
-    </Card>
+      </div>
+    </form>
+  </SlideOver>
+{/if}
+
+{#if pendingDelete}
+  <button
+    type="button"
+    class="fixed inset-0 z-50 bg-ink/40 border-none cursor-default p-0"
+    transition:fade={{ duration: 150 }}
+    aria-label="Batalkan hapus"
+    on:click={closeModals}
+  ></button>
+  <div class="fixed inset-0 z-50 grid place-items-center p-4 pointer-events-none">
+    <div
+      class="pointer-events-auto w-full max-w-sm rounded-panel border border-border-cool bg-surface p-5 shadow-level3"
+      transition:scale={{ duration: 150, start: 0.96 }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Konfirmasi hapus produk"
+    >
+      <h2 class="text-headline-sm text-ink mb-2">Hapus produk?</h2>
+      <p class="text-body-md text-muted">
+        “{pendingDelete.name}” akan dihapus permanen. Produk yang sudah punya
+        riwayat transaksi tidak bisa dihapus — nonaktifkan saja.
+      </p>
+      <div class="flex gap-2 mt-4">
+        <Button variant="secondary" class="flex-1" on:click={closeModals}>Batal</Button>
+        <form
+          method="POST"
+          action="?/delete"
+          use:enhance={afterSubmit}
+          class="flex-1"
+        >
+          <input type="hidden" name="id" value={pendingDelete.id} />
+          <Button variant="destructive" type="submit" class="w-full">Hapus</Button>
+        </form>
+      </div>
+    </div>
   </div>
 {/if}

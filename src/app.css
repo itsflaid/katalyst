@@ -5,7 +5,7 @@
 @tailwind utilities;
 
 /* Plus Jakarta Sans — satu-satunya typeface dipakai di seluruh app
-   (headline & body), sesuai design.md "Executive Precision". Cuma bobot
+   (headline & body). Cuma bobot
    yang dipakai spec yang di-load, biar gak nge-fetch weight yang gak
    kepake. NOTE: @import ini WAJIB di baris paling atas file — spec CSS
    (dan Vite) nolak @import yang muncul setelah statement lain. */
@@ -17,8 +17,7 @@ body {
 }
 
 /* Angka finansial/tabel WAJIB tabular-nums biar kolom rata pas dibaca
-   vertikal (ledger, KPI, harga) — ini eksplisit diminta di design.md,
-   bukan default Tailwind. */
+   vertikal (ledger, KPI, harga). */
 .tabular {
   font-variant-numeric: tabular-nums;
 }
