@@ -12,8 +12,8 @@ import { building } from '$app/environment';
 // diletakkan di src/lib/) juga diam-diam diabaikan, tanpa build error.
 // Makanya proteksi route dipusatkan di sini, bukan dicek manual di tiap
 // +page.server.ts (rawan ke-skip kalau ada yang lupa nambahin check).
-const PROTECTED_PATHS = ['/dashboard', '/simulator', '/settings', '/transactions', '/products'];
-const OWNER_ONLY_PATHS = ['/dashboard', '/simulator', '/settings'];
+const PROTECTED_PATHS = ['/dashboard', '/simulator', '/settings', '/transactions', '/products', '/copilot'];
+const OWNER_ONLY_PATHS = ['/dashboard', '/simulator', '/settings', '/copilot'];
 
 export const handle: Handle = async ({ event, resolve }) => {
   const session = await auth.api.getSession({ headers: event.request.headers });

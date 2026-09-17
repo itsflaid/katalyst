@@ -22,3 +22,17 @@ body {
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/* Kilau CTA Copilot: strip putih miring menyapu kiri → kanan, infinite.
+   0%→55% gerak menyapu, 55%→100% jeda di luar card biar ada napas antar
+   sapuan, bukan gerak nonstop yang bikin capek dilihat. */
+@keyframes copilot-sheen-move {
+  0% { left: -45%; }
+  55%, 100% { left: 135%; }
+}
+.copilot-sheen {
+  animation: copilot-sheen-move 3.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .copilot-sheen { animation: none; display: none; }
+}

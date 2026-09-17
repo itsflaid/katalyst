@@ -16,6 +16,22 @@
 {/if}
 
 <style>
-  .app-shell { display: flex; }
-  main { flex: 1; padding: 2rem; }
+  /*
+    Sebelumnya .app-shell gak punya batas tinggi, jadi begitu konten
+    <main> lebih tinggi dari layar, yang jadi scroll container adalah
+    dokumen itu sendiri — otomatis Sidebar (sibling flex biasa) ikut
+    kegeser ke atas juga. Fix: pin .app-shell di 100vh + overflow hidden,
+    lalu biarin cuma <main> yang scroll sendiri. Sidebar jadi diam total.
+  */
+  .app-shell {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+  main {
+    flex: 1;
+    padding: 2rem;
+    height: 100%;
+    overflow-y: auto;
+  }
 </style>
