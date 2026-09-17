@@ -18,7 +18,10 @@
 
   async function handleLogout() {
     await signOut();
-    goto('/login');
+    // invalidateAll: paksa load function layout (+layout.server.ts) jalan
+    // ulang — tanpa ini data.user masih kebawa (hasil load waktu masih
+    // logged-in) dan Sidebar gak hilang sampai user refresh manual.
+    goto('/login', { invalidateAll: true });
   }
 </script>
 

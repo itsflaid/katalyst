@@ -16,7 +16,10 @@
       error = signInError.message ?? 'Login gagal, cek email/password.';
       return;
     }
-    goto('/transactions');
+    // invalidateAll: paksa load function layout (+layout.server.ts) jalan
+    // ulang — tanpa ini data.user tetap null (hasil load waktu masih
+    // logged-out) dan Sidebar gak muncul sampai user refresh manual.
+    goto('/transactions', { invalidateAll: true });
   }
 </script>
 
