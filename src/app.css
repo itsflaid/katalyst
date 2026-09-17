@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Plus Jakarta Sans — satu-satunya typeface dipakai di seluruh app
+   (headline & body), sesuai design.md "Executive Precision". Cuma bobot
+   yang dipakai spec yang di-load, biar gak nge-fetch weight yang gak
+   kepake. */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap');
+
 body {
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  background-color: #F7F3EA; /* canvas — krem hangat, bukan putih polos */
+  color: #0F172A;
+}
+
+/* Angka finansial/tabel WAJIB tabular-nums biar kolom rata pas dibaca
+   vertikal (ledger, KPI, harga) — ini eksplisit diminta di design.md,
+   bukan default Tailwind. */
+.tabular {
+  font-variant-numeric: tabular-nums;
 }

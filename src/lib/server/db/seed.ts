@@ -178,6 +178,19 @@ async function main() {
   const now = new Date();
   let totalTx = 0;
 
+  // Row-row di sini dikumpulin di memory dulu (bukan langsung di-insert),
+  // biar insert-nya bisa di-batch sekaligus di luar loop — lihat alasannya
+  // di komentar sebelum blok "Batch insert" di bawah.
+  const txRows: { id: string; businessId: string; userId: string; createdAt: Date }[] = [];
+  const itemRows: {
+    id: string;
+    transactionId: string;
+    productId: string;
+    quantity: number;
+    priceAtSale: number;
+    costAtSale: number;
+  }[] = [];
+
   for (let dayOffset = HISTORY_DAYS - 1; dayOffset >= 0; dayOffset--) {
     const day = new Date(now);
     day.setUTCDate(day.getUTCDate() - dayOffset);
@@ -213,14 +226,8 @@ async function main() {
         const txId = randomUUID();
         const servedBy = rand() < 0.7 ? staffId : ownerId;
 
-        await db.insert(transaction).values({
-          id: txId,
-          businessId,
-          userId: servedBy,
-          createdAt
-        });
-
-        await db.insert(transactionItem).values({
+        txRows.push({ id: txId, businessId, userId: servedBy, createdAt });
+        itemRows.push({
           id: randomUUID(),
           transactionId: txId,
           productId: productIds[p.name],
@@ -232,6 +239,32 @@ async function main() {
         totalTx++;
       }
     }
+  }
+
+  // -----------------------------------------------------------------------
+  // Batch insert — SEBELUMNYA di sini ada `await db.insert(...)` per
+  // transaksi di dalam loop di atas (2 round-trip DB x ~11.000 transaksi =
+  // ~22.000 query sequential, ~15-20 menit di Neon/Supabase karena tiap
+  // query kena network latency). Sekarang loop di atas cuma numpuk row ke
+  // array di memory (murni JS, gak ada I/O), baru di-insert rame-rame di
+  // sini per batch 500 row -> total round-trip turun ke puluhan, bukan
+  // puluhan-ribu.
+  // -----------------------------------------------------------------------
+  function chunk<T>(arr: T[], size: number): T[][] {
+    const out: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  }
+
+  const BATCH_SIZE = 500;
+
+  console.log(`Generate selesai (${totalTx} transaksi di memory). Insert ke DB per batch ${BATCH_SIZE}...`);
+
+  for (const batch of chunk(txRows, BATCH_SIZE)) {
+    await db.insert(transaction).values(batch);
+  }
+  for (const batch of chunk(itemRows, BATCH_SIZE)) {
+    await db.insert(transactionItem).values(batch);
   }
 
   console.log(`Seed selesai: ${PRODUCTS.length} produk, ${totalTx} transaksi selama ${HISTORY_DAYS} hari.`);
