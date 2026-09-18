@@ -99,9 +99,7 @@ export const transaction = pgTable(
     businessId: text('business_id')
       .notNull()
       .references(() => business.id),
-    userId: text('user_id')
-      .notNull()
-      .references(() => user.id),
+    userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
     // Snapshot nama kasir saat struk dicatat — dipakai biar riwayat tetap
     // menampilkan nama walau user staff-nya sudah dihapus dari DB.
     // Diisi di actions.create dari locals.user.name, fallback tampilan:
