@@ -1,5 +1,5 @@
 import { db } from '$lib/server/db';
-import { transaction, transactionItem, product, user } from '$lib/server/db/schema';
+import { stockMovement, transaction, transactionItem, product, user } from '$lib/server/db/schema';
 import { eq, desc, and, inArray } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
@@ -74,8 +74,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   }
 
   // Buat dropdown produk di panel "Transaksi Baru" — hanya produk aktif.
+  // Stok ikut dikirim biar dropdown bisa menandai yang habis.
   const products = await db
-    .select({ id: product.id, name: product.name, sellingPrice: product.sellingPrice })
+    .select({ id: product.id, name: product.name, sellingPrice: product.sellingPrice, stock: product.stock })
     .from(product)
     .where(and(eq(product.businessId, businessId), eq(product.isActive, true)));
 
@@ -118,8 +119,10 @@ export const actions: Actions = {
     const dbProducts = await db
       .select({
         id: product.id,
+        name: product.name,
         sellingPrice: product.sellingPrice,
         costPrice: product.costPrice,
+        stock: product.stock,
         isActive: product.isActive
       })
       .from(product)
@@ -130,6 +133,10 @@ export const actions: Actions = {
     }
     const inactive = dbProducts.find((p) => !p.isActive);
     if (inactive) return fail(400, { message: 'Ada produk nonaktif di keranjang.' });
+    // Tolak seluruh struk kalau satu item pun stoknya kurang — jangan
+    // simpan sebagian biar kasir betulkan dulu.
+    const short = dbProducts.find((p) => merged.get(p.id)! > p.stock);
+    if (short) return fail(400, { message: `Stok ${short.name} kurang (sisa ${short.stock}).` });
 
     const byId = new Map(dbProducts.map((p) => [p.id, p]));
     const cashierName =
@@ -157,7 +164,28 @@ export const actions: Actions = {
           };
         })
       );
+      // Kurangi stok + catat ledger SALE. Stok yang habis (0) otomatis
+      // menonaktifkan produk biar tidak bisa dijual lagi.
+      for (const pid of productIds) {
+        const p = byId.get(pid)!;
+        const qty = merged.get(pid)!;
+        const newStock = p.stock - qty;
+        await db
+          .update(product)
+          .set({ stock: newStock, isActive: newStock <= 0 ? false : p.isActive, updatedAt: new Date() })
+          .where(eq(product.id, pid));
+        await db.insert(stockMovement).values({
+          id: crypto.randomUUID(),
+          businessId,
+          productId: pid,
+          qtyChange: -qty,
+          reason: 'SALE',
+          refTxId: txId,
+          createdBy: userId
+        });
+      }
     } catch {
+      await db.delete(stockMovement).where(eq(stockMovement.refTxId, txId));
       await db.delete(transactionItem).where(eq(transactionItem.transactionId, txId));
       await db.delete(transaction).where(eq(transaction.id, txId));
       return fail(500, { message: 'Gagal menyimpan transaksi, coba lagi.' });
@@ -183,6 +211,37 @@ export const actions: Actions = {
       .from(transaction)
       .where(and(eq(transaction.id, txId), eq(transaction.businessId, businessId)));
     if (!existing) return fail(404, { message: 'Struk tidak ditemukan.' });
+
+    // Kembalikan stok yang tadi dikurangi + catat ledger. Produk yang
+    // stoknya 0 (otomatis nonaktif saat habis) aktif lagi.
+    const voidItems = await db
+      .select({ productId: transactionItem.productId, quantity: transactionItem.quantity })
+      .from(transactionItem)
+      .where(eq(transactionItem.transactionId, txId));
+    const voidStocks = new Map<string, number>();
+    if (voidItems.length > 0) {
+      const stockRows = await db
+        .select({ id: product.id, stock: product.stock })
+        .from(product)
+        .where(inArray(product.id, voidItems.map((i) => i.productId)));
+      for (const r of stockRows) voidStocks.set(r.id, r.stock);
+    }
+    for (const i of voidItems) {
+      const curStock = voidStocks.get(i.productId) ?? 0;
+      await db
+        .update(product)
+        .set({ stock: curStock + i.quantity, isActive: true, updatedAt: new Date() })
+        .where(eq(product.id, i.productId));
+      await db.insert(stockMovement).values({
+        id: crypto.randomUUID(),
+        businessId,
+        productId: i.productId,
+        qtyChange: i.quantity,
+        reason: 'VOID_RESTORE',
+        refTxId: txId,
+        createdBy: locals.user!.id as string
+      });
+    }
 
     await db.delete(transactionItem).where(eq(transactionItem.transactionId, txId));
     await db.delete(transaction).where(eq(transaction.id, txId));
