@@ -26,6 +26,12 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        // Bar tumbuh satu-satu (stagger 80ms) biar animasinya kelihatan.
+        animation: {
+          duration: 700,
+          easing: 'easeOutQuart',
+          delay: (ctx) => (ctx.dataIndex ?? 0) * 80
+        },
         plugins: { legend: { display: false } },
         scales: {
           x: {
