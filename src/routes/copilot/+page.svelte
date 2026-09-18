@@ -178,21 +178,11 @@
               <div class="flex items-start gap-3">
 
                 <!-- KATALYST ICON -->
-                <div
-                  class="
-                    flex
-                    h-8 w-8
-                    shrink-0
-                    items-center
-                    justify-center
-                    border border-white/15
-                    text-sm
-                    font-semibold
-                    text-white
-                  "
-                >
-                  K
-                </div>
+                <img
+                  src="/logo/logo-copilot.png"
+                  alt="Katalyst Copilot"
+                  class="h-8 w-8 shrink-0 rounded object-cover"
+                />
 
 
                 <div class="min-w-0">
@@ -300,22 +290,11 @@
               <div class="flex gap-3">
 
                 <!-- AI AVATAR -->
-                <div
-                  class="
-                    mt-1
-                    flex
-                    h-7 w-7
-                    shrink-0
-                    items-center
-                    justify-center
-                    border border-white/15
-                    text-caption
-                    font-semibold
-                    text-white
-                  "
-                >
-                  K
-                </div>
+                <img
+                  src="/logo/logo-copilot.png"
+                  alt="Katalyst Copilot"
+                  class="mt-1 h-7 w-7 shrink-0 rounded object-cover"
+                />
 
 
                 <!-- AI BUBBLE -->
@@ -539,22 +518,11 @@
               <div class="flex gap-3">
 
                 <!-- AI AVATAR -->
-                <div
-                  class="
-                    mt-1
-                    flex
-                    h-7 w-7
-                    shrink-0
-                    items-center
-                    justify-center
-                    border border-white/15
-                    text-caption
-                    font-semibold
-                    text-white
-                  "
-                >
-                  K
-                </div>
+                <img
+                  src="/logo/logo-copilot.png"
+                  alt="Katalyst Copilot"
+                  class="mt-1 h-7 w-7 shrink-0 rounded object-cover"
+                />
 
 
                 <!-- AI BUBBLE -->

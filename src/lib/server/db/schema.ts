@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, integer, pgEnum, index } from 'drizzle-orm/pg-core';
 
 // -----------------------------------------------------------------------
 // Auth tables — bentuk kolomnya ngikutin konvensi default better-auth's
@@ -75,39 +75,55 @@ export const verification = pgTable('verification', {
 // cuma sintaks Drizzle. Ini yang dipakai lib/analytics.ts & lib/simulation.ts.
 // -----------------------------------------------------------------------
 
-export const product = pgTable('product', {
-  id: text('id').primaryKey(),
-  businessId: text('business_id')
-    .notNull()
-    .references(() => business.id),
-  name: text('name').notNull(),
-  costPrice: integer('cost_price').notNull(),
-  sellingPrice: integer('selling_price').notNull(),
-  isActive: boolean('is_active').notNull().default(true),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow()
-});
+export const product = pgTable(
+  'product',
+  {
+    id: text('id').primaryKey(),
+    businessId: text('business_id')
+      .notNull()
+      .references(() => business.id),
+    name: text('name').notNull(),
+    costPrice: integer('cost_price').notNull(),
+    sellingPrice: integer('selling_price').notNull(),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow()
+  },
+  (t) => [index('product_business_id_idx').on(t.businessId)]
+);
 
-export const transaction = pgTable('transaction', {
-  id: text('id').primaryKey(),
-  businessId: text('business_id')
-    .notNull()
-    .references(() => business.id),
-  userId: text('user_id')
-    .notNull()
-    .references(() => user.id),
-  createdAt: timestamp('created_at').notNull().defaultNow()
-});
+export const transaction = pgTable(
+  'transaction',
+  {
+    id: text('id').primaryKey(),
+    businessId: text('business_id')
+      .notNull()
+      .references(() => business.id),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id),
+    createdAt: timestamp('created_at').notNull().defaultNow()
+  },
+  // Composite (business_id, created_at): sekali jalan melayani
+  // WHERE business_id = ?  (pakai prefix kiri index) maupun
+  // WHERE business_id = ? ORDER BY created_at DESC LIMIT n
+  // (backward scan, tanpa sort) di dashboard & /transactions.
+  (t) => [index('transaction_business_created_idx').on(t.businessId, t.createdAt)]
+);
 
-export const transactionItem = pgTable('transaction_item', {
-  id: text('id').primaryKey(),
-  transactionId: text('transaction_id')
-    .notNull()
-    .references(() => transaction.id),
-  productId: text('product_id')
-    .notNull()
-    .references(() => product.id),
-  quantity: integer('quantity').notNull(),
-  priceAtSale: integer('price_at_sale').notNull(),
-  costAtSale: integer('cost_at_sale').notNull()
-});
+export const transactionItem = pgTable(
+  'transaction_item',
+  {
+    id: text('id').primaryKey(),
+    transactionId: text('transaction_id')
+      .notNull()
+      .references(() => transaction.id),
+    productId: text('product_id')
+      .notNull()
+      .references(() => product.id),
+    quantity: integer('quantity').notNull(),
+    priceAtSale: integer('price_at_sale').notNull(),
+    costAtSale: integer('cost_at_sale').notNull()
+  },
+  (t) => [index('transaction_item_transaction_id_idx').on(t.transactionId)]
+);

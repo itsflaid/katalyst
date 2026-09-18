@@ -8,6 +8,13 @@
       "when": 1789599642735,
       "tag": "0000_complete_white_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789698664135,
+      "tag": "0001_complex_vermin",
+      "breakpoints": true
     }
   ]
 }

@@ -1,13 +1,23 @@
 <script lang="ts">
   import '../app.css';
+  import { afterNavigate } from '$app/navigation';
   import Sidebar from '$lib/components/Sidebar.svelte';
   export let data;
+
+  // <main> adalah scroll container (bukan document), dan elemen layout ini
+  // TIDAK dihancurkan saat navigasi client-side — cuma <slot /> yang ganti.
+  // Akibatnya scrollTop halaman A kebawa ke halaman B (SvelteKit cuma
+  // me-reset document scroll). Fix: reset manual tiap pathname berubah.
+  let mainEl: HTMLElement | null = null;
+  afterNavigate(({ from, to }) => {
+    if (from?.url.pathname !== to?.url.pathname) mainEl?.scrollTo(0, 0);
+  });
 </script>
 
 {#if data.user}
   <div class="app-shell">
     <Sidebar role={data.user.role} businessName={data.businessName ?? 'Bisnis Kamu'} />
-    <main>
+    <main bind:this={mainEl}>
       <slot />
     </main>
   </div>

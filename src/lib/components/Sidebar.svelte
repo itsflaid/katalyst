@@ -35,12 +35,6 @@
     ['path', { d: 'M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915' }],
     ['circle', { cx: 12, cy: 12, r: 3 }]
   ];
-  const iconSparkles: IconNode[] = [
-    ['path', { d: 'M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z' }],
-    ['path', { d: 'M20 2v4' }],
-    ['path', { d: 'M22 4h-4' }],
-    ['circle', { cx: 4, cy: 20, r: 2 }]
-  ];
   const iconLogOut: IconNode[] = [
     ['path', { d: 'm16 17 5-5-5-5' }],
     ['path', { d: 'M21 12H9' }],
@@ -83,8 +77,15 @@
   }
 
   async function handleLogout() {
-    await signOut();
-    goto('/login', { invalidateAll: true });
+    try {
+      await signOut();
+    } finally {
+      // finally: walau request sign-out gagal (mis. network), user tetap
+      // dikeluarkan dari app shell ke /login — kalau sesi ternyata masih
+      // hidup, hooks proteksi route akan menolak akses halaman lama.
+      // await: pastikan pindah ke /login sebelum handler kelar.
+      await goto('/login', { invalidateAll: true });
+    }
   }
 </script>
 
@@ -94,7 +95,7 @@
     : 'w-60'}"
 >
   <div class="flex items-center gap-2.5 mb-6 px-1 w-full {collapsed ? 'justify-center' : ''}">
-    <div class="grid h-7 w-7 flex-shrink-0 place-items-center rounded border border-white/20 text-white text-label-md font-bold">K</div>
+    <img src="/logo/logo-sidebar.png" alt="Logo Katalyst" class="h-7 w-7 flex-shrink-0 rounded object-cover" />
     {#if !collapsed}
       <div class="min-w-0">
         <strong class="block text-headline-sm text-white truncate">Katalyst</strong>
@@ -145,18 +146,10 @@
         <span class="copilot-sheen absolute inset-y-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent"></span>
       </span>
       {#if collapsed}
-        <span class="relative grid h-7 w-7 place-items-center rounded bg-white/20 text-white">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            {#each iconSparkles as [tag, attrs]}<svelte:element this={tag} {...attrs} />{/each}
-          </svg>
-        </span>
+        <img src="/logo/logo-copilot.png" alt="Copilot AI" class="relative h-7 w-7 rounded object-cover" />
       {:else}
         <div class="relative flex items-center gap-2.5">
-          <span class="grid h-8 w-8 flex-shrink-0 place-items-center rounded bg-white/20 text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              {#each iconSparkles as [tag, attrs]}<svelte:element this={tag} {...attrs} />{/each}
-            </svg>
-          </span>
+          <img src="/logo/logo-copilot.png" alt="Copilot AI" class="h-8 w-8 flex-shrink-0 rounded object-cover" />
           <span class="min-w-0 flex-1">
             <span class="text-body-md font-semibold text-white">Copilot AI</span>
             <span class="block truncate text-body-sm text-white/75">Tanya soal bisnismu</span>

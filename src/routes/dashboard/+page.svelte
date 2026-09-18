@@ -103,12 +103,7 @@
   <div class="w-full lg:w-80 flex-shrink-0">
     <div class="relative overflow-hidden rounded-panel bg-ink-navy p-5 shadow-level1 min-h-[280px] flex flex-col">
       <div class="flex items-center gap-2.5 mb-3">
-        <span class="grid h-8 w-8 flex-shrink-0 place-items-center rounded bg-white/15 text-white">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" />
-            <path d="M20 2v4" /><path d="M22 4h-4" /><circle cx="4" cy="20" r="2" />
-          </svg>
-        </span>
+        <img src="/logo/logo-copilot.png" alt="Copilot AI" class="h-8 w-8 flex-shrink-0 rounded object-cover" />
         <h2 class="text-headline-sm text-white">Katalyst Copilot</h2>
       </div>
       <p class="text-body-sm text-white/65 mb-4">Tanya apa aja soal performa bisnismu bulan ini.</p>
