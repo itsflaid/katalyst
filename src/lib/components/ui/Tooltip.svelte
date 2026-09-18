@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Info } from 'lucide-svelte';
   // Ikon tanda tanya kecil dipasang di kanan label field. Hover (desktop)
   // ATAU klik/tap (mobile, karena gak ada hover state di touch) sama-sama
   // munculin bubble penjelasan. Klik di luar bubble nutup lagi.
@@ -27,11 +28,7 @@
     on:mouseleave={() => (open = false)}
     on:click|stopPropagation={() => (open = !open)}
   >
-    <svg viewBox="0 0 16 16" class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="1.5">
-      <circle cx="8" cy="8" r="6.5" />
-      <path d="M6.1 6.3c0-1.1.8-1.9 1.9-1.9s1.9.7 1.9 1.7c0 1-.7 1.3-1.4 1.8-.4.3-.5.6-.5 1" stroke-linecap="round" />
-      <circle cx="8" cy="11.2" r="0.2" fill="currentColor" stroke="none" />
-    </svg>
+    <Info class="w-2.5 h-2.5" />
   </button>
 
   {#if open}

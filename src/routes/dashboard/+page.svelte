@@ -4,8 +4,9 @@
   import BarChart from '$lib/components/ui/BarChart.svelte';
   import Badge from '$lib/components/ui/Badge.svelte';
   import Table from '$lib/components/ui/Table.svelte';
+  import PageHeader from '$lib/components/ui/PageHeader.svelte';
+  import { page } from '$app/stores';
   export let data;
-
   const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
   const num = (n: number) => new Intl.NumberFormat('id-ID').format(n);
   const fmtDate = (d: string | Date) => new Date(d).toLocaleString('id-ID');
@@ -24,7 +25,7 @@
   $: topProductRevenue = data.topByRevenue.map((p) => p.revenue);
 </script>
 
-<h1 class="text-headline-lg text-ink mb-6">Dashboard</h1>
+<PageHeader title="Dashboard" />
 
 <!-- Baris 1: 4 KPI full width — di HP tetap 4 sebaris versi kompak -->
 <div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4 mb-6">
@@ -52,8 +53,10 @@
   </Card>
 </div>
 
-<!-- Baris 2: 2 grafik 50-50 -->
-<div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
+<!-- Baris 2: 2 grafik 50-50. {#key} biar chart dibuat ulang + animasi
+     entrance tiap masuk halaman. -->
+{#key $page.url.pathname}
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
   <Card>
     <h2 class="text-headline-sm text-ink mb-1">Tren Revenue & Profit</h2>
     <p class="text-body-sm text-muted mb-3">jt Rp · 30 hari terakhir</p>
@@ -69,7 +72,8 @@
     <h2 class="text-headline-sm text-ink mb-3">Revenue per Produk (Top 5)</h2>
     <BarChart labels={topProductLabels} data={topProductRevenue} />
   </Card>
-</div>
+  </div>
+{/key}
 
 {#if data.insights.length > 0}
   <Card class="mb-6">
