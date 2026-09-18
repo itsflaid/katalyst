@@ -1,17 +1,36 @@
 <script lang="ts">
   import Card from '$lib/components/ui/Card.svelte';
   import Badge from '$lib/components/ui/Badge.svelte';
+  import Table from '$lib/components/ui/Table.svelte';
+  import PageHeader from '$lib/components/ui/PageHeader.svelte';
   export let data;
   const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
   const num = (n: number) => new Intl.NumberFormat('id-ID').format(n);
+  const fmtDate = (d: string | Date) => new Date(d).toLocaleString('id-ID');
+  const reasonLabel: Record<string, string> = { SALE: 'Penjualan', VOID_RESTORE: 'Batal struk', RESTOCK: 'Restock', ADJUST: 'Koreksi' };
 </script>
 
 <a href="/products" class="text-body-sm text-muted hover:text-ink no-underline hover:underline">← Kembali ke Produk</a>
-<div class="flex flex-wrap items-center gap-3 mt-2 mb-6">
-  <h1 class="text-headline-lg text-ink">{data.product.name}</h1>
-  <Badge size="sm" tone={data.product.isActive ? 'positive' : 'neutral'}>{data.product.isActive ? 'Aktif' : 'Nonaktif'}</Badge>
+<PageHeader title={data.product.name} subtitle={`Harga modal ${idr(data.product.costPrice)} · Harga jual ${idr(data.product.sellingPrice)}`} class="!mt-2">
+  <span slot="badge"><Badge size="sm" tone={data.product.isActive ? 'positive' : 'neutral'}>{data.product.isActive ? 'Aktif' : 'Nonaktif'}</Badge></span>
+</PageHeader>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+  <Card>
+    <p class="text-label-sm uppercase text-muted">Stok sekarang</p>
+    <p class="text-num-display text-ink tabular">{num(data.product.stock)}</p>
+    {#if data.product.stock <= 0}
+      <p class="text-body-sm text-status-negative mt-1">Habis — produk nonaktif otomatis. Restock dari halaman Produk untuk menjual lagi.</p>
+    {:else if data.product.stock <= 5}
+      <p class="text-body-sm text-status-warning mt-1">Menipis — segera restock.</p>
+    {/if}
+  </Card>
+  <Card>
+    <p class="text-label-sm uppercase text-muted">Kelola</p>
+    <p class="text-body-sm text-muted mt-1 mb-3">Restock dan koreksi stok dilakukan dari halaman Produk.</p>
+    <a href="/products" class="text-body-md font-semibold text-ink-navy hover:underline no-underline">Ke halaman Produk →</a>
+  </Card>
 </div>
-<p class="text-body-md text-muted mb-6">Harga modal {idr(data.product.costPrice)} · Harga jual {idr(data.product.sellingPrice)}</p>
 
 {#if data.performance.quantitySold === 0}
   <Card class="text-center py-8 mb-6">
@@ -30,3 +49,22 @@
   <a href={`/simulator?productId=${data.product.id}`} class="inline-flex items-center justify-center h-9 px-4 rounded bg-ink-navy border border-ink-navy text-white text-label-lg no-underline hover:bg-ink">Coba simulasikan skenario harga →</a>
   <a href="/products" class="inline-flex items-center justify-center h-9 px-4 rounded bg-white border border-border-input text-ink text-label-lg no-underline hover:bg-table-header">Ke daftar produk</a>
 </div>
+
+<h2 class="text-headline-sm text-ink mt-8 mb-3">Riwayat Stok (20 terbaru)</h2>
+{#if data.movements.length === 0}
+  <Card class="text-center py-8">
+    <p class="text-body-md text-muted">Belum ada pergerakan stok. Stok awal produk lama tidak tercatat sebagai riwayat.</p>
+  </Card>
+{:else}
+  <Table headers={['Waktu', 'Perubahan', 'Alasan', 'Catatan', 'Oleh']}>
+    {#each data.movements as m}
+      <tr>
+        <td class="px-3 py-2 text-body-sm text-muted whitespace-nowrap">{fmtDate(m.createdAt)}</td>
+        <td class="px-3 py-2 tabular font-semibold whitespace-nowrap {m.qtyChange >= 0 ? 'text-status-positive' : 'text-status-negative'}">{m.qtyChange >= 0 ? `+${m.qtyChange}` : m.qtyChange}</td>
+        <td class="px-3 py-2 text-ink whitespace-nowrap">{reasonLabel[m.reason] ?? m.reason}</td>
+        <td class="px-3 py-2 text-muted">{m.note ?? '—'}</td>
+        <td class="px-3 py-2 text-muted whitespace-nowrap">{m.createdByName ?? '—'}</td>
+      </tr>
+    {/each}
+  </Table>
+{/if}
