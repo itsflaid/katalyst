@@ -24,7 +24,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     })
     .from(transactionItem)
     .innerJoin(transaction, eq(transaction.id, transactionItem.transactionId))
-    .where(eq(transaction.businessId, businessId));
+    .where(and(eq(transaction.businessId, businessId), eq(transactionItem.productId, p.id)));
 
   const items: TransactionItemLike[] = txItems;
   const performance = getProductPerformance(p.id, p.name, items);
