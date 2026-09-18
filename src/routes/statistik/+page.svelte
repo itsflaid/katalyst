@@ -3,8 +3,10 @@
   import Table from '$lib/components/ui/Table.svelte';
   import LineChart from '$lib/components/ui/LineChart.svelte';
   import BarChart from '$lib/components/ui/BarChart.svelte';
+  import PieChart from '$lib/components/ui/PieChart.svelte';
   import Badge from '$lib/components/ui/Badge.svelte';
   import Button from '$lib/components/ui/Button.svelte';
+  import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import { goto } from '$app/navigation';
   export let data;
 
@@ -40,8 +42,7 @@
     `rounded border px-2.5 py-1.5 text-body-sm ${activeRange === key ? 'border-ink-navy bg-ink-navy text-white font-semibold' : 'border-border-input bg-white text-ink hover:bg-table-header'}`;
 </script>
 
-<h1 class="text-headline-lg text-ink">Statistik</h1>
-<p class="text-body-md text-muted mt-1 mb-4">Laporan performa per periode — delta selalu dibanding periode sebelumnya yang sama panjang.</p>
+<PageHeader title="Statistik" subtitle="Laporan performa per periode — delta selalu dibanding periode sebelumnya yang sama panjang." />
 
 <Card class="mb-6">
   <div class="flex flex-wrap items-center gap-2">
@@ -61,45 +62,77 @@
   </div>
 </Card>
 
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
+  {#key data.trend.labels.join(',')}
+    <Card>
+      <h2 class="text-headline-sm text-ink mb-1">Tren Revenue & Profit</h2>
+      <p class="text-body-sm text-muted mb-3">jt Rp · {data.rangeLabel}</p>
+      <LineChart
+        labels={data.trend.labels}
+        datasets={[
+          { label: 'Revenue', data: data.trend.revenue, color: '#172554' },
+          { label: 'Profit', data: data.trend.profit, color: '#16A34A' }
+        ]}
+      />
+    </Card>
+    <Card>
+      <h2 class="text-headline-sm text-ink mb-3">Revenue per Produk (Top 8)</h2>
+      <BarChart labels={data.bar.labels} data={data.bar.data} />
+    </Card>
+  {/key}
+</div>
+
 <div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4 mb-6">
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
-    <p class="text-label-sm uppercase text-muted mb-1 truncate">Revenue</p>
-    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words [overflow-wrap:anywhere]">{idr(data.kpi.revenue)}</p>
-    <Badge tone={deltaTone(data.deltas.revenue)} class="text-[11px] sm:text-label-md">{fmtDelta(data.deltas.revenue)}</Badge>
+    <p class="text-label-sm uppercase text-muted mb-1 truncate">Rata-rata struk</p>
+    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words [overflow-wrap:anywhere]">{idr(Math.round(data.highlights.avgTicket))}</p>
+    <Badge tone={deltaTone(data.highlights.avgTicketDelta)} class="text-[11px] sm:text-label-md">{fmtDelta(data.highlights.avgTicketDelta)}</Badge>
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
-    <p class="text-label-sm uppercase text-muted mb-1 truncate">Profit</p>
-    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words [overflow-wrap:anywhere]">{idr(data.kpi.profit)}</p>
-    <Badge tone={deltaTone(data.deltas.profit)} class="text-[11px] sm:text-label-md">{fmtDelta(data.deltas.profit)}</Badge>
+    <p class="text-label-sm uppercase text-muted mb-1 truncate">Hari tersibuk</p>
+    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{data.highlights.bestDayLabel}</p>
+    <p class="text-body-sm text-muted tabular break-words [overflow-wrap:anywhere]">{idr(data.highlights.bestDayRevenue)}</p>
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
-    <p class="text-label-sm uppercase text-muted mb-1 truncate">Margin</p>
-    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{(data.kpi.margin * 100).toFixed(1)}%</p>
-    <Badge tone={data.deltas.margin >= 0 ? 'positive' : 'negative'} class="text-[11px] sm:text-label-md">{fmtDelta(data.deltas.margin)}</Badge>
+    <p class="text-label-sm uppercase text-muted mb-1 truncate">Margin tertinggi</p>
+    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{data.highlights.topMargin ? data.highlights.topMargin.name : '—'}</p>
+    <p class="text-body-sm tabular break-words {data.highlights.topMargin ? 'text-status-positive font-semibold' : 'text-muted'}">{data.highlights.topMargin ? `${(data.highlights.topMargin.margin * 100).toFixed(1)}%` : ''}</p>
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
-    <p class="text-label-sm uppercase text-muted mb-1 truncate">Transaksi</p>
-    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{num(data.kpi.tx)}</p>
-    <Badge tone={deltaTone(data.deltas.transactions)} class="text-[11px] sm:text-label-md">{fmtDelta(data.deltas.transactions)}</Badge>
+    <p class="text-label-sm uppercase text-muted mb-1 truncate">Margin terendah</p>
+    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{data.highlights.lowMargin ? data.highlights.lowMargin.name : '—'}</p>
+    <p class="text-body-sm tabular break-words {data.highlights.lowMargin ? 'text-status-warning font-semibold' : 'text-muted'}">{data.highlights.lowMargin ? `${(data.highlights.lowMargin.margin * 100).toFixed(1)}%` : ''}</p>
   </Card>
 </div>
 
 <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
-  <Card>
-    <h2 class="text-headline-sm text-ink mb-1">Tren Revenue & Profit</h2>
-    <p class="text-body-sm text-muted mb-3">jt Rp · {data.rangeLabel}</p>
-    <LineChart
-      labels={data.trend.labels}
-      datasets={[
-        { label: 'Revenue', data: data.trend.revenue, color: '#172554' },
-        { label: 'Profit', data: data.trend.profit, color: '#16A34A' }
-      ]}
-    />
-  </Card>
-  <Card>
-    <h2 class="text-headline-sm text-ink mb-3">Revenue per Produk (Top 8)</h2>
-    <BarChart labels={data.bar.labels} data={data.bar.data} />
-  </Card>
+  {#key data.trend.labels.join(',')}
+    <Card>
+      <h2 class="text-headline-sm text-ink mb-1">Tren Margin</h2>
+      <p class="text-body-sm text-muted mb-3">% per hari · {data.rangeLabel}</p>
+      <LineChart
+        labels={data.trend.labels}
+        datasets={[{ label: 'Margin', data: data.marginTrend, color: '#B45309' }]}
+      />
+    </Card>
+    <Card>
+      <h2 class="text-headline-sm text-ink mb-1">Margin per Produk</h2>
+      <p class="text-body-sm text-muted mb-3">% · 8 produk revenue terbesar</p>
+      <BarChart labels={data.marginBar.labels} data={data.marginBar.data} color="#B45309" />
+    </Card>
+    {#if data.pie.labels.length > 0}
+      <Card>
+        <h2 class="text-headline-sm text-ink mb-1">Komposisi Profit</h2>
+        <p class="text-body-sm text-muted mb-3">Makin besar potongan = makin besar keuntungan produknya</p>
+        <PieChart labels={data.pie.labels} data={data.pie.data} />
+      </Card>
+      <Card>
+        <h2 class="text-headline-sm text-ink mb-1">Profit per Produk</h2>
+        <p class="text-body-sm text-muted mb-3">Nominal · 8 produk teratas</p>
+        <BarChart labels={data.profitBar.labels} data={data.profitBar.data} color="#16A34A" />
+      </Card>
+    {/if}
+  {/key}
 </div>
 
 {#if data.rows.length === 0}

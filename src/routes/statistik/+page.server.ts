@@ -170,6 +170,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const labels: string[] = [];
   const revenue: number[] = [];
   const profit: number[] = [];
+  const marginTrend: number[] = [];
+  let bestDayLabel = '—';
+  let bestDayRevenue = 0;
   const cursor = startOfDay(range.from);
   const end = range.to;
   while (cursor <= end) {
@@ -177,13 +180,35 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     const v = byDay.get(key);
     const rev = v ? Number(v.revenue) : 0;
     const cost = v ? Number(v.cost) : 0;
-    labels.push(`${cursor.getDate()}/${cursor.getMonth() + 1}`);
+    const label = `${cursor.getDate()}/${cursor.getMonth() + 1}`;
+    labels.push(label);
     revenue.push(Math.round((rev / 1_000_000) * 10) / 10);
     profit.push(Math.round(((rev - cost) / 1_000_000) * 10) / 10);
+    marginTrend.push(rev === 0 ? 0 : Math.round(((rev - cost) / rev) * 1000) / 10);
+    if (rev > bestDayRevenue) {
+      bestDayRevenue = rev;
+      bestDayLabel = cursor.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' });
+    }
     cursor.setDate(cursor.getDate() + 1);
   }
 
   const topBar = [...cur].sort((a, b) => b.revenue - a.revenue).slice(0, 8);
+  const profitTop = [...cur].sort((a, b) => b.profit - a.profit).slice(0, 8);
+  // Komposisi profit: 8 produk paling menguntungkan + "Lainnya".
+  // Hanya profit positif yang masuk pie (slice negatif merusak chart).
+  const profitable = [...cur].filter((p) => p.profit > 0).sort((a, b) => b.profit - a.profit);
+  const pieTop = profitable.slice(0, 8);
+  const pieRest = curProfit - pieTop.reduce((s, p) => s + p.profit, 0);
+  const pieLabels = pieTop.map((p) => p.name);
+  const pieData = pieTop.map((p) => p.profit);
+  if (pieRest > 0) {
+    pieLabels.push('Lainnya');
+    pieData.push(pieRest);
+  }
+  const withSales = cur.filter((p) => p.revenue > 0);
+  const byMargin = [...withSales].sort((a, b) => b.margin - a.margin);
+  const avgTicket = tx === 0 ? 0 : curRev / tx;
+  const prevAvg = prevTx === 0 ? 0 : prevRev / prevTx;
 
   return {
     range: range.key,
@@ -204,7 +229,23 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       margin: (calculateMargin(curRev, curProfit) - calculateMargin(prevRev, prevProfit)) * 100
     },
     trend: { labels, revenue, profit },
+    marginTrend,
     bar: { labels: topBar.map((p) => p.name), data: topBar.map((p) => p.revenue) },
+    pie: { labels: pieLabels, data: pieData },
+    profitBar: { labels: profitTop.map((p) => p.name), data: profitTop.map((p) => p.profit) },
+    marginBar: {
+      labels: topBar.map((p) => p.name),
+      data: topBar.map((p) => Math.round(p.margin * 1000) / 10)
+    },
+    highlights: {
+      avgTicket,
+      avgTicketDelta: pct(avgTicket, prevAvg),
+      bestDayLabel,
+      bestDayRevenue,
+      topMargin: byMargin.length > 0 ? { name: byMargin[0].name, margin: byMargin[0].margin } : null,
+      lowMargin: byMargin.length > 0 ? { name: byMargin[byMargin.length - 1].name, margin: byMargin[byMargin.length - 1].margin } : null,
+      totalQty: sum(cur, (p) => p.quantitySold)
+    },
     rows,
     lowMargin: getLowMarginProducts(cur, 0.15).map((p) => ({ name: p.name, margin: p.margin }))
   };
