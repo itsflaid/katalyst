@@ -6,6 +6,6 @@ import type { PageServerLoad } from './$types';
 // logout. Langsung lempar ke halaman awal biar gak ada state aneh kayak
 // "form login tampil di dalam app shell" atau alur balik-ke-halaman-lama.
 export const load: PageServerLoad = async ({ locals }) => {
-  if (locals.user) throw redirect(303, '/transactions');
-  return {};
+  if (!locals.user) return {};
+  throw redirect(303, locals.user.role === 'OWNER' ? '/dashboard' : '/transactions');
 };

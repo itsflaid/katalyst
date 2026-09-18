@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { signIn } from '$lib/auth-client';
+  import { signIn, authClient } from '$lib/auth-client';
   import { goto } from '$app/navigation';
   import Card from '$lib/components/ui/Card.svelte';
   import Button from '$lib/components/ui/Button.svelte';
@@ -22,9 +22,18 @@
     // invalidateAll: paksa load function layout (+layout.server.ts) jalan
     // ulang — tanpa ini data.user tetap null (hasil load waktu masih
     // logged-out) dan Sidebar gak muncul sampai user refresh manual.
+    // Tujuan role-aware (sama kayak `/` + load login): OWNER -> /dashboard
+    // (OWNER-only), STAFF -> /transactions. Kalau sesi belum kebaca
+    // (race), fallback ke `/` biar server yang mutusin via redirect.
     // await: pastikan navigasi ke halaman awal selesai sebelum handler
     // kelar, biar gak ada navigasi lain yang menimpa tujuan ini.
-    await goto('/transactions', { invalidateAll: true });
+    const { data } = await authClient.getSession();
+    const role = (data?.user as { role?: string } | undefined)?.role;
+    if (!role) {
+      await goto('/', { invalidateAll: true });
+      return;
+    }
+    await goto(role === 'OWNER' ? '/dashboard' : '/transactions', { invalidateAll: true });
   }
 </script>
 

@@ -138,7 +138,7 @@
     {#if role === 'OWNER'}
     <a href="/copilot"
       title="Copilot AI"
-      class="group relative mt-1 block overflow-hidden rounded-panel bg-status-positive p-3 no-underline shadow-level1 transition-all hover:-translate-y-px hover:shadow-level2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-status-positive-border {collapsed
+      class="group relative mt-1 block overflow-hidden rounded-panel bg-status-positive px-3 py-2 no-underline shadow-level1 transition-all hover:-translate-y-px hover:shadow-level2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-status-positive-border {collapsed
         ? 'flex justify-center'
         : ''}"
     >
