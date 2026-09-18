@@ -26,8 +26,13 @@
     ['path', { d: 'M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8' }],
     ['path', { d: 'M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z' }]
   ];
-  const iconFlask: IconNode[] = [
-    ['path', { d: 'M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2' }],
+  const iconChart: IconNode[] = [
+    ['line', { x1: 3, x2: 21, y1: 3, y2: 3 }],
+    ['line', { x1: 3, x2: 21, y1: 9, y2: 9 }],
+    ['line', { x1: 3, x2: 21, y1: 15, y2: 15 }],
+    ['line', { x1: 3, x2: 21, y1: 21, y2: 21 }]
+  ];
+  const iconFlask: IconNode[] = [    ['path', { d: 'M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2' }],
     ['path', { d: 'M6.453 15h11.094' }],
     ['path', { d: 'M8.5 2h7' }]
   ];
@@ -46,6 +51,7 @@
   // Operasional / Lainnya) alih-alih list rata kayak sebelumnya.
   const links = [
     { href: '/dashboard', label: 'Dashboard', icon: iconDashboard, ownerOnly: true, group: 'Analisis' },
+    { href: '/statistik', label: 'Statistik', icon: iconChart, ownerOnly: true, group: 'Analisis' },
     { href: '/simulator', label: 'Simulator', icon: iconFlask, ownerOnly: true, group: 'Analisis' },
     { href: '/products', label: 'Produk', icon: iconPackage, ownerOnly: false, group: 'Operasional' },
     { href: '/transactions', label: 'Transaksi', icon: iconReceipt, ownerOnly: false, group: 'Operasional' },
