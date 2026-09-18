@@ -22,6 +22,47 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Scrollbar global ramping selaras tema — Firefox + Chromium.
+   Track transparan biar menyatu sama canvas krem / card putih. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Varian buat permukaan navy gelap (sidebar, panel copilot). */
+.scroll-navy {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+.scroll-navy::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scroll-navy::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-navy::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 9999px;
+}
+.scroll-navy::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
 /* Kilau CTA Copilot: strip putih miring menyapu kiri → kanan, infinite.
    0%→55% gerak menyapu, 55%→100% jeda di luar card biar ada napas antar
    sapuan, bukan gerak nonstop yang bikin capek dilihat. */

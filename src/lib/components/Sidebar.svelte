@@ -90,7 +90,7 @@
 </script>
 
 <aside
-  class="flex flex-col h-full flex-shrink-0 border-r border-white/10 bg-ink-navy p-3 box-border overflow-y-auto overflow-x-hidden transition-[width] duration-150 {collapsed
+  class="scroll-navy flex flex-col h-full flex-shrink-0 border-r border-white/10 bg-ink-navy p-3 box-border overflow-y-auto overflow-x-hidden transition-[width] duration-150 {collapsed
     ? 'w-[64px] items-center'
     : 'w-60'}"
 >
