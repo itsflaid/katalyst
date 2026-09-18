@@ -36,9 +36,13 @@
   let qtyOverride = '';
 
   // Rentang baseline: hari ini / minggu ini / bulan ini / semua / custom.
-  // Ganti rentang = reload server (goto) biar agregat dihitung ulang dari
-  // transaction.created_at, bukan cuma filter di client.
-  let activeRange: string = data.range ?? 'all';
+  // Default bulan ini (dari server) biar load awal ringan — 'Semua'
+  // tetap tersedia sebagai opt-in. Ganti rentang = reload server (goto)
+  // biar agregat dihitung ulang dari transaction.created_at.
+  // Hitungan live di bawah sengaja di client (responsif tiap geser tuas);
+  // rumus intinya sama dengan lib/simulation.ts yang dipakai di tes
+  // verify-engine (harga efektif, laba/unit, delta vs histori).
+  let activeRange: string = data.range ?? 'month';
   let fromInput: string = data.rangeFrom ?? '';
   let toInput: string = data.rangeTo ?? '';
 
