@@ -17,6 +17,7 @@
     "chart.js": "^4.5.1",
     "clsx": "^2.1.0",
     "drizzle-orm": "^0.45.2",
+    "lucide-svelte": "^0.469.0",
     "postgres": "^3.4.4",
     "tailwind-merge": "^2.3.0"
   },
