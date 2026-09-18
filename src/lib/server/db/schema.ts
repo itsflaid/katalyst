@@ -85,6 +85,9 @@ export const product = pgTable(
     name: text('name').notNull(),
     costPrice: integer('cost_price').notNull(),
     sellingPrice: integer('selling_price').notNull(),
+    // Sisa stok. Berkurang tiap struk tersimpan, bertambah saat restock.
+    // Stok 0 → produk otomatis nonaktif (aturan toko), restock → aktif lagi.
+    stock: integer('stock').notNull().default(0),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow()
@@ -129,4 +132,29 @@ export const transactionItem = pgTable(
     costAtSale: integer('cost_at_sale').notNull()
   },
   (t) => [index('transaction_item_transaction_id_idx').on(t.transactionId)]
+);
+
+export const stockReasonEnum = pgEnum('stock_reason', ['SALE', 'VOID_RESTORE', 'RESTOCK', 'ADJUST']);
+
+// Riwayat pergerakan stok per produk — audit ala realworld: setiap
+// perubahan stok (jual, batal, restock, koreksi opname) tercatat siapa,
+// kapan, berapa, dan struk acuannya.
+export const stockMovement = pgTable(
+  'stock_movement',
+  {
+    id: text('id').primaryKey(),
+    businessId: text('business_id')
+      .notNull()
+      .references(() => business.id),
+    productId: text('product_id')
+      .notNull()
+      .references(() => product.id),
+    qtyChange: integer('qty_change').notNull(),
+    reason: stockReasonEnum('reason').notNull(),
+    refTxId: text('ref_tx_id'),
+    note: text('note'),
+    createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').notNull().defaultNow()
+  },
+  (t) => [index('stock_movement_business_product_created_idx').on(t.businessId, t.productId, t.createdAt)]
 );
