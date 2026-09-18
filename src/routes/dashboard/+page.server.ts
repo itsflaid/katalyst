@@ -51,20 +51,21 @@ export const load: PageServerLoad = async ({ locals }) => {
       .from(transaction)
       .where(eq(transaction.businessId, businessId)),
 
-    // 10 item transaksi terbaru untuk card dashboard — pola join sama
-    // kayak halaman /transactions, cuma limit 10.
+    // 10 item transaksi terbaru untuk card dashboard — leftJoin user biar
+    // struk staff yang sudah dihapus tetap tampil via cashier_name.
     db
       .select({
         productName: product.name,
         quantity: transactionItem.quantity,
         priceAtSale: transactionItem.priceAtSale,
         createdAt: transaction.createdAt,
-        servedBy: user.name
+        cashierName: transaction.cashierName,
+        userName: user.name
       })
       .from(transaction)
       .innerJoin(transactionItem, eq(transactionItem.transactionId, transaction.id))
       .innerJoin(product, eq(product.id, transactionItem.productId))
-      .innerJoin(user, eq(user.id, transaction.userId))
+      .leftJoin(user, eq(user.id, transaction.userId))
       .where(eq(transaction.businessId, businessId))
       .orderBy(desc(transaction.createdAt))
       .limit(10),
