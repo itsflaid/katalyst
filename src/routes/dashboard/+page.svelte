@@ -22,7 +22,7 @@
   // (nilai sekarang - nilai lalu) / nilai lalu.
   const kpiDeltas = { revenue: 8.4, transactions: -2.1, profit: 11.9, margin: 1.5 };
   const deltaTone = (d: number) => (d >= 0 ? 'positive' : 'negative');
-  const fmtDelta = (d: number) => `${d >= 0 ? '+' : ''}${d.toFixed(1)}% vs bulan lalu`;
+  const fmtDeltaShort = (d: number) => `${d >= 0 ? '+' : ''}${d.toFixed(1)}%`;
 
   $: topProductLabels = data.topByRevenue.map((p) => p.name);
   $: topProductRevenue = data.topByRevenue.map((p) => p.revenue);
@@ -30,27 +30,27 @@
 
 <h1 class="text-headline-lg text-ink mb-6">Dashboard</h1>
 
-<!-- Baris 1: 4 KPI full width -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-  <Card>
-    <p class="text-label-sm uppercase text-muted mb-1">Revenue</p>
-    <p class="text-num-display text-ink tabular mb-1.5">{idr(data.summary.revenue)}</p>
-    <Badge tone={deltaTone(kpiDeltas.revenue)}>{fmtDelta(kpiDeltas.revenue)}</Badge>
+<!-- Baris 1: 4 KPI full width — di HP tetap 4 sebaris versi kompak -->
+<div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4 mb-6">
+  <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
+    <p class="text-label-sm uppercase text-muted mb-1 truncate">Revenue</p>
+    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words [overflow-wrap:anywhere]">{idr(data.summary.revenue)}</p>
+    <Badge tone={deltaTone(kpiDeltas.revenue)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.revenue)}<span class="hidden sm:inline">&nbsp;vs bulan lalu</span></Badge>
   </Card>
-  <Card>
-    <p class="text-label-sm uppercase text-muted mb-1">Jumlah Transaksi</p>
-    <p class="text-num-display text-ink tabular mb-1.5">{num(data.transactionCount)}</p>
-    <Badge tone={deltaTone(kpiDeltas.transactions)}>{fmtDelta(kpiDeltas.transactions)}</Badge>
+  <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
+    <p class="text-label-sm uppercase text-muted mb-1 truncate">Transaksi</p>
+    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{num(data.transactionCount)}</p>
+    <Badge tone={deltaTone(kpiDeltas.transactions)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.transactions)}<span class="hidden sm:inline">&nbsp;vs bulan lalu</span></Badge>
   </Card>
-  <Card>
-    <p class="text-label-sm uppercase text-muted mb-1">Profit</p>
-    <p class="text-num-display text-ink tabular mb-1.5">{idr(data.summary.profit)}</p>
-    <Badge tone={deltaTone(kpiDeltas.profit)}>{fmtDelta(kpiDeltas.profit)}</Badge>
+  <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
+    <p class="text-label-sm uppercase text-muted mb-1 truncate">Profit</p>
+    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words [overflow-wrap:anywhere]">{idr(data.summary.profit)}</p>
+    <Badge tone={deltaTone(kpiDeltas.profit)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.profit)}<span class="hidden sm:inline">&nbsp;vs bulan lalu</span></Badge>
   </Card>
-  <Card>
-    <p class="text-label-sm uppercase text-muted mb-1">Margin</p>
-    <p class="text-num-display text-ink tabular mb-1.5">{(data.summary.margin * 100).toFixed(1)}%</p>
-    <Badge tone={data.summary.margin >= 0.3 ? 'positive' : 'warning'}>
+  <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
+    <p class="text-label-sm uppercase text-muted mb-1 truncate">Margin</p>
+    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{(data.summary.margin * 100).toFixed(1)}%</p>
+    <Badge tone={data.summary.margin >= 0.3 ? 'positive' : 'warning'} class="text-[11px] sm:text-label-md">
       {data.summary.margin >= 0.3 ? 'Sehat' : 'Perlu perhatian'}
     </Badge>
   </Card>
