@@ -23,7 +23,7 @@
 
 <section id="staff" class="mb-10 scroll-mt-4">
   <h2 class="text-label-sm uppercase text-muted mb-3">Akses & Staff</h2>
-  <StaffManager staffList={data.staffList} />
+  <StaffManager staffList={data.staffList} currentUserId={data.currentUserId} />
 </section>
 
 <section id="danger" class="scroll-mt-4">
