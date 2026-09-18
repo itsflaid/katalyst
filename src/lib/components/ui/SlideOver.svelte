@@ -13,7 +13,7 @@
 ></button>
 
 <div
-  class="fixed top-4 bottom-4 right-4 z-50 w-full max-w-md rounded-panel border border-border-cool bg-surface shadow-level3 flex flex-col overflow-hidden"
+  class="fixed top-4 bottom-4 right-4 left-4 sm:left-auto z-50 w-auto sm:w-full sm:max-w-md rounded-panel border border-border-cool bg-surface shadow-level3 flex flex-col overflow-hidden"
   transition:fly={{ x: 40, duration: 200 }}
   role="dialog"
   aria-modal="true"

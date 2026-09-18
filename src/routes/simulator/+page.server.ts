@@ -63,7 +63,6 @@ function resolveRange(url: URL): { key: RangeKey; from: Date | null; to: Date | 
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   const businessId = locals.user!.businessId as string;
-  const products = await db.select().from(product).where(eq(product.businessId, businessId));
   const range = resolveRange(url);
 
   // Agregat histori per produk — bahan kalkulasi live di client (tanpa
@@ -71,20 +70,25 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   // dengan angka nol + txCount 0 biar client bisa kasih warning.
   // Baseline dibatasi rentang waktu ?range=today|week|month|all|custom&from&to
   // memakai transaction.created_at (waktu kasir mencatat transaksi).
+  // Dua query independen → jalan paralel (Promise.all) biar total tunggu
+  // ≈ 1 round-trip, bukan 2 berurutan.
   const conds = [eq(transaction.businessId, businessId)];
   if (range.from) conds.push(gte(transaction.createdAt, range.from));
   if (range.to) conds.push(lte(transaction.createdAt, range.to));
-  const txItems = await db
-    .select({
-      productId: transactionItem.productId,
-      quantity: transactionItem.quantity,
-      priceAtSale: transactionItem.priceAtSale,
-      costAtSale: transactionItem.costAtSale,
-      transactionId: transactionItem.transactionId
-    })
-    .from(transactionItem)
-    .innerJoin(transaction, eq(transaction.id, transactionItem.transactionId))
-    .where(and(...conds));
+  const [products, txItems] = await Promise.all([
+    db.select().from(product).where(eq(product.businessId, businessId)),
+    db
+      .select({
+        productId: transactionItem.productId,
+        quantity: transactionItem.quantity,
+        priceAtSale: transactionItem.priceAtSale,
+        costAtSale: transactionItem.costAtSale,
+        transactionId: transactionItem.transactionId
+      })
+      .from(transactionItem)
+      .innerJoin(transaction, eq(transaction.id, transactionItem.transactionId))
+      .where(and(...conds))
+  ]);
 
   const agg = new Map<string, { qty: number; revenue: number; cost: number; txIds: Set<string> }>();
   for (const i of txItems) {

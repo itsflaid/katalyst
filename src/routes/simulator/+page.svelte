@@ -14,9 +14,13 @@
     desc: string;
   }
 
-  const idr = (n: number) =>
-    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
-  const num = (n: number) => new Intl.NumberFormat('id-ID').format(n);
+  // Formatter dibuat sekali di level modul — sebelumnya new
+  // Intl.NumberFormat tiap pemanggilan idr()/num(), padahal dipanggil
+  // puluhan kali tiap render + tiap geser slider.
+  const idrFmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
+  const numFmt = new Intl.NumberFormat('id-ID');
+  const idr = (n: number) => idrFmt.format(n);
+  const num = (n: number) => numFmt.format(n);
   const fmtDeltaPct = (v: number | null) =>
     v === null ? 'dari nol' : `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
   const fmtPoin = (v: number) => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)} pp`;
