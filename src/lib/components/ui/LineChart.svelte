@@ -28,6 +28,13 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        // Animasi entrance tiap chart dibuat (tiap masuk halaman / ganti filter):
+        // garis kedua menyusul 200ms biar terasa hidup.
+        animation: {
+          duration: 900,
+          easing: 'easeOutQuart',
+          delay: (ctx) => (ctx.datasetIndex ?? 0) * 200
+        },
         interaction: { mode: "index", intersect: false },
         plugins: {
           legend: {

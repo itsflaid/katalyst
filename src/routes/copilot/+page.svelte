@@ -1,5 +1,6 @@
 <script lang="ts">
   import Badge from '$lib/components/ui/Badge.svelte';
+  import { ChevronRight, Send } from 'lucide-svelte';
 
   const histories = [
     { title: 'Produk paling laku minggu ini', time: 'Hari ini', active: true },
@@ -99,16 +100,8 @@
 
 
               <!-- CHEVRON -->
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+              <ChevronRight
+                size={15}
                 class="
                   shrink-0
                   text-muted/40
@@ -117,9 +110,7 @@
                   group-hover:text-ink/60
                 "
                 aria-hidden="true"
-              >
-                <path d="m9 18 6-6-6-6" />
-              </svg>
+              />
 
             </div>
 
@@ -698,21 +689,7 @@
               disabled:opacity-60
             "
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
-              <path d="m21 21-5.211-5.189" />
-            </svg>
+            <Send size={16} aria-hidden="true" />
           </button>
 
         </div>

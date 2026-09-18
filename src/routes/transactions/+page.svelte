@@ -1,6 +1,7 @@
 <script lang="ts">
   import Card from '$lib/components/ui/Card.svelte';
   import Button from '$lib/components/ui/Button.svelte';
+  import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import { enhance } from '$app/forms';
   import type { SubmitFunction } from '@sveltejs/kit';
   export let data;
@@ -50,7 +51,9 @@
 
   // Panel "Transaksi Baru" — keranjang multi-produk di client, disimpan
   // sebagai 1 struk (1 transaction + N item) lewat actions.create.
-  let selectedProductId = data.products[0]?.id ?? '';
+  // Produk habis (stok 0) tidak bisa dipilih; tambah dibatasi sisa stok
+  // (server memvalidasi ulang).
+  let selectedProductId = data.products.find((p) => p.stock > 0)?.id ?? '';
   let qty = 1;
   let cart: { productId: string; name: string; price: number; qty: number }[] = [];
   $: selectedProduct = data.products.find((p) => p.id === selectedProductId);
@@ -86,11 +89,14 @@
   }
 
   function addToCart() {
-    if (!selectedProduct) return;
+    if (!selectedProduct || selectedProduct.stock <= 0) return;
     const found = cart.find((c) => c.productId === selectedProduct.id);
+    const inCart = found?.qty ?? 0;
+    const addable = Math.min(qty, selectedProduct.stock - inCart);
+    if (addable <= 0) return;
     cart = found
-      ? cart.map((c) => (c.productId === selectedProduct.id ? { ...c, qty: c.qty + qty } : c))
-      : [...cart, { productId: selectedProduct.id, name: selectedProduct.name, price: selectedProduct.sellingPrice, qty }];
+      ? cart.map((c) => (c.productId === selectedProduct.id ? { ...c, qty: c.qty + addable } : c))
+      : [...cart, { productId: selectedProduct.id, name: selectedProduct.name, price: selectedProduct.sellingPrice, qty: addable }];
     qty = 1;
   }
   function incLine(id: string) {
@@ -104,7 +110,7 @@
   }
 </script>
 
-<h1 class="text-headline-lg text-ink mb-6">Transaksi</h1>
+<PageHeader title="Transaksi" />
 
 <!-- Layout 2 kolom: kiri daftar (flex-1) + kanan form (lg:w-80, sticky).
      Di mobile form naik ke atas (order-1) biar gampang tambah tanpa
@@ -205,7 +211,7 @@
             Produk
             <select id="t-product" bind:value={selectedProductId} class="h-9 w-full rounded border border-border-input bg-white px-3 text-body-md text-ink">
               {#each data.products as p}
-                <option value={p.id}>{p.name}</option>
+                <option value={p.id} disabled={p.stock <= 0}>{p.name} (sisa {p.stock})</option>
               {/each}
             </select>
           </label>

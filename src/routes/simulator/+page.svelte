@@ -4,6 +4,7 @@
   import Input from '$lib/components/ui/Input.svelte';
   import Badge from '$lib/components/ui/Badge.svelte';
   import Tooltip from '$lib/components/ui/Tooltip.svelte';
+  import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import { goto } from '$app/navigation';
   export let data;
 
@@ -226,10 +227,7 @@
   }
 </script>
 
-<h1 class="text-headline-lg text-ink">Simulator “What-if”</h1>
-<p class="text-body-md text-muted mt-1 mb-4">
-  Lab skenario satu produk — geser tuasnya, hasilnya terhitung otomatis dari data historimu.
-</p>
+<PageHeader title="Simulator “What-if”" subtitle="Lab skenario satu produk — geser tuasnya, hasilnya terhitung otomatis dari data historimu." />
 
 <Card class="mb-6">
   <div class="flex flex-wrap items-center gap-2">
@@ -396,7 +394,7 @@
           <span class="copilot-sheen absolute inset-y-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/10 to-transparent"></span>
         </span>
         <div class="relative flex items-center justify-between gap-3 mb-2">
-          <Badge tone={verdict.tone}>{verdict.title}</Badge>
+          <Badge size="sm" tone={verdict.tone}>{verdict.title}</Badge>
           <span class="text-body-sm text-white/50 uppercase tracking-widest">Live</span>
         </div>
         <p class="relative text-body-md text-white/80 mb-4">{verdict.desc}</p>
@@ -428,7 +426,7 @@
           <div class="min-w-0">
             <div class="flex items-center justify-between gap-2 mb-1">
               <span class="text-label-sm uppercase text-muted">Revenue</span>
-              <Badge tone={toneOf(revDelta)}>{fmtDeltaPct(revDelta)}</Badge>
+              <Badge size="sm" tone={toneOf(revDelta)}>{fmtDeltaPct(revDelta)}</Badge>
             </div>
             <p class="text-lg font-bold text-ink tabular break-words [overflow-wrap:anywhere]">{idr(simRev)}</p>
             <p class="text-body-sm text-muted tabular mb-2 break-words [overflow-wrap:anywhere]">dari {idr(curRev)}</p>
@@ -440,7 +438,7 @@
           <div class="min-w-0">
             <div class="flex items-center justify-between gap-2 mb-1">
               <span class="text-label-sm uppercase text-muted">Profit</span>
-              <Badge tone={toneOf(profitDelta)}>{fmtDeltaPct(profitDelta)}</Badge>
+              <Badge size="sm" tone={toneOf(profitDelta)}>{fmtDeltaPct(profitDelta)}</Badge>
             </div>
             <p class="text-lg font-bold text-ink tabular break-words [overflow-wrap:anywhere]">{idr(simProfit)}</p>
             <p class="text-body-sm text-muted tabular mb-2 break-words [overflow-wrap:anywhere]">dari {idr(curProfit)}</p>
@@ -452,7 +450,7 @@
           <div class="min-w-0">
             <div class="flex items-center justify-between gap-2 mb-1">
               <span class="text-label-sm uppercase text-muted">Margin</span>
-              <Badge tone={marginPts >= 0 ? 'positive' : 'negative'}>{fmtPoin(marginPts)}</Badge>
+              <Badge size="sm" tone={marginPts >= 0 ? 'positive' : 'negative'}>{fmtPoin(marginPts)}</Badge>
             </div>
             <p class="text-lg font-bold text-ink tabular break-words">{(simMargin * 100).toFixed(1)}%</p>
             <p class="text-body-sm text-muted tabular mb-2 break-words">dari {(curMargin * 100).toFixed(1)}%</p>
@@ -464,7 +462,7 @@
           <div class="min-w-0">
             <div class="flex items-center justify-between gap-2 mb-1">
               <span class="text-label-sm uppercase text-muted">Unit terjual</span>
-              <Badge tone={toneOf(volDelta)}>{fmtDeltaPct(volDelta)}</Badge>
+              <Badge size="sm" tone={toneOf(volDelta)}>{fmtDeltaPct(volDelta)}</Badge>
             </div>
             <p class="text-lg font-bold text-ink tabular break-words">{num(simQty)} unit</p>
             <p class="text-body-sm text-muted tabular mb-2 break-words">dari {num(histQty)} unit</p>

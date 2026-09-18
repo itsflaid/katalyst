@@ -81,7 +81,7 @@
             <tr>
               <td class="px-3 py-2 text-ink">{staff.name ?? '—'}</td>
               <td class="px-3 py-2 text-muted">{staff.email}</td>
-              <td class="px-3 py-2"><Badge tone={staff.role === 'OWNER' ? 'neutral' : 'positive'}>{staff.role}</Badge></td>
+              <td class="px-3 py-2"><Badge size="sm" tone={staff.role === 'OWNER' ? 'neutral' : 'positive'}>{staff.role}</Badge></td>
               <td class="px-3 py-2 whitespace-nowrap">
                 {#if staff.role === 'STAFF' && staff.id !== currentUserId}
                   <button
