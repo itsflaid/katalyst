@@ -3,10 +3,11 @@
   import StaffManager from '$lib/components/StaffManager.svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import Button from '$lib/components/ui/Button.svelte';
+  import PageHeader from '$lib/components/ui/PageHeader.svelte';
   export let data;
 </script>
 
-<h1 class="text-headline-lg text-ink mb-5">Pengaturan</h1>
+<PageHeader title="Pengaturan" />
 
 <nav class="flex gap-2 overflow-x-auto mb-8 -mx-1 px-1">
   <a href="#profil" class="flex-shrink-0 text-label-md rounded px-3 py-2 bg-ink-navy text-white no-underline">Identitas Bisnis</a>

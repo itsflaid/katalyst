@@ -4,6 +4,7 @@
   import Input from '$lib/components/ui/Input.svelte';
   import Badge from '$lib/components/ui/Badge.svelte';
   import Tooltip from '$lib/components/ui/Tooltip.svelte';
+  import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import { goto } from '$app/navigation';
   export let data;
 
@@ -226,10 +227,7 @@
   }
 </script>
 
-<h1 class="text-headline-lg text-ink">Simulator “What-if”</h1>
-<p class="text-body-md text-muted mt-1 mb-4">
-  Lab skenario satu produk — geser tuasnya, hasilnya terhitung otomatis dari data historimu.
-</p>
+<PageHeader title="Simulator “What-if”" subtitle="Lab skenario satu produk — geser tuasnya, hasilnya terhitung otomatis dari data historimu." />
 
 <Card class="mb-6">
   <div class="flex flex-wrap items-center gap-2">
