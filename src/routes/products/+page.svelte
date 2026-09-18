@@ -6,6 +6,7 @@
   import Badge from "$lib/components/ui/Badge.svelte";
   import Table from "$lib/components/ui/Table.svelte";
   import SlideOver from "$lib/components/ui/SlideOver.svelte";
+  import PageHeader from "$lib/components/ui/PageHeader.svelte";
   import { fade, scale } from "svelte/transition";
   export let data;
   export let form;
@@ -44,6 +45,10 @@
   $: activeCount = data.products.filter((p) => p.isActive).length;
 
   let showCreate = false;
+  let stockModal: { mode: 'restock' | 'adjust'; id: string; name: string; stock: number } | null = null;
+  let sQty = '';
+  let sStock = '';
+  let sNote = '';
   let editing: {
     id: string;
     name: string;
@@ -56,6 +61,7 @@
   let cName = "";
   let cCost = "";
   let cSell = "";
+  let cStock = "";
   let cActive = true;
 
   function openEdit(p: {
@@ -73,15 +79,27 @@
       isActive: p.isActive,
     };
   }
+  function openStock(p: { id: string; name: string; stock: number }, mode: 'restock' | 'adjust') {
+    stockModal = { mode, id: p.id, name: p.name, stock: p.stock };
+    sQty = '';
+    sStock = String(p.stock);
+    sNote = '';
+  }
+  function switchStockMode(mode: 'restock' | 'adjust') {
+    if (!stockModal) return;
+    openStock({ id: stockModal.id, name: stockModal.name, stock: stockModal.stock }, mode);
+  }
   function closeModals() {
     showCreate = false;
     editing = null;
     pendingDelete = null;
+    stockModal = null;
   }
   function resetCreate() {
     cName = "";
     cCost = "";
     cSell = "";
+    cStock = "";
     cActive = true;
   }
 
@@ -102,12 +120,7 @@
 
 <svelte:window on:keydown={onKeydown} />
 
-<div class="mb-1">
-  <h1 class="text-headline-lg text-ink">Produk</h1>
-  <p class="text-body-md text-muted">
-    {data.products.length} produk terdaftar · {activeCount} aktif
-  </p>
-</div>
+<PageHeader title="Produk" subtitle={`${data.products.length} produk terdaftar · ${activeCount} aktif`} />
 
 <div class="flex flex-wrap items-center gap-3 my-4">
   <Input
@@ -151,7 +164,7 @@
     </p>
   </div>
 {:else}
-  <Table headers={["Produk", "Modal", "Jual", "Margin", "Status", "Aksi"]}>
+  <Table headers={["Produk", "Modal", "Jual", "Margin", "Stok", "Status", "Aksi"]}>
     {#each filtered as p}
       {@const m = marginOf(p)}
       <tr class={!p.isActive ? "opacity-60" : ""}>
@@ -160,6 +173,15 @@
         <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(p.sellingPrice)}</td>
         <td class="px-3 py-2">
           <Badge size="sm" tone={marginTone(m)}>{m === null ? "—" : `${m}%`}</Badge>
+        </td>
+        <td class="px-3 py-2 whitespace-nowrap">
+          {#if p.stock <= 0}
+            <Badge size="sm" tone="negative">Habis</Badge>
+          {:else if p.stock <= 5}
+            <span class="tabular text-muted">{p.stock} </span><Badge size="sm" tone="warning">Menipis</Badge>
+          {:else}
+            <span class="tabular text-ink">{p.stock}</span>
+          {/if}
         </td>
         <td class="px-3 py-2">
           <form method="POST" action="?/toggle" use:enhance={afterSubmit}>
@@ -188,6 +210,13 @@
             <a href={`/products/${p.id}`} class="text-body-sm font-semibold text-ink-navy hover:underline">
               Detail
             </a>
+            <button
+              type="button"
+              on:click={() => openStock(p, 'restock')}
+              class="text-body-sm font-semibold text-status-positive hover:underline bg-transparent border-none cursor-pointer p-0"
+            >
+              Stok
+            </button>
             <button
               type="button"
               on:click={() => openEdit(p)}
@@ -255,6 +284,18 @@
           bind:value={cSell}
           placeholder="25000"
           required
+        />
+      </label>
+      <label for="c-stock" class="flex flex-col gap-1 text-body-md text-ink">
+        Stok awal
+        <Input
+          id="c-stock"
+          name="stock"
+          type="number"
+          min="0"
+          step="1"
+          bind:value={cStock}
+          placeholder="0"
         />
       </label>
       <label class="flex items-center gap-2 text-body-md text-ink">
@@ -377,4 +418,50 @@
       </div>
     </div>
   </div>
+{/if}
+
+{#if stockModal}
+  <SlideOver title={stockModal.mode === 'restock' ? `Restock — ${stockModal.name}` : `Koreksi Stok — ${stockModal.name}`} onClose={closeModals}>
+    {#if stockModal.mode === 'restock'}
+      <form method="POST" action="?/restock" use:enhance={afterSubmit} class="flex flex-col gap-3">
+        <input type="hidden" name="id" value={stockModal.id} />
+        <p class="text-body-sm text-muted">Stok sekarang: <strong class="text-ink tabular">{stockModal.stock}</strong></p>
+        <label for="s-qty" class="flex flex-col gap-1 text-body-md text-ink">
+          Jumlah tambah
+          <Input id="s-qty" name="qty" type="number" min="1" step="1" bind:value={sQty} placeholder="10" required />
+        </label>
+        <label for="s-note" class="flex flex-col gap-1 text-body-md text-ink">
+          Catatan (opsional)
+          <Input id="s-note" name="note" bind:value={sNote} placeholder="Barang dari supplier" />
+        </label>
+        {#if form?.for === "restock"}<p class="text-body-sm text-status-negative">{form.message}</p>{/if}
+        <div class="flex justify-end gap-2 mt-1">
+          <Button variant="secondary" type="button" on:click={closeModals}>Batal</Button>
+          <Button type="submit">Tambah Stok</Button>
+        </div>
+      </form>
+    {:else}
+      <form method="POST" action="?/adjust" use:enhance={afterSubmit} class="flex flex-col gap-3">
+        <input type="hidden" name="id" value={stockModal.id} />
+        <label for="s-stock" class="flex flex-col gap-1 text-body-md text-ink">
+          Stok hasil opname
+          <Input id="s-stock" name="stock" type="number" min="0" step="1" bind:value={sStock} required />
+        </label>
+        <label for="s-note2" class="flex flex-col gap-1 text-body-md text-ink">
+          Alasan (wajib)
+          <Input id="s-note2" name="note" bind:value={sNote} placeholder="Selisih hitung fisik" required />
+        </label>
+        {#if form?.for === "adjust"}<p class="text-body-sm text-status-negative">{form.message}</p>{/if}
+        <div class="flex justify-end gap-2 mt-1">
+          <Button variant="secondary" type="button" on:click={() => switchStockMode('restock')}>Ke Restock</Button>
+          <Button type="submit">Simpan Koreksi</Button>
+        </div>
+      </form>
+    {/if}
+    {#if stockModal.mode === 'restock'}
+      <button type="button" on:click={() => switchStockMode('adjust')} class="text-body-sm text-muted hover:text-ink mt-3 bg-transparent border-none cursor-pointer p-0">
+        Malah mau koreksi hasil opname?
+      </button>
+    {/if}
+  </SlideOver>
 {/if}
