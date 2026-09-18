@@ -1,8 +1,10 @@
 <script lang="ts">
   import Card from '$lib/components/ui/Card.svelte';
   import Button from '$lib/components/ui/Button.svelte';
-  import { fade, scale } from 'svelte/transition';
+  import { enhance } from '$app/forms';
+  import type { SubmitFunction } from '@sveltejs/kit';
   export let data;
+  export let form;
 
   const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
   const fmtTime = (d: string | Date) => new Date(d).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -48,15 +50,19 @@
   $: visibleTotal = visibleGroups.reduce((s, g) => s + g.subtotal, 0);
   $: visibleCount = visibleGroups.reduce((s, g) => s + g.rows.length, 0);
 
-  // Panel "Transaksi Baru" — keranjang multi-produk di client. Tombol
-  // "Catat Transaksi" memunculkan popup pemberitahuan sampai action
-  // server penyimpanan disambungkan.
-  let showNotice = false;
+  // Panel "Transaksi Baru" — keranjang multi-produk di client, disimpan
+  // sebagai 1 struk (1 transaction + N item) lewat actions.create.
   let selectedProductId = data.products[0]?.id ?? '';
   let qty = 1;
   let cart: { productId: string; name: string; price: number; qty: number }[] = [];
   $: selectedProduct = data.products.find((p) => p.id === selectedProductId);
   $: cartTotal = cart.reduce((s, c) => s + c.price * c.qty, 0);
+  $: cartPayload = JSON.stringify(cart.map((c) => ({ productId: c.productId, qty: c.qty })));
+
+  const afterCreate: SubmitFunction = () => async ({ result, update }) => {
+    await update();
+    if (result.type === 'success') cart = [];
+  };
 
   function addToCart() {
     if (!selectedProduct) return;
@@ -199,7 +205,12 @@
             <span class="text-body-sm text-muted">Total</span>
             <strong class="text-headline-sm text-ink tabular">{idr(cartTotal)}</strong>
           </div>
-          <Button class="w-full" on:click={() => (showNotice = true)}>Catat Transaksi</Button>
+          <form method="POST" action="?/create" use:enhance={afterCreate}>
+            <input type="hidden" name="items" value={cartPayload} />
+            {#if form?.message}<p role="alert" class="rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative mb-3">{form.message}</p>{/if}
+            {#if form?.success}<p role="status" class="rounded border border-status-positive-border bg-status-positive-bg px-3 py-2 text-body-sm text-status-positive mb-3">Transaksi tersimpan.</p>{/if}
+            <Button type="submit" class="w-full" disabled={cart.length === 0}>Catat Transaksi</Button>
+          </form>
         {/if}
       </Card>
 
@@ -222,43 +233,3 @@
       </Card>
   </div>
 </div>
-
-<!-- Popup pemberitahuan pengganti aksi simpan yang belum disambungkan.
-     Isinya menyesuaikan: keranjang kosong vs ada isi. -->
-<svelte:window on:keydown={(e) => e.key === 'Escape' && (showNotice = false)} />
-{#if showNotice}
-  <button
-    type="button"
-    class="fixed inset-0 z-50 bg-ink/40 border-none cursor-default p-0"
-    transition:fade={{ duration: 150 }}
-    aria-label="Tutup pemberitahuan"
-    on:click={() => (showNotice = false)}
-  ></button>
-  <div class="fixed inset-0 z-50 grid place-items-center p-4 pointer-events-none">
-    <div
-      class="pointer-events-auto w-full max-w-sm rounded-panel border border-border-cool bg-surface p-5 shadow-level3"
-      transition:scale={{ duration: 150, start: 0.96 }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Pemberitahuan"
-    >
-      <div class="flex items-center justify-between mb-2">
-        <h2 class="text-headline-sm text-ink">Perhatian</h2>
-        <button
-          type="button"
-          on:click={() => (showNotice = false)}
-          class="text-muted hover:text-ink text-body-lg leading-none bg-transparent border-none cursor-pointer"
-          aria-label="Tutup">✕</button
-        >
-      </div>
-      {#if cart.length === 0}
-        <p class="text-body-md text-muted">Keranjang masih kosong — tambah satu atau beberapa produk dulu sebelum mencatat transaksi.</p>
-      {:else}
-        <p class="text-body-md text-muted">
-          Transaksi {cart.length} produk ({idr(cartTotal)}) belum bisa disimpan — pencatatan ke database belum disambungkan, segera hadir.
-        </p>
-      {/if}
-      <Button class="w-full mt-4" on:click={() => (showNotice = false)}>Mengerti</Button>
-    </div>
-  </div>
-{/if}
