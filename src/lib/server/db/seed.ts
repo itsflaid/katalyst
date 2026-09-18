@@ -65,6 +65,8 @@ interface SeedProduct {
   qtyMin: number;
   qtyMax: number;
   volatility: Volatility;
+  /** Stok awal demo. */
+  stock: number;
   /** Produk musiman ekstrem: qty ~0 di luar spike window. */
   seasonalOnly?: boolean;
 }
@@ -76,15 +78,15 @@ const VOLATILITY_FACTOR: Record<Volatility, number> = {
 };
 
 const PRODUCTS: SeedProduct[] = [
-  { name: 'Nasi Kuning Samarinda', costPrice: 7500, sellingPrice: 15000, qtyMin: 40, qtyMax: 60, volatility: 'low' },
-  { name: 'Soto Banjar', costPrice: 11000, sellingPrice: 22000, qtyMin: 30, qtyMax: 45, volatility: 'low' },
-  { name: 'Gence Ruan', costPrice: 20000, sellingPrice: 38000, qtyMin: 10, qtyMax: 18, volatility: 'high' },
-  { name: 'Ayam Cincane', costPrice: 13500, sellingPrice: 28000, qtyMin: 20, qtyMax: 35, volatility: 'medium' },
-  { name: 'Sate Payau', costPrice: 27000, sellingPrice: 45000, qtyMin: 5, qtyMax: 10, volatility: 'high' },
-  { name: 'Kepiting Soka Balikpapan', costPrice: 33000, sellingPrice: 55000, qtyMin: 4, qtyMax: 9, volatility: 'high' },
-  { name: 'Sayur Gangan Asam', costPrice: 4800, sellingPrice: 12000, qtyMin: 25, qtyMax: 40, volatility: 'low' },
-  { name: 'Amplang', costPrice: 9000, sellingPrice: 20000, qtyMin: 8, qtyMax: 15, volatility: 'low' },
-  { name: 'Es Kelapa Jelly / Es Teh Etam', costPrice: 3000, sellingPrice: 10000, qtyMin: 50, qtyMax: 80, volatility: 'medium' },
+  { name: 'Nasi Kuning Samarinda', costPrice: 7500, sellingPrice: 15000, qtyMin: 40, qtyMax: 60, volatility: 'low', stock: 200 },
+  { name: 'Soto Banjar', costPrice: 11000, sellingPrice: 22000, qtyMin: 30, qtyMax: 45, volatility: 'low', stock: 150 },
+  { name: 'Gence Ruan', costPrice: 20000, sellingPrice: 38000, qtyMin: 10, qtyMax: 18, volatility: 'high', stock: 60 },
+  { name: 'Ayam Cincane', costPrice: 13500, sellingPrice: 28000, qtyMin: 20, qtyMax: 35, volatility: 'medium', stock: 120 },
+  { name: 'Sate Payau', costPrice: 27000, sellingPrice: 45000, qtyMin: 5, qtyMax: 10, volatility: 'high', stock: 8 },
+  { name: 'Kepiting Soka Balikpapan', costPrice: 33000, sellingPrice: 55000, qtyMin: 4, qtyMax: 9, volatility: 'high', stock: 30 },
+  { name: 'Sayur Gangan Asam', costPrice: 4800, sellingPrice: 12000, qtyMin: 25, qtyMax: 40, volatility: 'low', stock: 150 },
+  { name: 'Amplang', costPrice: 9000, sellingPrice: 20000, qtyMin: 8, qtyMax: 15, volatility: 'low', stock: 80 },
+  { name: 'Es Kelapa Jelly / Es Teh Etam', costPrice: 3000, sellingPrice: 10000, qtyMin: 50, qtyMax: 80, volatility: 'medium', stock: 300 },
   {
     name: 'Bubur Pedas Sambas',
     costPrice: 6500,
@@ -92,6 +94,7 @@ const PRODUCTS: SeedProduct[] = [
     qtyMin: 30,
     qtyMax: 50,
     volatility: 'low',
+    stock: 100,
     seasonalOnly: true
   }
 ];
@@ -171,7 +174,8 @@ async function main() {
       businessId,
       name: p.name,
       costPrice: p.costPrice,
-      sellingPrice: p.sellingPrice
+      sellingPrice: p.sellingPrice,
+      stock: p.stock
     });
   }
 
