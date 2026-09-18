@@ -12,6 +12,7 @@
     "verify:engine": "tsx script/verify-engine.ts"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "better-auth": "^1.7.5",
     "chart.js": "^4.5.1",
     "clsx": "^2.1.0",
@@ -20,7 +21,7 @@
     "tailwind-merge": "^2.3.0"
   },
   "devDependencies": {
-    "@sveltejs/adapter-auto": "^3.2.0",
+    "@sveltejs/adapter-cloudflare": "^7.2.9",
     "@sveltejs/kit": "^2.5.0",
     "@sveltejs/vite-plugin-svelte": "^3.1.0",
     "@types/node": "^20.0.0",

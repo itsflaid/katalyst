@@ -1,0 +1,8 @@
+{
+  // Dipakai saat deploy manual via `wrangler pages deploy`.
+  // Kalau deploy via Git integration (dashboard), compatibility date/flags
+  // di-set di dashboard Pages → Settings → Functions, samakan dengan ini.
+  "name": "katalyst",
+  "compatibility_date": "2025-08-01",
+  "compatibility_flags": ["nodejs_compat"]
+}

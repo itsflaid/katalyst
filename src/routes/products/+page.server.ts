@@ -2,7 +2,8 @@ import { db } from '$lib/server/db';
 import { product } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
-import { randomUUID } from 'crypto';
+// crypto.randomUUID global (bukan import 'crypto') biar jalan di Workers.
+// Node 19+ dan semua browser modern juga menyediakannya.
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -27,7 +28,7 @@ export const actions: Actions = {
     const businessId = locals.user!.businessId as string;
     const parsed = parseProductInput(await request.formData());
     if ('error' in parsed) return fail(400, { for: 'create', message: parsed.error });
-    await db.insert(product).values({ id: randomUUID(), businessId, ...parsed.data });
+    await db.insert(product).values({ id: crypto.randomUUID(), businessId, ...parsed.data });
     return { success: true };
   },
 
