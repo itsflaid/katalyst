@@ -20,25 +20,23 @@
     return dateStr;
   }
 
-  // Kelompokkan transaksi (sudah urut desc dari server) per hari + subtotal —
-  // gantinya list flat, biar terasa kayak buku besar beneran.
+  // Kelompokkan struk (sudah urut desc dari server) per hari + subtotal.
   // `key` disimpan biar bisa dipakai filter dropdown hari di bawah.
   $: dayGroups = (() => {
-    const map = new Map<string, { key: string; label: string; rows: typeof data.transactions; subtotal: number }>();
-    for (const t of data.transactions) {
+    const map = new Map<string, { key: string; label: string; rows: typeof data.receipts; subtotal: number }>();
+    for (const t of data.receipts) {
       const d = new Date(t.createdAt);
       const key = d.toDateString();
       if (!map.has(key)) map.set(key, { key, label: dayLabel(d), rows: [], subtotal: 0 });
       const g = map.get(key)!;
       g.rows.push(t);
-      g.subtotal += t.quantity * t.priceAtSale;
+      g.subtotal += t.total;
     }
     return Array.from(map.values());
   })();
 
-  // Navigasi hari — filter client-side dari 100 transaksi terakhir yang
-  // sudah di-load server. Default 'all' biar riwayat tetap kelihatan,
-  // user tinggal pilih hari spesifik buat fokus ke satu hari.
+  // Navigasi hari — filter client-side dari struk yang sudah di-load server.
+  // Default 'all' biar riwayat tetap kelihatan.
   let selectedDayKey = 'all';
   $: visibleGroups = selectedDayKey === 'all' ? dayGroups : dayGroups.filter((g) => g.key === selectedDayKey);
   $: if (selectedDayKey !== 'all' && dayGroups.length > 0 && !dayGroups.some((g) => g.key === selectedDayKey)) {
@@ -63,6 +61,29 @@
     await update();
     if (result.type === 'success') cart = [];
   };
+
+  // Void struk (OWNER-only di server): pola audit POS — struk salah divoid
+  // utuh lalu buat struk koreksi baru, tanpa edit qty in-place.
+  $: isOwner = data.user?.role === 'OWNER';
+  let pendingVoid: { txId: string; total: number; cashier: string } | null = null;
+  const afterVoid: SubmitFunction = () => async ({ result, update }) => {
+    await update();
+    if (result.type === 'success') pendingVoid = null;
+  };
+
+  // Duplikat struk sebagai koreksi: salin item ke keranjang biar owner
+  // tinggal sesuaikan qty lalu catat ulang.
+  function copyToCart(r: (typeof data.receipts)[number]) {
+    for (const it of r.items) {
+      const prod = data.products.find((p) => p.id === it.productId);
+      const found = cart.find((c) => c.productId === it.productId);
+      const price = prod?.sellingPrice ?? it.priceAtSale;
+      const nm = prod?.name ?? it.productName;
+      cart = found
+        ? cart.map((c) => (c.productId === it.productId ? { ...c, qty: c.qty + it.quantity } : c))
+        : [...cart, { productId: it.productId, name: nm, price, qty: it.quantity }];
+    }
+  }
 
   function addToCart() {
     if (!selectedProduct) return;
@@ -128,20 +149,32 @@
           <div class="border-b-2 border-border-cool last:border-b-0">
             <div class="flex items-center justify-between gap-3 border-b border-border-cool bg-status-neutral-bg px-5 py-2.5">
               <p class="text-label-md font-semibold uppercase text-ink">{group.label}</p>
-              <span class="text-body-sm tabular text-muted whitespace-nowrap">{group.rows.length} transaksi</span>
+              <span class="text-body-sm tabular text-muted whitespace-nowrap">{group.rows.length} struk</span>
             </div>
             <ul>
-              {#each group.rows as t, i}
-                <li
-                  class="flex justify-between items-center gap-4 px-5 py-2.5 text-body-md"
-                  class:border-b={i < group.rows.length - 1}
-                  class:border-table-divider={i < group.rows.length - 1}
-                >
-                  <div class="min-w-0">
-                    <p class="text-ink truncate">{t.productName}</p>
-                    <p class="text-body-sm text-muted">{t.quantity}× · {fmtTime(t.createdAt)} · {t.servedBy}</p>
+              {#each group.rows as r}
+                <li class="px-5 py-3 text-body-md border-b border-table-divider last:border-b-0">
+                  <div class="flex justify-between items-center gap-4">
+                    <div class="min-w-0">
+                      <p class="text-ink font-semibold tabular whitespace-nowrap">Struk · {fmtTime(r.createdAt)} · {r.cashier}</p>
+                      <p class="text-body-sm text-muted">{r.items.reduce((s, i) => s + i.quantity, 0)} item · {r.items.length} jenis produk</p>
+                    </div>
+                    <span class="tabular font-semibold text-ink whitespace-nowrap">{idr(r.total)}</span>
                   </div>
-                  <span class="tabular text-ink whitespace-nowrap">{idr(t.quantity * t.priceAtSale)}</span>
+                  <ul class="mt-1.5 ml-1 flex flex-col gap-0.5">
+                    {#each r.items as it}
+                      <li class="flex justify-between gap-4 text-body-sm">
+                        <span class="text-muted truncate">{it.quantity}× {it.productName}</span>
+                        <span class="tabular text-muted whitespace-nowrap">{idr(it.quantity * it.priceAtSale)}</span>
+                      </li>
+                    {/each}
+                  </ul>
+                  <div class="flex gap-4 mt-1.5">
+                    <button type="button" class="text-body-sm text-ink-navy hover:underline bg-transparent border-none cursor-pointer p-0" on:click={() => copyToCart(r)}>Duplikat sebagai koreksi</button>
+                    {#if isOwner}
+                      <button type="button" class="text-body-sm font-semibold text-status-negative hover:underline bg-transparent border-none cursor-pointer p-0" on:click={() => (pendingVoid = { txId: r.txId, total: r.total, cashier: r.cashier })}>Void</button>
+                    {/if}
+                  </div>
                 </li>
               {/each}
             </ul>
@@ -152,7 +185,13 @@
           </div>
         {/each}
       </Card>
-      <p class="text-body-sm text-muted mt-2">Menampilkan {data.transactions.length} transaksi terakhir, dikelompokkan per hari.</p>
+      <div class="flex items-center justify-between gap-3 mt-2">
+        <p class="text-body-sm text-muted">Halaman {data.page} · {data.receipts.length} struk, dikelompokkan per hari.</p>
+        {#if data.hasMore}
+          <a href={`/transactions?page=${data.page + 1}`} class="text-body-sm font-semibold text-ink-navy hover:underline no-underline">Muat struk lebih lama →</a>
+        {/if}
+      </div>
+      {#if form?.message}<p role="alert" class="rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative mt-2">{form.message}</p>{/if}
     {/if}
   </div>
 
@@ -227,9 +266,26 @@
           <strong class="tabular text-ink">{idr(visibleTotal)}</strong>
         </div>
         <div class="flex justify-between items-center py-1.5 text-body-md">
-          <span class="text-muted">Transaksi</span>
+          <span class="text-muted">Struk</span>
           <span class="tabular text-ink">{visibleCount}×</span>
         </div>
       </Card>
   </div>
 </div>
+
+{#if pendingVoid}
+  <div class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Konfirmasi void struk">
+    <button type="button" class="absolute inset-0 bg-ink/40 border-none cursor-default p-0" aria-label="Batal" on:click={() => (pendingVoid = null)}></button>
+    <div class="relative w-full max-w-sm rounded-panel border border-border-cool bg-surface p-5 shadow-level3">
+      <h2 class="text-headline-sm text-ink mb-2">Void struk ini?</h2>
+      <p class="text-body-md text-muted">Struk {idr(pendingVoid.total)} ({pendingVoid.cashier}) dihapus permanen. Buat struk koreksi baru kalau transaksinya tetap ada tapi salah catat.</p>
+      <div class="flex gap-2 mt-4">
+        <Button variant="secondary" class="flex-1" on:click={() => (pendingVoid = null)}>Batal</Button>
+        <form method="POST" action="?/deleteTx" use:enhance={afterVoid} class="flex-1">
+          <input type="hidden" name="txId" value={pendingVoid.txId} />
+          <Button variant="destructive" type="submit" class="w-full">Void struk</Button>
+        </form>
+      </div>
+    </div>
+  </div>
+{/if}
