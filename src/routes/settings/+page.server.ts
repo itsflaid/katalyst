@@ -11,5 +11,5 @@ export const load: PageServerLoad = async ({ locals }) => {
     .from(user)
     .where(eq(user.businessId, businessId));
 
-  return { businessName: b?.name ?? '', staffList };
+  return { businessName: b?.name ?? '', staffList, currentUserId: locals.user!.id as string };
 };

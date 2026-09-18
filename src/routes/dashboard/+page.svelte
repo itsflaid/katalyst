@@ -10,19 +10,15 @@
   const num = (n: number) => new Intl.NumberFormat('id-ID').format(n);
   const fmtDate = (d: string | Date) => new Date(d).toLocaleString('id-ID');
 
-  // Dummy sementara — loader dashboard belum ada query time-series
-  // harian, jadi trend line ini cuma buat isi layout dulu. Nanti tinggal
-  // ganti array di bawah dengan hasil query group-by-tanggal beneran.
-  const trendLabels = ['1', '5', '10', '15', '20', '25', '30'];
-  const revenueTrend = [3.1, 3.6, 2.4, 4.2, 6.8, 4.9, 5.3];
-  const profitTrend = [1.1, 1.3, 0.9, 1.7, 2.7, 1.9, 2.1];
-
-  // Dummy juga — belum ada query "periode sebelumnya" buat bandingin.
-  // Begitu ada, ganti angka statis ini dengan hasil hitung asli:
-  // (nilai sekarang - nilai lalu) / nilai lalu.
-  const kpiDeltas = { revenue: 8.4, transactions: -2.1, profit: 11.9, margin: 1.5 };
-  const deltaTone = (d: number) => (d >= 0 ? 'positive' : 'negative');
-  const fmtDeltaShort = (d: number) => `${d >= 0 ? '+' : ''}${d.toFixed(1)}%`;
+  // Tren + delta 30 hari dihitung di load (agregat harian SQL 60 hari:
+  // 30 terakhir buat chart, 30 vs 30 sebelumnya buat delta). Nilai tren
+  // dalam jt Rp biar sumbu terbaca. Delta null = tumbuh dari nol.
+  $: trendLabels = data.trend.labels;
+  $: revenueTrend = data.trend.revenue;
+  $: profitTrend = data.trend.profit;
+  $: kpiDeltas = data.deltas;
+  const deltaTone = (d: number | null) => (d === null || d >= 0 ? 'positive' : 'negative');
+  const fmtDeltaShort = (d: number | null) => (d === null ? 'baru' : `${d >= 0 ? '+' : ''}${d.toFixed(1)}%`);
 
   $: topProductLabels = data.topByRevenue.map((p) => p.name);
   $: topProductRevenue = data.topByRevenue.map((p) => p.revenue);
@@ -35,17 +31,17 @@
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Revenue</p>
     <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words [overflow-wrap:anywhere]">{idr(data.summary.revenue)}</p>
-    <Badge tone={deltaTone(kpiDeltas.revenue)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.revenue)}<span class="hidden sm:inline">&nbsp;vs bulan lalu</span></Badge>
+    <Badge tone={deltaTone(kpiDeltas.revenue)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.revenue)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge>
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Transaksi</p>
     <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{num(data.transactionCount)}</p>
-    <Badge tone={deltaTone(kpiDeltas.transactions)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.transactions)}<span class="hidden sm:inline">&nbsp;vs bulan lalu</span></Badge>
+    <Badge tone={deltaTone(kpiDeltas.transactions)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.transactions)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge>
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Profit</p>
     <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words [overflow-wrap:anywhere]">{idr(data.summary.profit)}</p>
-    <Badge tone={deltaTone(kpiDeltas.profit)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.profit)}<span class="hidden sm:inline">&nbsp;vs bulan lalu</span></Badge>
+    <Badge tone={deltaTone(kpiDeltas.profit)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.profit)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge>
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Margin</p>
@@ -59,7 +55,8 @@
 <!-- Baris 2: 2 grafik 50-50 -->
 <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
   <Card>
-    <h2 class="text-headline-sm text-ink mb-3">Tren Revenue & Profit</h2>
+    <h2 class="text-headline-sm text-ink mb-1">Tren Revenue & Profit</h2>
+    <p class="text-body-sm text-muted mb-3">jt Rp · 30 hari terakhir</p>
     <LineChart
       labels={trendLabels}
       datasets={[
@@ -73,6 +70,17 @@
     <BarChart labels={topProductLabels} data={topProductRevenue} />
   </Card>
 </div>
+
+{#if data.insights.length > 0}
+  <Card class="mb-6">
+    <h2 class="text-headline-sm text-ink mb-3">Insight otomatis</h2>
+    <ul class="flex flex-col gap-2.5">
+      {#each data.insights as ins}
+        <li class="rounded border border-border-cool bg-table-header px-3 py-2.5 text-body-md text-ink">{ins.message}</li>
+      {/each}
+    </ul>
+  </Card>
+{/if}
 
 <!-- Baris 3: kiri Transaksi Terbaru (flex-1) + kanan Copilot (lg:w-80) -->
 <div class="flex flex-col lg:flex-row gap-6 items-start">

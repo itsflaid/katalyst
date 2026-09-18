@@ -1,2 +1,4 @@
-<h1>Katalyst</h1>
-<p>Business decision-support copilot untuk UMKM. (skeleton)</p>
+<!-- Route ini tidak pernah dirender lama: +page.server.ts selalu redirect
+     (belum login → /login, OWNER → /dashboard, STAFF → /transactions).
+     Teks ini cuma fallback loading kalau redirect tertunda. -->
+<p class="text-body-md text-muted">Mengalihkan…</p>

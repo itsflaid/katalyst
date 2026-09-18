@@ -15,6 +15,20 @@
       "when": 1789698664135,
       "tag": "0001_complex_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789723668178,
+      "tag": "0002_add_cashier_name",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789724172253,
+      "tag": "0003_staff_delete_keep_history",
+      "breakpoints": true
     }
   ]
 }

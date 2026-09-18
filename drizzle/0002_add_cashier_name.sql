@@ -1,0 +1,2 @@
+ALTER TABLE "transaction" ADD COLUMN "cashier_name" text;--> statement-breakpoint
+UPDATE "transaction" SET "cashier_name" = "user"."name" FROM "user" WHERE "transaction"."user_id" = "user"."id" AND "transaction"."cashier_name" IS NULL;

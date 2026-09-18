@@ -155,7 +155,7 @@
     {#each filtered as p}
       {@const m = marginOf(p)}
       <tr class={!p.isActive ? "opacity-60" : ""}>
-        <td class="px-3 py-2 text-ink font-semibold whitespace-nowrap">{p.name}</td>
+        <td class="px-3 py-2 text-ink font-semibold whitespace-nowrap"><a href={`/products/${p.id}`} class="text-ink-navy hover:underline">{p.name}</a></td>
         <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{idr(p.costPrice)}</td>
         <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(p.sellingPrice)}</td>
         <td class="px-3 py-2">
@@ -185,6 +185,9 @@
         </td>
         <td class="px-3 py-2 whitespace-nowrap">
           <div class="flex items-center gap-3">
+            <a href={`/products/${p.id}`} class="text-body-sm font-semibold text-ink-navy hover:underline">
+              Detail
+            </a>
             <button
               type="button"
               on:click={() => openEdit(p)}

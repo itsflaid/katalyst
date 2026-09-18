@@ -1,11 +1,8 @@
 import { db } from '$lib/server/db';
 import { product, transaction, transactionItem } from '$lib/server/db/schema';
-import { and, eq, gte, lte } from 'drizzle-orm';
-import type { TransactionItemLike } from '$lib/analytics';
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { calculateMargin } from '$lib/analytics';
 import type { PageServerLoad } from './$types';
-import type { Actions } from './$types';
-import { simulateScenario } from '$lib/simulation';
 
 type RangeKey = 'today' | 'week' | 'month' | 'all' | 'custom';
 
@@ -31,7 +28,7 @@ function parseDateParam(v: string | null): Date | null {
 }
 
 function resolveRange(url: URL): { key: RangeKey; from: Date | null; to: Date | null; label: string; fromISO: string; toISO: string } {
-  const raw = (url.searchParams.get('range') ?? 'all').toLowerCase();
+  const raw = (url.searchParams.get('range') ?? 'month').toLowerCase();
   const now = new Date();
   if (raw === 'today') {
     const from = startOfDay(now);
@@ -65,40 +62,41 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const businessId = locals.user!.businessId as string;
   const range = resolveRange(url);
 
-  // Agregat histori per produk — bahan kalkulasi live di client (tanpa
-  // round-trip POST tiap geser slider). Produk tanpa histori tetap masuk
-  // dengan angka nol + txCount 0 biar client bisa kasih warning.
-  // Baseline dibatasi rentang waktu ?range=today|week|month|all|custom&from&to
-  // memakai transaction.created_at (waktu kasir mencatat transaksi).
-  // Dua query independen → jalan paralel (Promise.all) biar total tunggu
-  // ≈ 1 round-trip, bukan 2 berurutan.
+  // Baseline per produk dihitung di SQL (GROUP BY) — yang ditransfer cuma
+  // 1 baris per produk, bukan 1 baris per item transaksi. Sebelumnya load
+  // mengembalikan semua item mentah (±13rb rows di seed 90 hari) sehingga
+  // tiap buka simulator terasa delay; sekarang jauh lebih ringan.
+  // Produk tanpa histori tetap masuk dengan angka nol + txCount 0.
   const conds = [eq(transaction.businessId, businessId)];
   if (range.from) conds.push(gte(transaction.createdAt, range.from));
   if (range.to) conds.push(lte(transaction.createdAt, range.to));
-  const [products, txItems] = await Promise.all([
+  const [products, aggRows] = await Promise.all([
     db.select().from(product).where(eq(product.businessId, businessId)),
     db
       .select({
         productId: transactionItem.productId,
-        quantity: transactionItem.quantity,
-        priceAtSale: transactionItem.priceAtSale,
-        costAtSale: transactionItem.costAtSale,
-        transactionId: transactionItem.transactionId
+        qty: sql<string>`sum(${transactionItem.quantity})::text`,
+        revenue: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale})::text`,
+        cost: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.costAtSale})::text`,
+        txCount: sql<string>`count(distinct ${transaction.id})::text`
       })
       .from(transactionItem)
       .innerJoin(transaction, eq(transaction.id, transactionItem.transactionId))
       .where(and(...conds))
+      .groupBy(transactionItem.productId)
   ]);
 
-  const agg = new Map<string, { qty: number; revenue: number; cost: number; txIds: Set<string> }>();
-  for (const i of txItems) {
-    const cur = agg.get(i.productId) ?? { qty: 0, revenue: 0, cost: 0, txIds: new Set<string>() };
-    cur.qty += i.quantity;
-    cur.revenue += i.quantity * i.priceAtSale;
-    cur.cost += i.quantity * i.costAtSale;
-    cur.txIds.add(i.transactionId);
-    agg.set(i.productId, cur);
-  }
+  const agg = new Map(
+    aggRows.map((r) => [
+      r.productId,
+      {
+        qty: Number(r.qty),
+        revenue: Number(r.revenue),
+        cost: Number(r.cost),
+        txCount: Number(r.txCount)
+      }
+    ])
+  );
 
   const baselines = products.map((p) => {
     const a = agg.get(p.id);
@@ -112,7 +110,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       cost,
       profit,
       margin: calculateMargin(revenue, profit),
-      txCount: a?.txIds.size ?? 0
+      txCount: a?.txCount ?? 0
     };
   });
 
@@ -125,41 +123,4 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     rangeFrom: range.fromISO,
     rangeTo: range.toISO
   };
-};
-
-export const actions: Actions = {
-  simulate: async ({ request, locals }) => {
-    const businessId = locals.user!.businessId as string;
-    const form = await request.formData();
-
-    const productId = String(form.get('productId'));
-    const newSellingPrice = form.get('newSellingPrice') ? Number(form.get('newSellingPrice')) : undefined;
-    const newCostPrice = form.get('newCostPrice') ? Number(form.get('newCostPrice')) : undefined;
-    const discountPercent = form.get('discountPercent') ? Number(form.get('discountPercent')) / 100 : undefined;
-    const quantityOverride = form.get('quantityOverride') ? Number(form.get('quantityOverride')) : undefined;
-
-    const [p] = await db.select().from(product).where(eq(product.id, productId));
-
-    const txItems = await db
-      .select({
-        productId: transactionItem.productId,
-        quantity: transactionItem.quantity,
-        priceAtSale: transactionItem.priceAtSale,
-        costAtSale: transactionItem.costAtSale
-      })
-      .from(transactionItem)
-      .innerJoin(transaction, eq(transaction.id, transactionItem.transactionId))
-      .where(eq(transaction.businessId, businessId));
-
-    const items: TransactionItemLike[] = txItems;
-
-    const result = simulateScenario(p, items, {
-      newSellingPrice,
-      newCostPrice,
-      discountPercent,
-      quantityOverride
-    });
-
-    return { result, productId };
-  }
 };
