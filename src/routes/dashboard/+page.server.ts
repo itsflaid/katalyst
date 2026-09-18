@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { product, transaction, transactionItem, user } from '$lib/server/db/schema';
-import { eq, count, desc, sql } from 'drizzle-orm';
+import { eq, and, count, desc, sql, gte } from 'drizzle-orm';
 import {
   calculateMargin,
   getTopProducts,
@@ -17,7 +17,12 @@ export const load: PageServerLoad = async ({ locals }) => {
   // tanpa batas: 12rb+ baris saat ini). Hasil angkanya identik dengan
   // agregasi JS sebelumnya (penjumlahan integer bersifat asosiatif), cuma
   // lokasi hitungnya pindah ke database.
-  const [products, grouped, countRows, recentTransactions] = await Promise.all([
+  // Query ke-5: agregat harian 60 hari terakhir — 1 query melayani tren
+  // (30 hari terakhir) + delta (30 hari ini vs 30 hari sebelumnya).
+  const sixtyDaysAgo = new Date();
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 59);
+  sixtyDaysAgo.setHours(0, 0, 0, 0);
+  const [products, grouped, countRows, recentTransactions, dailyRows] = await Promise.all([
     db
       .select({ id: product.id, name: product.name })
       .from(product)
@@ -62,7 +67,19 @@ export const load: PageServerLoad = async ({ locals }) => {
       .innerJoin(user, eq(user.id, transaction.userId))
       .where(eq(transaction.businessId, businessId))
       .orderBy(desc(transaction.createdAt))
-      .limit(10)
+      .limit(10),
+
+    db
+      .select({
+        day: sql<string>`(${transaction.createdAt}::date)::text`,
+        revenue: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale})::text`,
+        cost: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.costAtSale})::text`,
+        txCount: sql<string>`count(distinct ${transaction.id})::text`
+      })
+      .from(transaction)
+      .innerJoin(transactionItem, eq(transactionItem.transactionId, transaction.id))
+      .where(and(eq(transaction.businessId, businessId), gte(transaction.createdAt, sixtyDaysAgo)))
+      .groupBy(sql`(${transaction.createdAt}::date)`)
   ]);
 
   const productNames = Object.fromEntries(products.map((p) => [p.id, p.name]));
@@ -96,5 +113,60 @@ export const load: PageServerLoad = async ({ locals }) => {
 
   const [{ value: transactionCount }] = countRows;
 
-  return { summary, topByRevenue, recentTransactions, transactionCount };
+  // Bangun deret harian 60 hari (isi 0 untuk hari tanpa transaksi) dari
+  // hasil GROUP BY di atas. 30 hari terakhir → tren chart (dalam jt Rp
+  // biar sumbu terbaca), 30 vs 30 sebelumnya → delta KPI.
+  const byDay = new Map(
+    dailyRows.map((r) => [
+      r.day,
+      { revenue: Number(r.revenue), cost: Number(r.cost), tx: Number(r.txCount) }
+    ])
+  );
+  const days: { key: string; label: string; revenue: number; profit: number; tx: number }[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = 59; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const v = byDay.get(key) ?? { revenue: 0, cost: 0, tx: 0 };
+    days.push({
+      key,
+      label: `${d.getDate()}/${d.getMonth() + 1}`,
+      revenue: v.revenue,
+      profit: v.revenue - v.cost,
+      tx: v.tx
+    });
+  }
+  const prev = days.slice(0, 30);
+  const cur = days.slice(30);
+  const sum = (arr: typeof days, f: (d: (typeof days)[number]) => number) =>
+    arr.reduce((s, d) => s + f(d), 0);
+  const curRev = sum(cur, (d) => d.revenue);
+  const prevRev = sum(prev, (d) => d.revenue);
+  const curProfit = sum(cur, (d) => d.profit);
+  const prevProfit = sum(prev, (d) => d.profit);
+  const curTx = sum(cur, (d) => d.tx);
+  const prevTx = sum(prev, (d) => d.tx);
+  const pct = (c: number, p: number): number | null => {
+    if (p === 0) return c === 0 ? 0 : null;
+    return ((c - p) / Math.abs(p)) * 100;
+  };
+  const curMargin = calculateMargin(curRev, curProfit);
+  const prevMargin = calculateMargin(prevRev, prevProfit);
+  const trend = {
+    labels: cur.map((d) => d.label),
+    // jt Rp 1 desimal — sumbu chart tetap terbaca walau omzet jutaan.
+    revenue: cur.map((d) => Math.round((d.revenue / 1_000_000) * 10) / 10),
+    profit: cur.map((d) => Math.round((d.profit / 1_000_000) * 10) / 10)
+  };
+  const deltas = {
+    revenue: pct(curRev, prevRev),
+    profit: pct(curProfit, prevProfit),
+    transactions: pct(curTx, prevTx),
+    // poin margin ×100 biar se-skala dengan badge persen.
+    margin: prevRev === 0 && curRev === 0 ? 0 : (curMargin - prevMargin) * 100
+  };
+
+  return { summary, topByRevenue, recentTransactions, transactionCount, trend, deltas };
 };
