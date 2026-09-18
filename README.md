@@ -8,7 +8,7 @@ Semua angka (omzet, modal, untung, margin) dihitung langsung dari data transaksi
 
 - **Dashboard owner** — KPI revenue, transaksi, profit, margin + tren harian 30 hari terakhir dan delta vs 30 hari sebelumnya, top 5 produk, transaksi terbaru, dan insight otomatis (misal produk laris tapi margin tipis).
 - **Produk** — CRUD, aktif/nonaktif, badge margin, halaman detail per produk (terjual, revenue, profit, margin) + deep-link ke simulator.
-- **Transaksi (kasir)** — keranjang multi-produk, 1 struk tersimpan sebagai 1 transaksi + N item dengan snapshot harga. Riwayat dikelompokkan Hari > Struk > Item + subtotal. Struk yang salah catat divoid utuh oleh owner lalu dibuatkan struk koreksi (tanpa edit diam-diam, biar teraudit).
+- **Transaksi (kasir)** — keranjang multi-produk, 1 struk tersimpan sebagai 1 transaksi + N item dengan snapshot harga. Riwayat dikelompokkan Hari > Struk > Item + subtotal. Struk yang salah catat dibatalkan utuh oleh owner lalu dibuatkan struk koreksi (tanpa edit diam-diam, biar teraudit).
 - **Simulator "what-if"** — lab satu produk: geser harga jual, diskon, modal, volume, langsung lihat dampak revenue/profit/margin, titik impas, dan diskon maksimum. Baseline bisa hari ini, minggu ini, bulan ini, atau custom.
 - **Copilot** — tanya jawab soal performa bisnis berbasis angka yang sama.
 - **Pengaturan** — identitas bisnis + kelola staff (tambah/hapus, role OWNER/STAFF). Riwayat struk staff yang sudah dihapus tetap menampilkan namanya.
