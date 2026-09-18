@@ -3,6 +3,7 @@ import { product, transaction, transactionItem, user } from '$lib/server/db/sche
 import { eq, and, count, desc, sql, gte } from 'drizzle-orm';
 import {
   calculateMargin,
+  getBusinessInsights,
   getTopProducts,
   type ProductSummary
 } from '$lib/analytics';
@@ -111,6 +112,7 @@ export const load: PageServerLoad = async ({ locals }) => {
   const summary = { revenue, cost, profit, margin: calculateMargin(revenue, profit) };
 
   const topByRevenue = getTopProducts(perProduct, 'revenue', 5);
+  const insights = getBusinessInsights(perProduct).slice(0, 3);
 
   const [{ value: transactionCount }] = countRows;
 
@@ -169,5 +171,5 @@ export const load: PageServerLoad = async ({ locals }) => {
     margin: prevRev === 0 && curRev === 0 ? 0 : (curMargin - prevMargin) * 100
   };
 
-  return { summary, topByRevenue, recentTransactions, transactionCount, trend, deltas };
+  return { summary, topByRevenue, recentTransactions, transactionCount, trend, deltas, insights };
 };

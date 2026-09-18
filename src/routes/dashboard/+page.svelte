@@ -71,6 +71,17 @@
   </Card>
 </div>
 
+{#if data.insights.length > 0}
+  <Card class="mb-6">
+    <h2 class="text-headline-sm text-ink mb-3">Insight otomatis</h2>
+    <ul class="flex flex-col gap-2.5">
+      {#each data.insights as ins}
+        <li class="rounded border border-border-cool bg-table-header px-3 py-2.5 text-body-md text-ink">{ins.message}</li>
+      {/each}
+    </ul>
+  </Card>
+{/if}
+
 <!-- Baris 3: kiri Transaksi Terbaru (flex-1) + kanan Copilot (lg:w-80) -->
 <div class="flex flex-col lg:flex-row gap-6 items-start">
   <div class="flex-1 min-w-0 w-full">
