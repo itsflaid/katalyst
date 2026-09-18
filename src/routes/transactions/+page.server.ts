@@ -166,8 +166,8 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  // Void struk: hapus header + items atomik berurutan. OWNER-only — kasir
-  // yang salah catat lapor ke owner, owner yang void lalu buat struk
+  // Batalkan struk: hapus header + items atomik berurutan. OWNER-only — kasir
+  // yang salah catat lapor ke owner, owner yang membatalkan lalu buat struk
   // koreksi baru. Tidak ada edit qty in-place biar histori teraudit.
   deleteTx: async ({ request, locals }) => {
     if (!locals.user || locals.user.role !== 'OWNER') {

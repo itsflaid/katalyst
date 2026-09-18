@@ -62,7 +62,7 @@
     if (result.type === 'success') cart = [];
   };
 
-  // Void struk (OWNER-only di server): pola audit POS — struk salah divoid
+  // Batalkan struk (OWNER-only di server): pola audit POS — struk salah dibatalkan
   // utuh lalu buat struk koreksi baru, tanpa edit qty in-place.
   $: isOwner = data.user?.role === 'OWNER';
   let pendingVoid: { txId: string; total: number; cashier: string } | null = null;
@@ -170,9 +170,9 @@
                     {/each}
                   </ul>
                   <div class="flex gap-4 mt-1.5">
-                    <button type="button" class="text-body-sm text-ink-navy hover:underline bg-transparent border-none cursor-pointer p-0" on:click={() => copyToCart(r)}>Duplikat sebagai koreksi</button>
+                    <button type="button" class="text-body-sm text-ink-navy hover:underline bg-transparent border-none cursor-pointer p-0" on:click={() => copyToCart(r)}>Buat koreksi</button>
                     {#if isOwner}
-                      <button type="button" class="text-body-sm font-semibold text-status-negative hover:underline bg-transparent border-none cursor-pointer p-0" on:click={() => (pendingVoid = { txId: r.txId, total: r.total, cashier: r.cashier })}>Void</button>
+                      <button type="button" class="text-body-sm font-semibold text-status-negative hover:underline bg-transparent border-none cursor-pointer p-0" on:click={() => (pendingVoid = { txId: r.txId, total: r.total, cashier: r.cashier })}>Batalkan struk</button>
                     {/if}
                   </div>
                 </li>
@@ -274,16 +274,16 @@
 </div>
 
 {#if pendingVoid}
-  <div class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Konfirmasi void struk">
+  <div class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Konfirmasi batalkan struk">
     <button type="button" class="absolute inset-0 bg-ink/40 border-none cursor-default p-0" aria-label="Batal" on:click={() => (pendingVoid = null)}></button>
     <div class="relative w-full max-w-sm rounded-panel border border-border-cool bg-surface p-5 shadow-level3">
-      <h2 class="text-headline-sm text-ink mb-2">Void struk ini?</h2>
+      <h2 class="text-headline-sm text-ink mb-2">Batalkan struk ini?</h2>
       <p class="text-body-md text-muted">Struk {idr(pendingVoid.total)} ({pendingVoid.cashier}) dihapus permanen. Buat struk koreksi baru kalau transaksinya tetap ada tapi salah catat.</p>
       <div class="flex gap-2 mt-4">
         <Button variant="secondary" class="flex-1" on:click={() => (pendingVoid = null)}>Batal</Button>
         <form method="POST" action="?/deleteTx" use:enhance={afterVoid} class="flex-1">
           <input type="hidden" name="txId" value={pendingVoid.txId} />
-          <Button variant="destructive" type="submit" class="w-full">Void struk</Button>
+          <Button variant="destructive" type="submit" class="w-full">Batalkan struk</Button>
         </form>
       </div>
     </div>
