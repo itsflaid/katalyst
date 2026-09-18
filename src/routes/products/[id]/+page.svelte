@@ -9,7 +9,7 @@
 <a href="/products" class="text-body-sm text-muted hover:text-ink no-underline hover:underline">← Kembali ke Produk</a>
 <div class="flex flex-wrap items-center gap-3 mt-2 mb-6">
   <h1 class="text-headline-lg text-ink">{data.product.name}</h1>
-  <Badge tone={data.product.isActive ? 'positive' : 'neutral'}>{data.product.isActive ? 'Aktif' : 'Nonaktif'}</Badge>
+  <Badge size="sm" tone={data.product.isActive ? 'positive' : 'neutral'}>{data.product.isActive ? 'Aktif' : 'Nonaktif'}</Badge>
 </div>
 <p class="text-body-md text-muted mb-6">Harga modal {idr(data.product.costPrice)} · Harga jual {idr(data.product.sellingPrice)}</p>
 
