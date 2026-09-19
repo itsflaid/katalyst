@@ -1,9 +1,12 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import { page } from "$app/stores";
   import type { SubmitFunction } from "@sveltejs/kit";
   import Button from "$lib/components/ui/Button.svelte";
   import PageHeader from "$lib/components/ui/PageHeader.svelte";
   import ProductToolbar from "$lib/components/products/ProductToolbar.svelte";
+  import type { StockFilter } from "$lib/components/products/ProductToolbar.svelte";
+  import ProductTabs from "$lib/components/products/ProductTabs.svelte";
   import ProductTable from "$lib/components/products/ProductTable.svelte";
   import ProductFormSlideOver from "$lib/components/products/ProductFormSlideOver.svelte";
   import StockSlideOver from "$lib/components/products/StockSlideOver.svelte";
@@ -13,16 +16,29 @@
 
   type StatusFilter = "all" | "active" | "inactive";
 
+  const minOf = (p: { minStock?: number | null }) => p.minStock ?? 5;
+
   let query = "";
   let statusFilter: StatusFilter = "all";
-  $: filtered = data.products.filter((p) => {
-    const q = query.trim().toLowerCase();
-    const matchQuery = !q || p.name.toLowerCase().includes(q);
-    const matchStatus =
-      statusFilter === "all" ||
-      (statusFilter === "active" ? p.isActive : !p.isActive);
-    return matchQuery && matchStatus;
-  });
+  // Nilai awal dari ?stok=restock|habis (dipakai tautan dari dashboard).
+  const stokParam = $page.url.searchParams.get("stok");
+  let stockFilter: StockFilter = stokParam === "habis" ? "habis" : stokParam === "restock" ? "restock" : "all";
+  $: restockCount = data.products.filter((p) => p.stock <= minOf(p)).length;
+  $: outCount = data.products.filter((p) => p.stock <= 0).length;
+  $: filtered = data.products
+    .filter((p) => {
+      const q = query.trim().toLowerCase();
+      const matchQuery = !q || p.name.toLowerCase().includes(q);
+      const matchStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" ? p.isActive : !p.isActive);
+      const matchStock =
+        stockFilter === "all" ||
+        (stockFilter === "restock" ? p.stock <= minOf(p) : p.stock <= 0);
+      return matchQuery && matchStatus && matchStock;
+    })
+    // Saat filter stok aktif, urutkan stok naik (yang paling kritis dulu).
+    .sort((a, b) => (stockFilter === "all" ? 0 : a.stock - b.stock));
   $: activeCount = data.products.filter((p) => p.isActive).length;
   // STAFF boleh lihat daftar & stok, tapi semua aksi ubah data ditolak server
   // (OWNER-only) — di sini tombolnya disembunyikan biar tidak ada dead-end.
@@ -30,11 +46,11 @@
 
   let showCreate = false;
   let stockModal: { mode: 'restock' | 'adjust'; id: string; name: string; stock: number } | null = null;
-  let editing: { id: string; name: string; costPrice: string; sellingPrice: string; isActive: boolean } | null = null;
+  let editing: { id: string; name: string; costPrice: string; sellingPrice: string; isActive: boolean; minStock: string } | null = null;
   let pendingDelete: { id: string; name: string } | null = null;
 
-  function openEdit(p: { id: string; name: string; costPrice: number; sellingPrice: number; isActive: boolean }) {
-    editing = { id: p.id, name: p.name, costPrice: String(p.costPrice), sellingPrice: String(p.sellingPrice), isActive: p.isActive };
+  function openEdit(p: { id: string; name: string; costPrice: number; sellingPrice: number; isActive: boolean; minStock?: number | null }) {
+    editing = { id: p.id, name: p.name, costPrice: String(p.costPrice), sellingPrice: String(p.sellingPrice), isActive: p.isActive, minStock: String(p.minStock ?? 5) };
   }
   function openStock(p: { id: string; name: string; stock: number }, mode: 'restock' | 'adjust') {
     stockModal = { mode, id: p.id, name: p.name, stock: p.stock };
@@ -66,7 +82,9 @@
 
 <PageHeader title="Produk" subtitle={`${data.products.length} produk terdaftar · ${activeCount} aktif`} />
 
-<ProductToolbar bind:query bind:statusFilter {isOwner} onAdd={() => (showCreate = true)} />
+<ProductTabs {isOwner} />
+
+<ProductToolbar bind:query bind:statusFilter bind:stockFilter {restockCount} {outCount} {isOwner} onAdd={() => (showCreate = true)} />
 
 {#if data.products.length === 0}
   <div class="rounded-panel border-2 border-dashed border-border-input text-center py-12 px-4">

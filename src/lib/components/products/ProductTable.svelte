@@ -12,6 +12,7 @@
     costPrice: number;
     sellingPrice: number;
     stock: number;
+    minStock: number;
     isActive: boolean;
   };
 
@@ -19,7 +20,7 @@
   export let isOwner: boolean;
   export let onSubmit: SubmitFunction;
   export let onStock: (p: { id: string; name: string; stock: number }, mode: 'restock' | 'adjust') => void;
-  export let onEdit: (p: { id: string; name: string; costPrice: number; sellingPrice: number; isActive: boolean }) => void;
+  export let onEdit: (p: { id: string; name: string; costPrice: number; sellingPrice: number; isActive: boolean; minStock?: number | null }) => void;
   export let onDelete: (p: { id: string; name: string }) => void;
 
   const idr = (n: number) =>
@@ -48,7 +49,7 @@
         <Badge size="sm" tone={marginTone(m)}>{m === null ? "—" : `${m}%`}</Badge>
       </td>
       <td class="px-3 py-2 whitespace-nowrap">
-        <StockBadge stock={p.stock} />
+        <StockBadge stock={p.stock} minStock={p.minStock ?? 5} />
       </td>
       <td class="px-3 py-2">
         {#if isOwner}

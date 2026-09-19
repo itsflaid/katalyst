@@ -6,7 +6,7 @@
   import SlideOver from "$lib/components/ui/SlideOver.svelte";
 
   export let mode: 'create' | 'edit';
-  export let product: { id: string; name: string; costPrice: string; sellingPrice: string; isActive: boolean } | null = null;
+  export let product: { id: string; name: string; costPrice: string; sellingPrice: string; isActive: boolean; minStock: string } | null = null;
   export let form: { for?: string; message?: string } | null = null;
   export let onSubmit: SubmitFunction;
   export let onClose: () => void;
@@ -17,6 +17,7 @@
   let cCost = "";
   let cSell = "";
   let cStock = "";
+  let cMinStock = "5";
   let cActive = true;
 </script>
 
@@ -74,6 +75,18 @@
           placeholder="0"
         />
       </label>
+      <label for="c-min" class="flex flex-col gap-1 text-body-md text-ink">
+        Batas stok menipis
+        <Input
+          id="c-min"
+          name="minStock"
+          type="number"
+          min="0"
+          step="1"
+          bind:value={cMinStock}
+          placeholder="5"
+        />
+      </label>
       <label class="flex items-center gap-2 text-body-md text-ink">
         <input
           type="checkbox"
@@ -127,6 +140,18 @@
           min="1"
           bind:value={product.sellingPrice}
           required
+        />
+      </label>
+      <label for="e-min" class="flex flex-col gap-1 text-body-md text-ink">
+        Batas stok menipis
+        <Input
+          id="e-min"
+          name="minStock"
+          type="number"
+          min="0"
+          step="1"
+          bind:value={product.minStock}
+          placeholder="5"
         />
       </label>
       <label class="flex items-center gap-2 text-body-md text-ink">

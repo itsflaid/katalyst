@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { product, transaction, transactionItem, user } from '$lib/server/db/schema';
-import { eq, and, count, desc, sql, gte } from 'drizzle-orm';
+import { eq, and, asc, count, desc, sql, gte } from 'drizzle-orm';
 import {
   calculateMargin,
   getBusinessInsights,
@@ -27,7 +27,7 @@ export const load: PageServerLoad = async ({ locals }) => {
   const sixtyDaysAgo = startOfDayWita(addDaysWita(new Date(), -59));
   // Objek ekspresi yang sama dipakai di select & groupBy (lihat sql.ts).
   const dayExpr = witaDate(transaction.createdAt);
-  const [products, grouped, countRows, recentTransactions, dailyRows] = await Promise.all([
+  const [products, grouped, countRows, recentTransactions, dailyRows, restockList, restockCounts] = await Promise.all([
     db
       .select({ id: product.id, name: product.name })
       .from(product)
@@ -85,7 +85,30 @@ export const load: PageServerLoad = async ({ locals }) => {
       .from(transaction)
       .innerJoin(transactionItem, eq(transactionItem.transactionId, transaction.id))
       .where(and(eq(transaction.businessId, businessId), gte(transaction.createdAt, sixtyDaysAgo)))
-      .groupBy(dayExpr)
+      .groupBy(dayExpr),
+
+    // Kartu "Perlu restock": produk aktif dengan stok <= ambang, 5 paling
+    // kritis + hitungan habis & menipis.
+    db
+      .select({ id: product.id, name: product.name, stock: product.stock, minStock: product.minStock })
+      .from(product)
+      .where(
+        and(
+          eq(product.businessId, businessId),
+          eq(product.isActive, true),
+          sql`${product.stock} <= ${product.minStock}`
+        )
+      )
+      .orderBy(asc(product.stock))
+      .limit(5),
+
+    db
+      .select({
+        habis: sql<string>`count(*) filter (where ${product.stock} <= 0)::text`,
+        menipis: sql<string>`count(*) filter (where ${product.stock} > 0 and ${product.stock} <= ${product.minStock})::text`
+      })
+      .from(product)
+      .where(eq(product.businessId, businessId))
   ]);
 
   const productNames = Object.fromEntries(products.map((p) => [p.id, p.name]));
@@ -182,5 +205,12 @@ export const load: PageServerLoad = async ({ locals }) => {
     margin: prevRev === 0 && curRev === 0 ? 0 : (curMargin - prevMargin) * 100
   };
 
-  return { summary, topByRevenue, recentTransactions, transactionCount, trend, deltas, insights };
+  const [{ habis, menipis }] = restockCounts;
+  const restock = {
+    list: restockList,
+    habis: Number(habis ?? 0),
+    menipis: Number(menipis ?? 0)
+  };
+
+  return { summary, topByRevenue, recentTransactions, transactionCount, trend, deltas, insights, restock };
 };

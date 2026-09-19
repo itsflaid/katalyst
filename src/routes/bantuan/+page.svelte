@@ -59,11 +59,15 @@
     },
     {
       t: 'Habis & Menipis',
-      d: 'Stok 0 ditandai Habis, sisa 1–5 ditandai Menipis biar keburu restock.'
+      d: 'Stok 0 ditandai Habis. Batas "menipis" bisa diatur per produk (default 5) lewat form tambah/edit — mis. barang mahal boleh batas 2, barang laris batas 10.'
     },
     {
-      t: 'Nonaktif otomatis',
-      d: 'Produk yang stoknya habis otomatis tidak bisa dijual (hilang dari kasir) sampai direstock. Tidak perlu matikan manual.'
+      t: 'Habis = hilang dari kasir',
+      d: 'Produk yang stoknya habis otomatis tidak muncul di kasir sampai direstock, tapi status Aktif/Nonaktif-nya tidak diubah. Nonaktif itu pilihan manual owner (mis. produk dihentikan/musiman).'
+    },
+    {
+      t: 'Riwayat Stok',
+      d: 'Tab khusus Owner di halaman Produk: semua pergerakan stok (penjualan, batal struk, restock, koreksi) lengkap dengan siapa dan kapan. Dashboard juga menampilkan kartu "Perlu restock" berisi produk yang stoknya menipis.'
     }
   ];
 
@@ -104,7 +108,7 @@
   const pages = [
     { t: 'Dashboard', d: 'Ringkasan kondisi bisnis: omzet, untung, margin, tren 30 hari, produk teratas, dan temuan otomatis.' },
     { t: 'Statistik', d: 'Laporan lengkap per periode (harian/mingguan/bulanan/custom): komposisi untung, margin per produk, dan hari tersibuk.' },
-    { t: 'Produk', d: 'Daftar barang dagangan: harga modal, harga jual, margin, dan stok. Stok habis otomatis tidak bisa dijual.' },
+    { t: 'Produk', d: 'Daftar barang dagangan: harga modal, harga jual, margin, stok, dan batas menipis per produk. Stok habis otomatis hilang dari kasir (tanpa menonaktifkan). Tab Riwayat Stok mencatat semua pergerakan.' },
     { t: 'Transaksi', d: 'Kasir: catat penjualan multi-produk per struk, lihat riwayat per hari, batalkan struk yang salah catat.' },
     { t: 'Simulator', d: 'Lab percobaan: geser harga, diskon, modal, atau volume untuk lihat dampaknya sebelum benar-benar diterapkan.' },
     { t: 'Copilot', d: 'Asisten tanya-jawab soal performa bisnismu, jawabannya dihitung dari data transaksimu sendiri.' },

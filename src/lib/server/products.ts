@@ -28,11 +28,16 @@ export function parseProductFields(form: FormData) {
   const costPrice = Number(form.get('costPrice'));
   const sellingPrice = Number(form.get('sellingPrice'));
   const isActive = form.get('isActive') === 'on';
+  const minRaw = form.get('minStock');
+  const minStock = minRaw === null || minRaw === '' ? 5 : Number(minRaw);
   if (!name) return { error: 'Nama produk wajib diisi.' };
   if (!Number.isFinite(costPrice) || costPrice < 0) return { error: 'Harga modal harus angka ≥ 0.' };
   if (!Number.isFinite(sellingPrice) || sellingPrice <= 0) return { error: 'Harga jual harus angka > 0.' };
+  if (!Number.isInteger(minStock) || minStock < 0 || minStock > 100000) {
+    return { error: 'Batas stok menipis harus bilangan bulat 0–100000.' };
+  }
   return {
-    data: { name, costPrice: Math.round(costPrice), sellingPrice: Math.round(sellingPrice), isActive }
+    data: { name, costPrice: Math.round(costPrice), sellingPrice: Math.round(sellingPrice), isActive, minStock }
   };
 }
 

@@ -43,5 +43,5 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     .orderBy(desc(stockMovement.createdAt))
     .limit(20);
 
-  return { product: p, performance, movements };
+  return { product: p, performance, movements, role: locals.user!.role === 'OWNER' ? 'OWNER' : 'STAFF' };
 };
