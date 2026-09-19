@@ -23,7 +23,12 @@ export const auth = betterAuth({
     // melempar "Invalid admin roles". OWNER dapat izin admin penuh
     // (set-password, revoke, ...), STAFF tidak dapat izin apa pun.
     // Kolom tambahan plugin (banned, dsb) tidak dipakai jadi tidak perlu migrasi.
-    admin({ adminRoles: ['OWNER'], roles: { OWNER: adminAc, STAFF: userAc } })
+    // defaultRole WAJIB 'OWNER': bawaan plugin ("user") bukan anggota enum
+    // PG role (cuma OWNER/STAFF) sehingga TIAP signUpEmail gagal insert
+    // (22P02 invalid input value for enum). Signup di app ini cuma lewat
+    // terima-undangan yang langsung di-patch jadi STAFF + businessId,
+    // jadi default OWNER tidak pernah bocor jadi hak akses beneran.
+    admin({ adminRoles: ['OWNER'], defaultRole: 'OWNER', roles: { OWNER: adminAc, STAFF: userAc } })
   ],
   emailAndPassword: {
     enabled: true,
