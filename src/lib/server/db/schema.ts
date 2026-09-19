@@ -19,6 +19,10 @@ export const user = pgTable('user', {
   id: text('id').primaryKey(),
   name: text('name'),
   email: text('email').notNull().unique(),
+  // Username login staff (unik global, seperti email). Owner yang dibuat
+  // via seed/demo atau sebelum fitur ini boleh NULL (login pakai email).
+  // Staff selalu punya username — dibuat saat terima undangan.
+  username: text('username').unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
   image: text('image'),
   // Custom fields (bukan bawaan better-auth) — dipetakan via
@@ -80,12 +84,13 @@ export const verification = pgTable('verification', {
   updatedAt: timestamp('updated_at').defaultNow()
 });
 
-// Undangan staff ala SaaS/POS (Square/Moka/Majoo): owner input nama+email,
+// Undangan staff ala SaaS/POS (Square/Moka/Majoo): owner input username+nama,
 // staff bikin password sendiri via link /invite/[token]. Role dikunci STAFF
 // di record invite (bukan pilihan user). Token mentah cuma tampil sekali ke
 // owner; di DB yang disimpan hash SHA-256-nya. Expiry default 48 jam,
 // resend = revoke token lama + terbitkan token baru (bukan kirim ulang
-// token yang sama).
+// token yang sama). Username (bukan email) karena staff operasional tidak
+// wajib punya email.
 export const staffInvitation = pgTable(
   'staff_invitation',
   {
@@ -93,7 +98,10 @@ export const staffInvitation = pgTable(
     businessId: text('business_id')
       .notNull()
       .references(() => business.id),
-    email: text('email').notNull(),
+    // Username login staff (pengganti email — staff operasional tidak wajib
+    // punya email). Kolom email lama dihapus di migrasi 0010; baris lama
+    // di-backfill dari prefix email sebelum SET NOT NULL.
+    username: text('username').notNull(),
     name: text('name'),
     tokenHash: text('token_hash').notNull().unique(),
     expiresAt: timestamp('expires_at').notNull(),

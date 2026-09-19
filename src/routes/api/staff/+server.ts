@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { staffInvitation, transaction, user } from '$lib/server/db/schema';
-import { generateInviteToken, hashInviteToken, normalizeEmail, INVITE_TTL_MS } from '$lib/server/invites';
+import { generateInviteToken, hashInviteToken, normalizeUsername, isValidUsername, INVITE_TTL_MS } from '$lib/server/invites';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -14,7 +14,7 @@ function requireOwner(locals: App.Locals) {
   }
 }
 
-// Buat undangan staff (bukan user langsung): owner input nama+email,
+// Buat undangan staff (bukan user langsung): owner input username+nama,
 // staff bikin password sendiri via link /invite/[token]. Role dikunci
 // STAFF di record invite. Token mentah dikembalikan SEKALI ke owner
 // untuk diteruskan via WA; di DB cuma hash-nya yang disimpan.
@@ -23,24 +23,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const businessId = locals.user!.businessId as string;
 
   const body = await request.json().catch(() => ({}));
-  const { email: rawEmail, name: rawName } = body as { email?: string; name?: string };
+  const { username: rawUsername, name: rawName } = body as { username?: string; name?: string };
 
-  const email = typeof rawEmail === 'string' ? normalizeEmail(rawEmail) : '';
+  const username = typeof rawUsername === 'string' ? normalizeUsername(rawUsername) : '';
   const name = typeof rawName === 'string' ? rawName.trim() : '';
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw error(400, 'Email tidak valid.');
+  if (!isValidUsername(username)) {
+    throw error(400, 'Username 3–20 karakter: huruf kecil, angka, titik, underscore, strip.');
   }
 
-  // Email unik global (kolom user.email unique) — cegah konflik sejak invite.
+  // Username unik global (kolom user.username unique) — cegah konflik sejak invite.
   const [existingUser] = await db
     .select({ id: user.id })
     .from(user)
-    .where(eq(user.email, email));
+    .where(eq(user.username, username));
   if (existingUser) {
-    throw error(409, 'Email sudah terdaftar.');
+    throw error(409, 'Username sudah dipakai.');
   }
 
-  // Supersede: invite pending lama untuk email yang sama di bisnis ini
+  // Supersede: invite pending lama untuk username yang sama di bisnis ini
   // langsung di-revoke begitu invite baru terbit (link lama mati seketika).
   const pending = await db
     .select({ id: staffInvitation.id })
@@ -48,7 +48,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     .where(
       and(
         eq(staffInvitation.businessId, businessId),
-        eq(staffInvitation.email, email),
+        eq(staffInvitation.username, username),
         isNull(staffInvitation.acceptedAt),
         isNull(staffInvitation.revokedAt)
       )
@@ -66,14 +66,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   await db.insert(staffInvitation).values({
     id,
     businessId,
-    email,
-    name: name || email.split('@')[0],
+    username,
+    name: name || username,
     tokenHash,
     expiresAt,
     invitedBy: locals.user!.id as string
   });
 
-  return json({ id, email, name: name || null, token: rawToken, expiresAt: expiresAt.toISOString() }, { status: 201 });
+  return json({ id, username, name: name || null, token: rawToken, expiresAt: expiresAt.toISOString() }, { status: 201 });
 };
 
 // Hapus staff dari bisnis. Baris user dihapus (termasuk sesi+kredensial via

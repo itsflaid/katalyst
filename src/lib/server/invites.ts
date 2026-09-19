@@ -21,6 +21,29 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+// Username login staff: unik global (seperti email), 3–20 karakter,
+// huruf/angka/titik/underscore/strip. Selalu dinormalisasi lowercase+trim
+// sebelum disimpan/dibandingkan (aturan yang sama dipakai plugin username
+// better-auth di sisi server).
+export const USERNAME_RE = /^[a-z0-9._-]+$/;
+
+export function normalizeUsername(username: string): string {
+  return username.trim().toLowerCase();
+}
+
+export function isValidUsername(username: string): boolean {
+  const u = normalizeUsername(username);
+  return u.length >= 3 && u.length <= 20 && USERNAME_RE.test(u);
+}
+
+// Email sintetis buat baris user staff (kolom user.email NOT NULL + unique,
+// tapi staff operasional tidak wajib punya email). Domain `staff.internal`
+// (reserved, tidak bisa di-routing) biar jelas bukan email beneran.
+// Tampilan/UI tidak pernah memakai email staff — selalu pakai name/username.
+export function staffPlaceholderEmail(username: string): string {
+  return `${normalizeUsername(username)}@staff.internal`;
+}
+
 // Password sementara buat reset oleh owner — format 4-4 mudah didikte
 // via WA/lisan (tanpa karakter ambigu 0/O, 1/l). Selalu ≥ min 6 better-auth.
 const TEMP_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
