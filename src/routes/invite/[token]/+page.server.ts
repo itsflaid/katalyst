@@ -74,7 +74,13 @@ export const actions: Actions = {
         body: { email: invite.email, password, name }
       });
     } catch {
-      return fail(409, { message: 'Email ini sudah terdaftar. Silakan masuk.' });
+      // Bedakan duplikat beneran (race: email dibuat di sela cek dan signup)
+      // dari kegagalan lain — pesan "terdaftar" untuk error sembarang
+      // menutupi bug beneran (pernah kejadian: default role plugin "user"
+      // bukan anggota enum PG sehingga SEMUA signup gagal).
+      const [raced] = await db.select({ id: user.id }).from(user).where(eq(user.email, invite.email));
+      if (raced) return fail(409, { message: 'Email ini sudah terdaftar. Silakan masuk.' });
+      return fail(500, { message: 'Gagal membuat akun, coba lagi.' });
     }
 
     await db.update(user).set({ role: 'STAFF', businessId: invite.businessId }).where(eq(user.id, signUpResult.user.id));
