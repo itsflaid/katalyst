@@ -152,6 +152,31 @@ export function getLowMarginProducts(
     return summaries.filter((p) => p.margin < marginThreshold);
 }
 
+// ---------------------------------------------------------------------------
+// Matriks Volume vs Margin (Fase 5): kuadran tiap produk relatif ke ambang.
+// - 'bintang': laku & margin baik (qty >= ambang, margin >= ambang)
+// - 'laris-tipis': laris tapi margin tipis
+// - 'margin-kurang-laku': margin bagus tapi kurang laku
+// - 'evaluasi': dua-duanya di bawah ambang
+// ---------------------------------------------------------------------------
+
+export type Quadrant = "bintang" | "laris-tipis" | "margin-kurang-laku" | "evaluasi";
+
+export function quadrantOf(qty: number, margin: number, xThreshold: number, yThreshold: number): Quadrant {
+    if (qty >= xThreshold && margin >= yThreshold) return "bintang";
+    if (qty >= xThreshold) return "laris-tipis";
+    if (margin >= yThreshold) return "margin-kurang-laku";
+    return "evaluasi";
+}
+
+// Estimasi berapa hari stok bertahan: stock / (soldLastNDays / n).
+// Tanpa penjualan di jendela → Infinity (caller mengecualikan dari chart
+// "paling mendesak" dan memasukkannya ke kandidat stok mati).
+export function estimateDaysCover(stock: number, soldLastNDays: number, n: number): number {
+    if (n <= 0 || soldLastNDays <= 0) return Infinity;
+    return stock / (soldLastNDays / n);
+}
+
 // Insight otomatis
 
 const INSIGHT_RULES = {
