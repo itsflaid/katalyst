@@ -37,11 +37,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   const invite = await findPendingInvite(inviteId, businessId);
 
-  const [existingUser] = await db.select({ id: user.id }).from(user).where(eq(user.email, invite.email));
+  const [existingUser] = await db.select({ id: user.id }).from(user).where(eq(user.username, invite.username));
   if (existingUser) {
-    // Bersih-bersih: email keburu dipakai (mis. daftar manual) — cabut invite.
+    // Bersih-bersih: username keburu dipakai — cabut invite.
     await db.update(staffInvitation).set({ revokedAt: new Date() }).where(eq(staffInvitation.id, invite.id));
-    throw error(409, 'Email sudah terdaftar.');
+    throw error(409, 'Username sudah dipakai.');
   }
 
   const rawToken = generateInviteToken();
@@ -53,14 +53,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   await db.insert(staffInvitation).values({
     id,
     businessId,
-    email: invite.email,
+    username: invite.username,
     name: invite.name,
     tokenHash,
     expiresAt,
     invitedBy: locals.user!.id as string
   });
 
-  return json({ id, email: invite.email, token: rawToken, expiresAt: expiresAt.toISOString() }, { status: 201 });
+  return json({ id, username: invite.username, token: rawToken, expiresAt: expiresAt.toISOString() }, { status: 201 });
 };
 
 // Cabut undangan — link langsung mati dengan error generik yang sama
