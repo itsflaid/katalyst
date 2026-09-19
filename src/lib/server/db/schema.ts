@@ -127,6 +127,8 @@ export const product = pgTable(
     // Stok 0 = "Habis" (turunan, tidak tampil di kasir) — TIDAK mengubah
     // isActive. isActive murni pilihan owner (mis. produk dihentikan/musiman).
     stock: integer('stock').notNull().default(0),
+    // Ambang "menipis" per produk — bisa diatur owner (default 5).
+    minStock: integer('min_stock').notNull().default(5),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow()
@@ -136,7 +138,8 @@ export const product = pgTable(
     // Pengaman terakhir di level DB: kalau dua kasir jual barang terakhir
     // bersamaan, statement kedua gagal (dan batch-nya rollback) — bukan
     // stok jadi minus diam-diam.
-    check('product_stock_nonneg', sql`${t.stock} >= 0`)
+    check('product_stock_nonneg', sql`${t.stock} >= 0`),
+    check('product_min_stock_nonneg', sql`${t.minStock} >= 0`)
   ]
 );
 

@@ -13,7 +13,7 @@ import { building } from '$app/environment';
 // Makanya proteksi route dipusatkan di sini, bukan dicek manual di tiap
 // +page.server.ts (rawan ke-skip kalau ada yang lupa nambahin check).
 const PROTECTED_PATHS = ['/dashboard', '/statistik', '/simulator', '/settings', '/transactions', '/products', '/bantuan', '/copilot', '/akun'];
-const OWNER_ONLY_PATHS = ['/dashboard', '/statistik', '/simulator', '/settings', '/copilot'];
+const OWNER_ONLY_PATHS = ['/dashboard', '/statistik', '/simulator', '/settings', '/copilot', '/products/stok'];
 
 export const handle: Handle = async ({ event, resolve }) => {
   const session = await auth.api.getSession({ headers: event.request.headers });

@@ -5,6 +5,7 @@
   import Badge from '$lib/components/ui/Badge.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
+  import StockBadge from '$lib/components/products/StockBadge.svelte';
   import { page } from '$app/stores';
   import { fmtWita } from '$lib/time';
   export let data;
@@ -84,6 +85,24 @@
         <li class="rounded border border-border-cool bg-table-header px-3 py-2.5 text-body-md text-ink">{ins.message}</li>
       {/each}
     </ul>
+  </Card>
+{/if}
+
+{#if data.restock.list.length > 0}
+  <Card class="mb-6">
+    <h2 class="text-headline-sm text-ink mb-1">Perlu restock</h2>
+    <p class="text-body-sm text-muted mb-3">{data.restock.habis} habis · {data.restock.menipis} menipis</p>
+    <ul class="flex flex-col gap-2">
+      {#each data.restock.list as p}
+        <li class="flex items-center justify-between gap-3 rounded border border-border-cool px-3 py-2">
+          <span class="text-body-md text-ink font-semibold truncate">{p.name}</span>
+          <StockBadge stock={p.stock} minStock={p.minStock ?? 5} />
+        </li>
+      {/each}
+    </ul>
+    <div class="mt-3">
+      <a href="/products?stok=restock" class="text-body-md font-semibold text-ink-navy hover:underline no-underline">Lihat semua yang perlu restock →</a>
+    </div>
   </Card>
 {/if}
 

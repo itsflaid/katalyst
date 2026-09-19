@@ -22,7 +22,7 @@
     <p class="text-num-display text-ink tabular">{num(data.product.stock)}</p>
     {#if data.product.stock <= 0}
       <p class="text-body-sm text-status-negative mt-1">Habis — tidak muncul di kasir sampai direstock.</p>
-    {:else if data.product.stock <= 5}
+    {:else if data.product.stock <= (data.product.minStock ?? 5)}
       <p class="text-body-sm text-status-warning mt-1">Menipis — segera restock.</p>
     {/if}
   </Card>
@@ -52,6 +52,9 @@
 </div>
 
 <h2 class="text-headline-sm text-ink mt-8 mb-3">Riwayat Stok (20 terbaru)</h2>
+{#if data.role === 'OWNER'}
+  <p class="mb-3"><a href={`/products/stok?product=${data.product.id}`} class="text-body-md font-semibold text-ink-navy hover:underline no-underline">Lihat semua riwayat →</a></p>
+{/if}
 {#if data.movements.length === 0}
   <Card class="text-center py-8">
     <p class="text-body-md text-muted">Belum ada pergerakan stok. Stok awal produk lama tidak tercatat sebagai riwayat.</p>

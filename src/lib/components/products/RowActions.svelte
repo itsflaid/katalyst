@@ -4,9 +4,9 @@
   export let product: { id: string; name: string; stock: number };
   export let isOwner: boolean;
   export let onStock: (p: { id: string; name: string; stock: number }, mode: 'restock' | 'adjust') => void;
-  export let onEdit: (p: { id: string; name: string; costPrice: number; sellingPrice: number; isActive: boolean }) => void;
+  export let onEdit: (p: { id: string; name: string; costPrice: number; sellingPrice: number; isActive: boolean; minStock?: number | null }) => void;
   export let onDelete: (p: { id: string; name: string }) => void;
-  export let row: { id: string; name: string; costPrice: number; sellingPrice: number; isActive: boolean; stock: number };
+  export let row: { id: string; name: string; costPrice: number; sellingPrice: number; isActive: boolean; stock: number; minStock?: number | null };
 
   let open = false;
   let menuEl: HTMLDivElement | null = null;
