@@ -66,7 +66,7 @@
   {#key data.trend.labels.join(',')}
     <Card>
       <h2 class="text-headline-sm text-ink mb-1">Tren Revenue & Profit</h2>
-      <p class="text-body-sm text-muted mb-3">jt Rp · {data.rangeLabel}</p>
+      <p class="text-body-sm text-muted mb-3">{data.trend.unitLabel} · {data.rangeLabel}</p>
       <LineChart
         labels={data.trend.labels}
         datasets={[
