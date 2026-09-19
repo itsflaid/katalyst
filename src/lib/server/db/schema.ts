@@ -24,6 +24,12 @@ export const user = pgTable('user', {
   // `user.additionalFields` di src/lib/server/auth.ts.
   role: roleEnum('role').notNull().default('OWNER'),
   businessId: text('business_id').references(() => business.id),
+  // Kolom wajib better-auth admin plugin (dipakai setUserPassword path) —
+  // fitur ban tidak dipakai, tapi schema harus ada biar tidak 500
+  // "Drizzle schema mismatch" saat runtime.
+  banned: boolean('banned').notNull().default(false),
+  banReason: text('ban_reason'),
+  banExpires: timestamp('ban_expires'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
@@ -37,6 +43,9 @@ export const session = pgTable('session', {
   expiresAt: timestamp('expires_at').notNull(),
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
+  // Kolom wajib better-auth admin plugin (impersonate) — tidak dipakai,
+  // tapi harus ada biar tidak schema mismatch.
+  impersonatedBy: text('impersonated_by'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
@@ -69,6 +78,34 @@ export const verification = pgTable('verification', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow()
 });
+
+// Undangan staff ala SaaS/POS (Square/Moka/Majoo): owner input nama+email,
+// staff bikin password sendiri via link /invite/[token]. Role dikunci STAFF
+// di record invite (bukan pilihan user). Token mentah cuma tampil sekali ke
+// owner; di DB yang disimpan hash SHA-256-nya. Expiry default 48 jam,
+// resend = revoke token lama + terbitkan token baru (bukan kirim ulang
+// token yang sama).
+export const staffInvitation = pgTable(
+  'staff_invitation',
+  {
+    id: text('id').primaryKey(),
+    businessId: text('business_id')
+      .notNull()
+      .references(() => business.id),
+    email: text('email').notNull(),
+    name: text('name'),
+    tokenHash: text('token_hash').notNull().unique(),
+    expiresAt: timestamp('expires_at').notNull(),
+    acceptedAt: timestamp('accepted_at'),
+    revokedAt: timestamp('revoked_at'),
+    invitedBy: text('invited_by').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').notNull().defaultNow()
+  },
+  (t) => [
+    index('staff_invitation_business_created_idx').on(t.businessId, t.createdAt),
+    index('staff_invitation_token_hash_idx').on(t.tokenHash)
+  ]
+);
 
 // -----------------------------------------------------------------------
 // Domain tables — 1:1 struktur sama kayak schema.prisma versi Next,

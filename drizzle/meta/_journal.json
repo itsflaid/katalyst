@@ -36,6 +36,20 @@
       "when": 1789726243035,
       "tag": "0004_add_stock_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789799728951,
+      "tag": "0005_add_staff_invitation",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789801292731,
+      "tag": "0006_admin_plugin_columns",
+      "breakpoints": true
     }
   ]
 }

@@ -13,6 +13,7 @@
     Receipt,
     Settings,
     CircleHelp,
+    CircleUserRound,
     LogOut,
     ChevronLeft,
     ChevronDown
@@ -30,7 +31,8 @@
     { href: '/products', label: 'Produk', icon: Package, ownerOnly: false, group: 'Operasional' },
     { href: '/transactions', label: 'Transaksi', icon: Receipt, ownerOnly: false, group: 'Operasional' },
     { href: '/settings', label: 'Pengaturan', icon: Settings, ownerOnly: true, group: 'Lainnya' },
-    { href: '/bantuan', label: 'Bantuan', icon: CircleHelp, ownerOnly: false, group: 'Lainnya' }
+    { href: '/bantuan', label: 'Bantuan', icon: CircleHelp, ownerOnly: false, group: 'Lainnya' },
+    { href: '/akun', label: 'Akun', icon: CircleUserRound, ownerOnly: false, group: 'Lainnya' }
   ];
 
   $: visibleLinks = links.filter((l) => !l.ownerOnly || role === 'OWNER');
