@@ -43,7 +43,9 @@ Akun demo setelah seed:
 | Role  | Email            | Password   | Mendarat di     |
 | ----- | ---------------- | ---------- | --------------- |
 | Owner | `owner@test.com` | `password` | `/dashboard`    |
-| Staff | `staff@test.com` | `password` | `/transactions` |
+| Staff | `staff` (atau `staff@test.com`) | `password` | `/transactions` |
+
+Staff masuk pakai username (owner undang pakai username, tanpa email).
 
 ## Tech stack
 

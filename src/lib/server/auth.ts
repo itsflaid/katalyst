@@ -1,6 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { admin } from 'better-auth/plugins';
+import { admin, username } from 'better-auth/plugins';
 import { adminAc, userAc } from 'better-auth/plugins/admin/access';
 import { db } from './db';
 import * as schema from './db/schema';
@@ -28,7 +28,22 @@ export const auth = betterAuth({
     // (22P02 invalid input value for enum). Signup di app ini cuma lewat
     // terima-undangan yang langsung di-patch jadi STAFF + businessId,
     // jadi default OWNER tidak pernah bocor jadi hak akses beneran.
-    admin({ adminRoles: ['OWNER'], defaultRole: 'OWNER', roles: { OWNER: adminAc, STAFF: userAc } })
+    admin({ adminRoles: ['OWNER'], defaultRole: 'OWNER', roles: { OWNER: adminAc, STAFF: userAc } }),
+    // Login staff pakai username (bukan email — staff operasional tidak
+    // wajib punya email). `displayUsername: false` karena nama tampil sudah
+    // ada di kolom `name` sendiri. Aturan format selaras dengan
+    // isValidUsername di lib/server/invites.ts (3–20 char, a-z 0-9 . _ -).
+    username({
+      displayUsername: false,
+      minUsernameLength: 3,
+      maxUsernameLength: 20,
+      // 'Budi' jadi 'budi' baik saat daftar maupun masuk (normalisasi dulu,
+      // baru validasi — eksplisit karena bawaan plugin hanya normalisasi
+      // saat opsi ini diisi). Selaras dengan normalizeUsername di
+      // lib/server/invites.ts.
+      usernameValidator: (u) => /^[a-z0-9._-]+$/.test(u),
+      validationOrder: { username: 'pre-normalization' }
+    })
   ],
   emailAndPassword: {
     enabled: true,

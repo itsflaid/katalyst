@@ -64,7 +64,7 @@
         <Card class="p-6 shadow-level2">
           <h1 class="text-headline-md text-ink">Undangan kedaluwarsa</h1>
           <p class="mt-1 text-body-md text-muted">
-            Undangan untuk <strong class="text-ink">{data.email}</strong> ke
+            Undangan untuk <strong class="text-ink">{data.username}</strong> ke
             <strong class="text-ink">{data.businessName}</strong> sudah lewat 48 jam. Minta link baru ke owner.
           </p>
           <a href="/login" class="mt-5 inline-flex h-9 items-center justify-center rounded bg-ink-navy px-4 text-label-lg text-white no-underline hover:bg-ink">
@@ -77,8 +77,9 @@
           <p class="mt-1 text-body-md text-muted">Buat password kamu sendiri untuk mulai mencatat transaksi.</p>
 
           <div class="mt-4 rounded border border-border-cool bg-table-header px-3 py-2">
-            <p class="text-label-sm uppercase text-muted">Email undangan</p>
-            <p class="text-body-md text-ink">{data.email}</p>
+            <p class="text-label-sm uppercase text-muted">Username kamu</p>
+            <p class="text-body-md text-ink tabular">{data.username}</p>
+            <p class="text-body-sm text-muted mt-1">Pakai username ini untuk masuk nanti.</p>
           </div>
 
           <form
