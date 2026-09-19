@@ -7,59 +7,45 @@ import {
   getLowMarginProducts,
   type ProductSummary
 } from '$lib/analytics';
+import { startOfDayWita, endOfDayWita, addDaysWita, dayKeyWita, toWita, parseDayWita, fmtWita } from '$lib/time';
+import { witaDate } from '$lib/server/sql';
+import { pickMoneyUnit, scaleMoney } from '$lib/format';
 import type { PageServerLoad } from './$types';
 
 type RangeKey = 'today' | 'week' | '30d' | 'month' | 'custom';
 
-function startOfDay(d: Date): Date {
-  const c = new Date(d);
-  c.setHours(0, 0, 0, 0);
-  return c;
-}
-
-function endOfDay(d: Date): Date {
-  const c = new Date(d);
-  c.setHours(23, 59, 59, 999);
-  return c;
-}
-
-function parseDateParam(v: string | null): Date | null {
-  if (!v) return null;
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v.trim());
-  if (!m) return null;
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return isNaN(d.getTime()) ? null : d;
-}
-
 function resolveRange(url: URL): { key: RangeKey; from: Date; to: Date; label: string; fromISO: string; toISO: string } {
   const raw = (url.searchParams.get('range') ?? '30d').toLowerCase();
   const now = new Date();
-  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const iso = (d: Date) => dayKeyWita(d);
   if (raw === 'today') {
-    const from = startOfDay(now);
+    const from = startOfDayWita(now);
     return { key: 'today', from, to: now, label: 'Hari ini', fromISO: '', toISO: '' };
   }
   if (raw === 'week') {
-    const offset = (now.getDay() + 6) % 7;
-    const from = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset));
+    // Senin 00:00 WITA → sekarang (konvensi Indonesia).
+    const dow = toWita(now).getUTCDay();
+    const offset = (dow + 6) % 7;
+    const from = startOfDayWita(addDaysWita(now, -offset));
     return { key: 'week', from, to: now, label: 'Minggu ini (Senin–sekarang)', fromISO: '', toISO: '' };
   }
   if (raw === 'month') {
-    const from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-    return { key: 'month', from, to: now, label: 'Bulan ini', fromISO: '', toISO: '' };
+    const w = toWita(now);
+    const firstWita = new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), 1) - 8 * 3600_000);
+    return { key: 'month', from: firstWita, to: now, label: 'Bulan ini', fromISO: '', toISO: '' };
   }
   if (raw === 'custom') {
-    const f = parseDateParam(url.searchParams.get('from'));
-    const t = parseDateParam(url.searchParams.get('to'));
-    if (f || t) {
-      const from = f ? startOfDay(f) : new Date(now.getTime() - 29 * 86400000);
-      const to = t ? endOfDay(t) : now;
+    const f = parseDayWita(url.searchParams.get('from') ?? '');
+    const tRaw = parseDayWita(url.searchParams.get('to') ?? '');
+    if (f || tRaw) {
+      const from = f ?? addDaysWita(startOfDayWita(now), -29);
+      const to = tRaw ? endOfDayWita(tRaw) : now;
       const [a, b] = from <= to ? [from, to] : [to, from];
-      const fmt = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+      const fmt = (d: Date) => fmtWita(d, { day: 'numeric', month: 'short', year: 'numeric' });
       return { key: 'custom', from: a, to: b, label: `Custom: ${fmt(a)} – ${fmt(b)}`, fromISO: iso(a), toISO: iso(b) };
     }
   }
-  const from = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29));
+  const from = startOfDayWita(addDaysWita(now, -29));
   return { key: '30d', from, to: now, label: '30 hari terakhir', fromISO: '', toISO: '' };
 }
 
@@ -112,6 +98,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       )
       .groupBy(transactionItem.productId);
 
+  // Objek ekspresi yang sama dipakai di select & groupBy (lihat sql.ts).
+  const witaDayExpr = witaDate(transaction.createdAt);
+
   const [products, curRows, prevRows, dailyRows, prevTxRows] = await Promise.all([
     db
       .select({ id: product.id, name: product.name })
@@ -121,7 +110,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     perProduct(prevFrom, prevTo),
     db
       .select({
-        day: sql<string>`(${transaction.createdAt}::date)::text`,
+        day: sql<string>`(${witaDate(transaction.createdAt)})::text`,
         revenue: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale})::text`,
         cost: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.costAtSale})::text`,
         txCount: sql<string>`count(distinct ${transaction.id})::text`
@@ -135,7 +124,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
           lte(transaction.createdAt, range.to)
         )
       )
-      .groupBy(sql`(${transaction.createdAt}::date)`),
+      // Objek dayExpr dipakai ulang di select & groupBy — jangan inline dua
+      // kali (nomor parameter berbeda → Postgres error GROUP BY).
+      .groupBy(witaDayExpr),
     db
       .select({ value: count() })
       .from(transaction)
@@ -165,32 +156,37 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const tx = dailyRows.reduce((s, r) => s + Number(r.txCount), 0);
   const prevTx = prevTxRows[0]?.value ?? 0;
 
-  // Deret harian berurutan (isi 0 hari kosong) dalam jt Rp biar sumbu terbaca.
+  // Deret harian berurutan (isi 0 hari kosong) dengan unit adaptif.
+  // Kunci hari & label memakai WITA.
   const byDay = new Map(dailyRows.map((r) => [r.day, r]));
   const labels: string[] = [];
-  const revenue: number[] = [];
-  const profit: number[] = [];
+  const revenueRaw: number[] = [];
+  const profitRaw: number[] = [];
   const marginTrend: number[] = [];
   let bestDayLabel = '—';
   let bestDayRevenue = 0;
-  const cursor = startOfDay(range.from);
+  let cursor = startOfDayWita(range.from);
   const end = range.to;
   while (cursor <= end) {
-    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+    const key = dayKeyWita(cursor);
     const v = byDay.get(key);
     const rev = v ? Number(v.revenue) : 0;
     const cost = v ? Number(v.cost) : 0;
-    const label = `${cursor.getDate()}/${cursor.getMonth() + 1}`;
+    const w = toWita(cursor);
+    const label = `${w.getUTCDate()}/${w.getUTCMonth() + 1}`;
     labels.push(label);
-    revenue.push(Math.round((rev / 1_000_000) * 10) / 10);
-    profit.push(Math.round(((rev - cost) / 1_000_000) * 10) / 10);
+    revenueRaw.push(rev);
+    profitRaw.push(rev - cost);
     marginTrend.push(rev === 0 ? 0 : Math.round(((rev - cost) / rev) * 1000) / 10);
     if (rev > bestDayRevenue) {
       bestDayRevenue = rev;
-      bestDayLabel = cursor.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' });
+      bestDayLabel = fmtWita(cursor, { weekday: 'long', day: 'numeric', month: 'short' });
     }
-    cursor.setDate(cursor.getDate() + 1);
+    cursor = addDaysWita(cursor, 1);
   }
+  const moneyUnit = pickMoneyUnit(Math.max(Math.abs(curRev), Math.abs(curProfit), 0));
+  const revenue = scaleMoney(revenueRaw, moneyUnit);
+  const profit = scaleMoney(profitRaw, moneyUnit);
 
   const topBar = [...cur].sort((a, b) => b.revenue - a.revenue).slice(0, 8);
   const profitTop = [...cur].sort((a, b) => b.profit - a.profit).slice(0, 8);
@@ -228,7 +224,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       // Selisih margin dalam poin ×100 biar se-skala dengan badge persen.
       margin: (calculateMargin(curRev, curProfit) - calculateMargin(prevRev, prevProfit)) * 100
     },
-    trend: { labels, revenue, profit },
+    trend: { labels, revenue, profit, unitLabel: moneyUnit.label },
     marginTrend,
     bar: { labels: topBar.map((p) => p.name), data: topBar.map((p) => p.revenue) },
     pie: { labels: pieLabels, data: pieData },

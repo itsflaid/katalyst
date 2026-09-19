@@ -3,10 +3,11 @@
   import Badge from '$lib/components/ui/Badge.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
+  import { fmtWita } from '$lib/time';
   export let data;
   const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
   const num = (n: number) => new Intl.NumberFormat('id-ID').format(n);
-  const fmtDate = (d: string | Date) => new Date(d).toLocaleString('id-ID');
+  const fmtDate = (d: string | Date) => fmtWita(d, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const reasonLabel: Record<string, string> = { SALE: 'Penjualan', VOID_RESTORE: 'Batal struk', RESTOCK: 'Restock', ADJUST: 'Koreksi' };
 </script>
 

@@ -3,7 +3,10 @@
   import Chart from "chart.js/auto";
 
   export let labels: string[];
-  export let datasets: { label: string; data: number[]; color: string }[];
+  export let datasets: { label: string; data: (number | null)[]; color: string }[];
+  export let spanGaps = false;
+  export let yFormat: ((v: number) => string) | undefined = undefined;
+  export let heightClass = "h-64";
 
   let canvasEl: HTMLCanvasElement;
   let chart: Chart;
@@ -23,6 +26,7 @@
           pointRadius: 0,
           pointHoverRadius: 4,
           borderWidth: 2,
+          spanGaps,
         })),
       },
       options: {
@@ -48,6 +52,15 @@
               font: { family: "Plus Jakarta Sans" },
             },
           },
+          tooltip: {
+            callbacks: {
+              label: (item) => {
+                const v = item.parsed.y;
+                if (v === null || v === undefined) return ` ${item.dataset.label}: —`;
+                return ` ${item.dataset.label}: ${yFormat ? yFormat(Number(v)) : v}`;
+              },
+            },
+          },
         },
         scales: {
           x: {
@@ -56,7 +69,13 @@
           },
           y: {
             grid: { color: "#F1F5F9" },
-            ticks: { color: "#64748B", font: { family: "Plus Jakarta Sans" } },
+            ticks: {
+              color: "#64748B",
+              font: { family: "Plus Jakarta Sans" },
+              ...(yFormat
+                ? { callback: function (v: string | number) { return yFormat(Number(v)); } as never }
+                : {}),
+            },
           },
         },
       },
@@ -66,6 +85,6 @@
   onDestroy(() => chart?.destroy());
 </script>
 
-<div class="relative h-64 w-full">
+<div class="relative {heightClass} w-full">
   <canvas bind:this={canvasEl}></canvas>
 </div>
