@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp, boolean, integer, pgEnum, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, integer, pgEnum, index, check } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 // -----------------------------------------------------------------------
 // Auth tables — bentuk kolomnya ngikutin konvensi default better-auth's
@@ -123,13 +124,20 @@ export const product = pgTable(
     costPrice: integer('cost_price').notNull(),
     sellingPrice: integer('selling_price').notNull(),
     // Sisa stok. Berkurang tiap struk tersimpan, bertambah saat restock.
-    // Stok 0 → produk otomatis nonaktif (aturan toko), restock → aktif lagi.
+    // Stok 0 = "Habis" (turunan, tidak tampil di kasir) — TIDAK mengubah
+    // isActive. isActive murni pilihan owner (mis. produk dihentikan/musiman).
     stock: integer('stock').notNull().default(0),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow()
   },
-  (t) => [index('product_business_id_idx').on(t.businessId)]
+  (t) => [
+    index('product_business_id_idx').on(t.businessId),
+    // Pengaman terakhir di level DB: kalau dua kasir jual barang terakhir
+    // bersamaan, statement kedua gagal (dan batch-nya rollback) — bukan
+    // stok jadi minus diam-diam.
+    check('product_stock_nonneg', sql`${t.stock} >= 0`)
+  ]
 );
 
 export const transaction = pgTable(

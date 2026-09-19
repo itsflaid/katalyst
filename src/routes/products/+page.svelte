@@ -43,6 +43,9 @@
     return matchQuery && matchStatus;
   });
   $: activeCount = data.products.filter((p) => p.isActive).length;
+  // STAFF boleh lihat daftar & stok, tapi semua aksi ubah data ditolak server
+  // (OWNER-only) — di sini tombolnya disembunyikan biar tidak ada dead-end.
+  $: isOwner = data.role === "OWNER";
 
   let showCreate = false;
   let stockModal: { mode: 'restock' | 'adjust'; id: string; name: string; stock: number } | null = null;
@@ -147,15 +150,21 @@
       </button>
     {/each}
   </div>
-  <Button on:click={() => (showCreate = true)} class="flex-shrink-0 ml-auto">+ Tambah</Button>
+  {#if isOwner}
+    <Button on:click={() => (showCreate = true)} class="flex-shrink-0 ml-auto">+ Tambah</Button>
+  {/if}
 </div>
 
 {#if data.products.length === 0}
   <div class="rounded-panel border-2 border-dashed border-border-input text-center py-12 px-4">
-    <p class="text-body-md text-muted mb-4">
-      Belum ada produk. Tambahkan produk pertama untuk mulai mencatat transaksi.
+    <p class="text-body-md text-muted {isOwner ? 'mb-4' : ''}">
+      {isOwner
+        ? "Belum ada produk. Tambahkan produk pertama untuk mulai mencatat transaksi."
+        : "Belum ada produk. Minta Owner menambahkan produk dulu."}
     </p>
-    <Button on:click={() => (showCreate = true)}>+ Tambah Produk</Button>
+    {#if isOwner}
+      <Button on:click={() => (showCreate = true)}>+ Tambah Produk</Button>
+    {/if}
   </div>
 {:else if filtered.length === 0}
   <div class="rounded-panel border-2 border-dashed border-border-input text-center py-12 px-4">
@@ -184,56 +193,62 @@
           {/if}
         </td>
         <td class="px-3 py-2">
-          <form method="POST" action="?/toggle" use:enhance={afterSubmit}>
-            <input type="hidden" name="id" value={p.id} />
-            <input type="hidden" name="isActive" value={p.isActive ? "off" : "on"} />
-            <button
-              type="submit"
-              role="switch"
-              aria-checked={p.isActive}
-              aria-label={p.isActive ? `Nonaktifkan ${p.name}` : `Aktifkan ${p.name}`}
-              title={p.isActive ? "Klik untuk menonaktifkan" : "Klik untuk mengaktifkan"}
-              class="relative block h-6 w-10 rounded-full border transition-colors cursor-pointer {p.isActive
-                ? 'bg-status-positive border-status-positive'
-                : 'bg-surface-dim border-border-input'}"
-            >
-              <span
-                class="absolute top-0.5 h-[18px] w-[18px] rounded-full bg-white shadow transition-all {p.isActive
-                  ? 'left-[18px]'
-                  : 'left-0.5'}"
-              ></span>
-            </button>
-          </form>
+          {#if isOwner}
+            <form method="POST" action="?/toggle" use:enhance={afterSubmit}>
+              <input type="hidden" name="id" value={p.id} />
+              <input type="hidden" name="isActive" value={p.isActive ? "off" : "on"} />
+              <button
+                type="submit"
+                role="switch"
+                aria-checked={p.isActive}
+                aria-label={p.isActive ? `Nonaktifkan ${p.name}` : `Aktifkan ${p.name}`}
+                title={p.isActive ? "Klik untuk menonaktifkan" : "Klik untuk mengaktifkan"}
+                class="relative block h-6 w-10 rounded-full border transition-colors cursor-pointer {p.isActive
+                  ? 'bg-status-positive border-status-positive'
+                  : 'bg-surface-dim border-border-input'}"
+              >
+                <span
+                  class="absolute top-0.5 h-[18px] w-[18px] rounded-full bg-white shadow transition-all {p.isActive
+                    ? 'left-[18px]'
+                    : 'left-0.5'}"
+                ></span>
+              </button>
+            </form>
+          {:else}
+            <Badge size="sm" tone={p.isActive ? "positive" : "neutral"}>{p.isActive ? "Aktif" : "Nonaktif"}</Badge>
+          {/if}
         </td>
         <td class="px-3 py-2 whitespace-nowrap">
           <div class="flex items-center gap-3">
             <a href={`/products/${p.id}`} class="text-body-sm font-semibold text-ink-navy hover:underline">
               Detail
             </a>
-            <button
-              type="button"
-              on:click={() => openStock(p, 'restock')}
-              class="text-body-sm font-semibold text-status-positive hover:underline bg-transparent border-none cursor-pointer p-0"
-            >
-              Stok
-            </button>
-            <button
-              type="button"
-              on:click={() => openEdit(p)}
-              class="text-body-sm font-semibold text-ink-navy hover:underline bg-transparent border-none cursor-pointer p-0"
-            >
-              Edit
-            </button>
-            <a href={`/simulator?productId=${p.id}`} class="text-body-sm text-muted hover:underline">
-              Simulasikan
-            </a>
-            <button
-              type="button"
-              on:click={() => (pendingDelete = { id: p.id, name: p.name })}
-              class="text-body-sm font-semibold text-status-negative hover:underline bg-transparent border-none cursor-pointer p-0"
-            >
-              Hapus
-            </button>
+            {#if isOwner}
+              <button
+                type="button"
+                on:click={() => openStock(p, 'restock')}
+                class="text-body-sm font-semibold text-status-positive hover:underline bg-transparent border-none cursor-pointer p-0"
+              >
+                Stok
+              </button>
+              <button
+                type="button"
+                on:click={() => openEdit(p)}
+                class="text-body-sm font-semibold text-ink-navy hover:underline bg-transparent border-none cursor-pointer p-0"
+              >
+                Edit
+              </button>
+              <a href={`/simulator?productId=${p.id}`} class="text-body-sm text-muted hover:underline">
+                Simulasikan
+              </a>
+              <button
+                type="button"
+                on:click={() => (pendingDelete = { id: p.id, name: p.name })}
+                class="text-body-sm font-semibold text-status-negative hover:underline bg-transparent border-none cursor-pointer p-0"
+              >
+                Hapus
+              </button>
+            {/if}
           </div>
         </td>
       </tr>
@@ -364,6 +379,9 @@
         />
         Aktif dijual
       </label>
+      <p class="text-body-sm text-muted">
+        Stok tidak diubah dari sini — pakai tombol <strong>Stok</strong> di daftar (restock / koreksi) biar tercatat di riwayat.
+      </p>
       {#if form?.for === "update"}<p class="text-body-sm text-status-negative">
           {form.message}
         </p>{/if}
@@ -402,8 +420,9 @@
       <h2 class="text-headline-sm text-ink mb-2">Hapus produk?</h2>
       <p class="text-body-md text-muted">
         “{pendingDelete.name}” akan dihapus permanen. Produk yang sudah punya
-        riwayat transaksi tidak bisa dihapus — nonaktifkan saja.
+        riwayat penjualan tidak bisa dihapus — nonaktifkan saja.
       </p>
+      {#if form?.for === "delete"}<p class="text-body-sm text-status-negative mt-2">{form.message}</p>{/if}
       <div class="flex gap-2 mt-4">
         <Button variant="secondary" class="flex-1" on:click={closeModals}>Batal</Button>
         <form

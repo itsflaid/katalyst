@@ -20,7 +20,7 @@
     <p class="text-label-sm uppercase text-muted">Stok sekarang</p>
     <p class="text-num-display text-ink tabular">{num(data.product.stock)}</p>
     {#if data.product.stock <= 0}
-      <p class="text-body-sm text-status-negative mt-1">Habis — produk nonaktif otomatis. Restock dari halaman Produk untuk menjual lagi.</p>
+      <p class="text-body-sm text-status-negative mt-1">Habis — tidak muncul di kasir sampai direstock.</p>
     {:else if data.product.stock <= 5}
       <p class="text-body-sm text-status-warning mt-1">Menipis — segera restock.</p>
     {/if}
