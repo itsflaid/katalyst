@@ -122,7 +122,7 @@
 <Card class="mb-4">
   <h2 class="text-headline-sm text-ink mb-2">Apa itu Katalyst?</h2>
   <p class="text-body-md text-muted">
-    Katalyst adalah aplikasi kasir + laporan untuk UMKM kuliner. Setiap penjualan dicatat sebagai struk,
+    Katalyst adalah aplikasi kasir + laporan untuk UMKM yang menjual barang. Setiap penjualan dicatat sebagai struk,
     lalu aplikasi menghitung otomatis omzet, modal, untung, dan margin — plus memberi tahu produk mana
     yang paling menguntungkan dan mana yang marginnya tipis. Semua angka dihitung langsung dari data
     transaksimu dengan rumus pasti; AI hanya membantu menjelaskan, tidak mengarang angka.

@@ -4,7 +4,7 @@ import postgres from 'postgres';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import * as schema from './schema';
-import { business, user, product, transaction, transactionItem } from './schema';
+import { business, user, product, transaction, transactionItem, stockMovement } from './schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
@@ -40,20 +40,22 @@ const auth = betterAuth({
 });
 
 // -----------------------------------------------------------------------
-// Seed data: "Resto Etam" — resto makanan khas Kalimantan, dipakai sebagai
-// demo data portfolio (ganti dari draft awal "Kopi Kenangan" yang make
-// nama brand asli, dan draft "Hasil Bumi Etam" yang kedagingan/kelautan/
-// pertaniannya kecampur jadi gak masuk akal buat 1 usaha kecil).
+// Seed data: "Cindera Etam" — toko oleh-oleh khas Kalimantan Timur, dipakai
+// sebagai demo data portfolio. Semua yang dijual adalah BARANG berstok
+// (bukan masakan racik) — konsisten dengan invarian stok aplikasi.
 //
-// 10 menu ini SENGAJA dikasih variasi biar lib/analytics.ts &
+// 10 produk ini SENGAJA dikasih variasi biar lib/analytics.ts &
 // lib/simulation.ts ada "bahan" buat didemoin, bukan cuma nama doang:
-//  - margin spread 40%-70%
-//  - 3 tingkat volatilitas COGS (rendah/sedang/tinggi) -> bahan simulasi
-//    "what-if harga bahan baku naik X%"
-//  - 1 item musiman ekstrem (Bubur Pedas Sambas, spike sekitar HUT RI
+//  - margin spread 14%-50% (Kerupuk Ikan Curah sengaja tipis ~14% tapi laris
+//    → bahan insight "laris tapi margin tipis" + kuadran matriks)
+//  - 3 tingkat volatilitas harga beli dari supplier/pengrajin
+//    (rendah/sedang/tinggi) -> bahan simulasi "harga beli naik X%"
+//  - 1 produk musiman ekstrem (Kaos Pesut Mahakam, spike sekitar HUT RI
 //    17 Agustus, bukan Ramadan — Ramadan 2026 jatuh Feb-Mar, di luar
 //    window 90 hari data ini, jadi dipakai momentum lokal yang beneran
 //    match kalender)
+//  - 2 produk dibuat menipis (Madu Kelulut & Sarung Samarinda) → bahan kartu
+//    "Perlu restock" di dashboard
 // -----------------------------------------------------------------------
 
 type Volatility = 'low' | 'medium' | 'high';
@@ -65,8 +67,10 @@ interface SeedProduct {
   qtyMin: number;
   qtyMax: number;
   volatility: Volatility;
-  /** Stok awal demo. */
+  /** Stok akhir demo. */
   stock: number;
+  /** Ambang menipis (default 5). */
+  minStock?: number;
   /** Produk musiman ekstrem: qty ~0 di luar spike window. */
   seasonalOnly?: boolean;
 }
@@ -78,22 +82,22 @@ const VOLATILITY_FACTOR: Record<Volatility, number> = {
 };
 
 const PRODUCTS: SeedProduct[] = [
-  { name: 'Nasi Kuning Samarinda', costPrice: 7500, sellingPrice: 15000, qtyMin: 40, qtyMax: 60, volatility: 'low', stock: 200 },
-  { name: 'Soto Banjar', costPrice: 11000, sellingPrice: 22000, qtyMin: 30, qtyMax: 45, volatility: 'low', stock: 150 },
-  { name: 'Gence Ruan', costPrice: 20000, sellingPrice: 38000, qtyMin: 10, qtyMax: 18, volatility: 'high', stock: 60 },
-  { name: 'Ayam Cincane', costPrice: 13500, sellingPrice: 28000, qtyMin: 20, qtyMax: 35, volatility: 'medium', stock: 120 },
-  { name: 'Sate Payau', costPrice: 27000, sellingPrice: 45000, qtyMin: 5, qtyMax: 10, volatility: 'high', stock: 8 },
-  { name: 'Kepiting Soka Balikpapan', costPrice: 33000, sellingPrice: 55000, qtyMin: 4, qtyMax: 9, volatility: 'high', stock: 30 },
-  { name: 'Sayur Gangan Asam', costPrice: 4800, sellingPrice: 12000, qtyMin: 25, qtyMax: 40, volatility: 'low', stock: 150 },
-  { name: 'Amplang', costPrice: 9000, sellingPrice: 20000, qtyMin: 8, qtyMax: 15, volatility: 'low', stock: 80 },
-  { name: 'Es Kelapa Jelly / Es Teh Etam', costPrice: 3000, sellingPrice: 10000, qtyMin: 50, qtyMax: 80, volatility: 'medium', stock: 300 },
+  { name: 'Amplang Ikan Tenggiri 250g', costPrice: 22000, sellingPrice: 35000, qtyMin: 8, qtyMax: 15, volatility: 'low', stock: 120 },
+  { name: 'Amplang Udang 200g', costPrice: 24000, sellingPrice: 40000, qtyMin: 5, qtyMax: 10, volatility: 'low', stock: 90 },
+  { name: 'Kerupuk Kepiting 250g', costPrice: 26000, sellingPrice: 42000, qtyMin: 4, qtyMax: 8, volatility: 'medium', stock: 70 },
+  { name: 'Abon Ikan 150g', costPrice: 28000, sellingPrice: 45000, qtyMin: 3, qtyMax: 7, volatility: 'medium', stock: 60 },
+  { name: 'Terasi Udang 250g', costPrice: 12000, sellingPrice: 22000, qtyMin: 4, qtyMax: 9, volatility: 'low', stock: 80 },
+  { name: 'Keripik Pisang Manis 200g', costPrice: 11000, sellingPrice: 20000, qtyMin: 10, qtyMax: 18, volatility: 'low', stock: 150 },
+  { name: 'Kerupuk Ikan Curah 500g', costPrice: 18000, sellingPrice: 21000, qtyMin: 15, qtyMax: 25, volatility: 'low', stock: 200 },
+  { name: 'Madu Kelulut Kaltim 250ml', costPrice: 45000, sellingPrice: 75000, qtyMin: 2, qtyMax: 5, volatility: 'high', stock: 6, minStock: 10 },
+  { name: 'Sarung Samarinda', costPrice: 250000, sellingPrice: 400000, qtyMin: 0, qtyMax: 2, volatility: 'high', stock: 3, minStock: 5 },
   {
-    name: 'Bubur Pedas Sambas',
-    costPrice: 6500,
-    sellingPrice: 15000,
-    qtyMin: 30,
-    qtyMax: 50,
-    volatility: 'low',
+    name: 'Kaos Pesut Mahakam',
+    costPrice: 45000,
+    sellingPrice: 90000,
+    qtyMin: 6,
+    qtyMax: 12,
+    volatility: 'medium',
     stock: 100,
     seasonalOnly: true
   }
@@ -141,11 +145,19 @@ function applyVolatility(base: number, level: Volatility): number {
   return Math.max(1, Math.round(base * (1 + delta)));
 }
 
+// Jam 8-21 yang dimaksud adalah jam dinding WITA (bukan UTC): 08.00 WITA =
+// 00.00 UTC, jadi jam UTC = jam WITA - 8.
+function witaTime(base: Date, hourWita: number, minute: number): Date {
+  const d = new Date(base);
+  d.setUTCHours(hourWita - 8, minute, 0, 0);
+  return d;
+}
+
 async function main() {
-  console.log('Seeding Katalyst (Resto Etam) dummy data...');
+  console.log('Seeding Katalyst (Cindera Etam) dummy data...');
 
   const businessId = randomUUID();
-  await db.insert(business).values({ id: businessId, name: 'Resto Etam' });
+  await db.insert(business).values({ id: businessId, name: 'Cindera Etam' });
 
   // Bikin user lewat auth.api.signUpEmail (bukan db.insert manual) supaya
   // password di-hash beneran sama better-auth (scrypt) dan row `account`
@@ -175,7 +187,8 @@ async function main() {
       name: p.name,
       costPrice: p.costPrice,
       sellingPrice: p.sellingPrice,
-      stock: p.stock
+      stock: p.stock,
+      minStock: p.minStock ?? 5
     });
   }
 
@@ -194,8 +207,22 @@ async function main() {
     priceAtSale: number;
     costAtSale: number;
   }[] = [];
+  const saleLedger: {
+    id: string;
+    businessId: string;
+    productId: string;
+    qtyChange: number;
+    reason: 'SALE';
+    refTxId: string;
+    createdAt: Date;
+    createdBy: string;
+  }[] = [];
+
+  // Penjualan per produk per hari (dipakai juga buat hitung restock mingguan).
+  const dailySales: number[][] = PRODUCTS.map(() => new Array(HISTORY_DAYS).fill(0));
 
   for (let dayOffset = HISTORY_DAYS - 1; dayOffset >= 0; dayOffset--) {
+    const dayIdx = HISTORY_DAYS - 1 - dayOffset;
     const day = new Date(now);
     day.setUTCDate(day.getUTCDate() - dayOffset);
     day.setUTCHours(0, 0, 0, 0);
@@ -203,17 +230,19 @@ async function main() {
     const weekend = isWeekend(day);
     const spike = isSpikeWindow(day);
 
-    for (const p of PRODUCTS) {
+    for (let pi = 0; pi < PRODUCTS.length; pi++) {
+      const p = PRODUCTS[pi];
       let targetQty: number;
 
       if (p.seasonalOnly) {
         targetQty = spike ? randInt(p.qtyMin, p.qtyMax) : randInt(0, 2); // nyaris 0 di luar musim
       } else {
         targetQty = randInt(p.qtyMin, p.qtyMax);
-        if (weekend) targetQty = Math.round(targetQty * 1.25); // demand resto naik pas weekend
+        if (weekend) targetQty = Math.round(targetQty * 1.25); // demand toko naik pas weekend/libur
       }
 
       if (targetQty <= 0) continue;
+      dailySales[pi][dayIdx] = targetQty;
 
       // Pecah jadi beberapa transaksi (1-3 unit per transaksi), niru pola
       // pesanan asli, bukan 1 transaksi raksasa per produk per hari.
@@ -223,9 +252,8 @@ async function main() {
         remaining -= qty;
 
         const costAtSale = applyVolatility(p.costPrice, p.volatility);
-        const hour = randInt(8, 21);
-        const createdAt = new Date(day);
-        createdAt.setUTCHours(hour, randInt(0, 59), 0, 0);
+        // Jam transaksi 08-21 WITA (dibangkitkan sebagai jam dinding WITA).
+        const createdAt = witaTime(day, randInt(8, 21), randInt(0, 59));
 
         const txId = randomUUID();
         const servedBy = rand() < 0.7 ? staffId : ownerId;
@@ -239,10 +267,117 @@ async function main() {
           priceAtSale: p.sellingPrice,
           costAtSale
         });
+        // 1 baris SALE per item (ref_tx_id + waktu = waktu struk).
+        saleLedger.push({
+          id: randomUUID(),
+          businessId,
+          productId: productIds[p.name],
+          qtyChange: -qty,
+          reason: 'SALE',
+          refTxId: txId,
+          createdAt,
+          createdBy: servedBy
+        });
 
         totalTx++;
       }
     }
+  }
+
+  // -----------------------------------------------------------------------
+  // Ledger konsisten: Σ qty_change per produk HARUS == product.stock.
+  //  - RESTOCK mingguan ≈ 0,9 × penjualan minggu sebelumnya per produk
+  //    ("Kirim dari supplier"), ditaruh Senin jam 09.00 WITA.
+  //  - 2-3 ADJUST negatif demo ("opname: rusak/kedaluwarsa").
+  //  - 1 RESTOCK awal ("Stok awal") di hari pertama: penyeimbang
+  //    (stok_akhir + terjual − restock_mingguan − adjust). Selalu ≥ 0 karena
+  //    restock mingguan cuma 0,9× penjualan.
+  // -----------------------------------------------------------------------
+  const otherLedger: {
+    id: string;
+    businessId: string;
+    productId: string;
+    qtyChange: number;
+    reason: 'RESTOCK' | 'ADJUST';
+    note: string;
+    createdAt: Date;
+    createdBy: string;
+  }[] = [];
+
+  const WEEK = 7;
+  const weekCount = Math.ceil(HISTORY_DAYS / WEEK);
+  const weeklyRestockTotal: number[] = new Array(PRODUCTS.length).fill(0);
+
+  const oldestDay = new Date(now);
+  oldestDay.setUTCDate(oldestDay.getUTCDate() - (HISTORY_DAYS - 1));
+  oldestDay.setUTCHours(0, 0, 0, 0);
+
+  for (let pi = 0; pi < PRODUCTS.length; pi++) {
+    const p = PRODUCTS[pi];
+    for (let w = 1; w < weekCount; w++) {
+      let prevWeekSales = 0;
+      for (let d = (w - 1) * WEEK; d < Math.min(w * WEEK, HISTORY_DAYS); d++) {
+        prevWeekSales += dailySales[pi][d];
+      }
+      if (prevWeekSales <= 0) continue;
+      const qty = Math.max(1, Math.round(prevWeekSales * 0.9));
+      const day = new Date(oldestDay);
+      day.setUTCDate(day.getUTCDate() + Math.min(w * WEEK, HISTORY_DAYS - 1));
+      otherLedger.push({
+        id: randomUUID(),
+        businessId,
+        productId: productIds[p.name],
+        qtyChange: qty,
+        reason: 'RESTOCK',
+        note: 'Kirim dari supplier',
+        createdAt: witaTime(day, 9, 0),
+        createdBy: ownerId
+      });
+      weeklyRestockTotal[pi] += qty;
+    }
+  }
+
+  // Koreksi demo (unit kecil, negatif).
+  const demoAdjusts: { pi: number; dayFromNow: number; qty: number }[] = [
+    { pi: 6, dayFromNow: 30, qty: -5 }, // Kerupuk Ikan Curah
+    { pi: 0, dayFromNow: 55, qty: -3 }, // Amplang Tenggiri
+    { pi: 5, dayFromNow: 12, qty: -4 } // Keripik Pisang
+  ];
+  const adjustTotal: number[] = new Array(PRODUCTS.length).fill(0);
+  for (const a of demoAdjusts) {
+    const p = PRODUCTS[a.pi];
+    const day = new Date(now);
+    day.setUTCDate(day.getUTCDate() - a.dayFromNow);
+    otherLedger.push({
+      id: randomUUID(),
+      businessId,
+      productId: productIds[p.name],
+      qtyChange: a.qty,
+      reason: 'ADJUST',
+      note: 'opname: rusak/kedaluwarsa',
+      createdAt: witaTime(day, 17, 30),
+      createdBy: ownerId
+    });
+    adjustTotal[a.pi] += a.qty;
+  }
+
+  // Stok awal per produk (penyeimbang, di hari pertama).
+  for (let pi = 0; pi < PRODUCTS.length; pi++) {
+    const p = PRODUCTS[pi];
+    const totalSold = dailySales[pi].reduce((s, q) => s + q, 0);
+    const initial = p.stock + totalSold - weeklyRestockTotal[pi] - adjustTotal[pi];
+    if (initial < 0) throw new Error(`Stok awal negatif untuk ${p.name} — kecilkan restock mingguan.`);
+    if (initial === 0) continue;
+    otherLedger.push({
+      id: randomUUID(),
+      businessId,
+      productId: productIds[p.name],
+      qtyChange: initial,
+      reason: 'RESTOCK',
+      note: 'Stok awal',
+      createdAt: witaTime(oldestDay, 8, 0),
+      createdBy: ownerId
+    });
   }
 
   // -----------------------------------------------------------------------
@@ -269,6 +404,12 @@ async function main() {
   }
   for (const batch of chunk(itemRows, BATCH_SIZE)) {
     await db.insert(transactionItem).values(batch);
+  }
+  for (const batch of chunk(saleLedger, BATCH_SIZE)) {
+    await db.insert(stockMovement).values(batch);
+  }
+  for (const batch of chunk(otherLedger, BATCH_SIZE)) {
+    await db.insert(stockMovement).values(batch);
   }
 
   console.log(`Seed selesai: ${PRODUCTS.length} produk, ${totalTx} transaksi selama ${HISTORY_DAYS} hari.`);
