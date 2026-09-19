@@ -2,7 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { staffInvitation, transaction, user } from '$lib/server/db/schema';
 import { generateInviteToken, hashInviteToken, normalizeUsername, isValidUsername, INVITE_TTL_MS } from '$lib/server/invites';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, ne } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 function requireOwner(locals: App.Locals) {
@@ -74,6 +74,45 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   });
 
   return json({ id, username, name: name || null, token: rawToken, expiresAt: expiresAt.toISOString() }, { status: 201 });
+};
+
+// Atur/ubah username login staff yang sudah ada (mis. akun lama yang
+// dibuat sebelum fitur username). OWNER-only. Username unik global.
+export const PATCH: RequestHandler = async ({ request, locals }) => {
+  requireOwner(locals);
+  const businessId = locals.user!.businessId as string;
+
+  const body = await request.json().catch(() => ({}));
+  const { id, username: rawUsername } = body as { id?: unknown; username?: unknown };
+  if (typeof id !== 'string' || !id) throw error(400, 'Id staff wajib diisi.');
+  const username = typeof rawUsername === 'string' ? normalizeUsername(rawUsername) : '';
+  if (!isValidUsername(username)) {
+    throw error(400, 'Username 3–20 karakter: huruf kecil, angka, titik, underscore, strip.');
+  }
+
+  const [target] = await db
+    .select({ id: user.id, role: user.role, businessId: user.businessId })
+    .from(user)
+    .where(eq(user.id, id));
+  if (!target || target.businessId !== businessId) throw error(404, 'Staff tidak ditemukan.');
+  if (target.role !== 'STAFF' && target.id !== locals.user!.id) {
+    throw error(400, 'Username hanya bisa diatur untuk akun STAFF.');
+  }
+
+  const [taken] = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(and(eq(user.username, username), ne(user.id, target.id)));
+  if (taken) throw error(409, 'Username sudah dipakai.');
+
+  try {
+    await db.update(user).set({ username }).where(eq(user.id, target.id));
+  } catch {
+    // Balapan dengan request lain (unique constraint menolak).
+    throw error(409, 'Username sudah dipakai.');
+  }
+
+  return json({ id: target.id, username });
 };
 
 // Hapus staff dari bisnis. Baris user dihapus (termasuk sesi+kredensial via
