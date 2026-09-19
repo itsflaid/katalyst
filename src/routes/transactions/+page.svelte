@@ -3,6 +3,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import { enhance } from '$app/forms';
+  import { goto } from '$app/navigation';
   import type { SubmitFunction } from '@sveltejs/kit';
   export let data;
   export let form;
@@ -43,6 +44,22 @@
   $: if (selectedDayKey !== 'all' && dayGroups.length > 0 && !dayGroups.some((g) => g.key === selectedDayKey)) {
     selectedDayKey = 'all';
   }
+
+  // Filter kasir — server-side via ?kasir=<userId> (bukan nama) biar
+  // pagination tetap benar. Value userId stabil: staff ganti nama pun
+  // struk lamanya tetap keikut, label dropdown selalu nama terkini.
+  // Satu sumber kebenaran = URL/server (data.kasir). Select pakai
+  // value satu arah (BUKAN bind) biar tidak berantem dengan statement
+  // reaktif di bawah — nilai dibaca dari event lalu navigasi.
+  $: selectedKasir = data.kasir ?? 'all';
+  function goKasir(e: Event) {
+    const value = (e.currentTarget as HTMLSelectElement).value;
+    const params = new URLSearchParams();
+    if (value !== 'all') params.set('kasir', value);
+    const qs = params.toString();
+    goto(`/transactions${qs ? `?${qs}` : ''}`, { keepFocus: true });
+  }
+  $: moreHref = `/transactions?page=${data.page + 1}${data.kasir ? `&kasir=${data.kasir}` : ''}`;
 
   // Ringkasan kanan — mengikuti filter hari yang dipilih, biar kartu
   // di bawah form selalu relevan dan kolom kanan tidak kosong.
@@ -121,21 +138,39 @@
          rounded atas saja, tanpa margin bawah biar nempel. -->
     <div class="flex flex-wrap items-center justify-between gap-3 bg-ink-navy px-5 py-3 rounded-t-panel border border-ink-navy">
       <h2 class="text-headline-sm text-white">Daftar Transaksi</h2>
-      {#if dayGroups.length > 0}
-        <label for="t-day" class="flex items-center gap-2 text-body-sm text-white/70">
-          Hari
-          <select
-            id="t-day"
-            bind:value={selectedDayKey}
-            class="h-9 rounded border border-border-input bg-white px-3 text-body-md text-ink"
-          >
-            <option value="all">Semua hari</option>
-            {#each dayGroups as g}
-              <option value={g.key}>{g.label}</option>
-            {/each}
-          </select>
-        </label>
-      {/if}
+      <div class="flex flex-wrap items-center gap-3">
+        {#if data.staffOptions.length > 1}
+          <label for="t-kasir" class="flex items-center gap-2 text-body-sm text-white/70">
+            Kasir
+            <select
+              id="t-kasir"
+              value={selectedKasir}
+              on:change={goKasir}
+              class="h-9 max-w-40 rounded border border-border-input bg-white px-3 text-body-md text-ink"
+            >
+              <option value="all">Semua kasir</option>
+              {#each data.staffOptions as s}
+                <option value={s.id}>{s.name}</option>
+              {/each}
+            </select>
+          </label>
+        {/if}
+        {#if dayGroups.length > 0}
+          <label for="t-day" class="flex items-center gap-2 text-body-sm text-white/70">
+            Hari
+            <select
+              id="t-day"
+              bind:value={selectedDayKey}
+              class="h-9 rounded border border-border-input bg-white px-3 text-body-md text-ink"
+            >
+              <option value="all">Semua hari</option>
+              {#each dayGroups as g}
+                <option value={g.key}>{g.label}</option>
+              {/each}
+            </select>
+          </label>
+        {/if}
+      </div>
     </div>
 
     {#if dayGroups.length === 0}
@@ -144,7 +179,7 @@
       </Card>
     {:else if visibleGroups.length === 0}
       <Card class="!rounded-t-none !border-t-0 text-center py-10">
-        <p class="text-body-md text-muted">Tidak ada transaksi di hari ini.</p>
+        <p class="text-body-md text-muted">Tidak ada transaksi yang cocok dengan filter.</p>
       </Card>
     {:else}
       <Card class="!p-0 overflow-hidden !rounded-t-none !border-t-0">
@@ -194,7 +229,7 @@
       <div class="flex items-center justify-between gap-3 mt-2">
         <p class="text-body-sm text-muted">Halaman {data.page} · {data.receipts.length} struk, dikelompokkan per hari.</p>
         {#if data.hasMore}
-          <a href={`/transactions?page=${data.page + 1}`} class="text-body-sm font-semibold text-ink-navy hover:underline no-underline">Muat struk lebih lama →</a>
+          <a href={moreHref} class="text-body-sm font-semibold text-ink-navy hover:underline no-underline">Muat struk lebih lama →</a>
         {/if}
       </div>
       {#if form?.message}<p role="alert" class="rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative mt-2">{form.message}</p>{/if}

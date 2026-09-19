@@ -108,7 +108,8 @@
     { t: 'Transaksi', d: 'Kasir: catat penjualan multi-produk per struk, lihat riwayat per hari, batalkan struk yang salah catat.' },
     { t: 'Simulator', d: 'Lab percobaan: geser harga, diskon, modal, atau volume untuk lihat dampaknya sebelum benar-benar diterapkan.' },
     { t: 'Copilot', d: 'Asisten tanya-jawab soal performa bisnismu, jawabannya dihitung dari data transaksimu sendiri.' },
-    { t: 'Pengaturan', d: 'Nama bisnis dan kelola akun staff (tambah/hapus, khusus Owner).' }
+    { t: 'Pengaturan', d: 'Nama bisnis dan kelola staff: undang akun baru, kirim ulang undangan, reset password yang lupa, dan hapus (khusus Owner).' },
+    { t: 'Akun', d: 'Profil kamu: ganti nama tampil dan password sendiri.' }
   ];
 </script>
 
