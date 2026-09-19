@@ -1,10 +1,20 @@
 import { db } from '$lib/server/db';
 import { stockMovement, transaction, transactionItem, product, user } from '$lib/server/db/schema';
-import { eq, desc, and, asc, inArray, sql } from 'drizzle-orm';
+import { eq, desc, and, asc, inArray, gt, sql } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
 const PAGE_SIZE = 20;
+
+// CHECK product_stock_nonneg (SQLSTATE 23514) meledak kalau stok terpotong
+// jadi minus — artinya ada penjualan lain yang menghabiskan stok di sela
+// validasi dan penyimpanan. Bentuk error-nya beda antar driver/versi
+// (kode di error langsung atau di `cause`), jadi dicek dua-duanya.
+function isStockCheckViolation(e: unknown): boolean {
+  const err = e as { code?: string; message?: string; cause?: { code?: string; message?: string } } | null;
+  if (err?.code === '23514' || err?.cause?.code === '23514') return true;
+  return /product_stock_nonneg/.test(`${err?.message ?? ''} ${err?.cause?.message ?? ''}`);
+}
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   const businessId = locals.user!.businessId as string;
@@ -90,12 +100,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     });
   }
 
-  // Buat dropdown produk di panel "Transaksi Baru" — hanya produk aktif.
-  // Stok ikut dikirim biar dropdown bisa menandai yang habis.
+  // Buat dropdown produk di panel "Transaksi Baru" — hanya produk aktif yang
+  // stoknya masih ada. Habis = tersembunyi dari kasir (turunan dari stok,
+  // isActive sendiri tidak disentuh).
   const products = await db
     .select({ id: product.id, name: product.name, sellingPrice: product.sellingPrice, stock: product.stock })
     .from(product)
-    .where(and(eq(product.businessId, businessId), eq(product.isActive, true)));
+    .where(and(eq(product.businessId, businessId), eq(product.isActive, true), gt(product.stock, 0)));
 
   return { receipts, products, page, hasMore, staffOptions, kasir };
 };
@@ -161,14 +172,14 @@ export const actions: Actions = {
       (locals.user?.email as string | undefined)?.split('@')[0] ??
       null;
 
-    // neon-http tidak mendukung db.transaction interaktif, jadi insert
-    // berurutan: header dulu, baru items. Kalau items gagal, header
-    // dibersihkan manual biar tidak ada struk yatim.
+    // neon-http tidak punya db.transaction interaktif, tapi db.batch([...])
+    // menjalankan semua statement dalam SATU transaksi: struk, item, stok,
+    // dan ledger masuk semua atau tidak sama sekali. Jadi tidak ada lagi
+    // struk yatim / stok setengah terpotong yang perlu dibersihkan manual.
     const txId = crypto.randomUUID();
-    await db.insert(transaction).values({ id: txId, businessId, userId, cashierName });
-
-    try {
-      await db.insert(transactionItem).values(
+    const statements = [
+      db.insert(transaction).values({ id: txId, businessId, userId, cashierName }),
+      db.insert(transactionItem).values(
         productIds.map((pid) => {
           const p = byId.get(pid)!;
           return {
@@ -180,31 +191,36 @@ export const actions: Actions = {
             costAtSale: p.costPrice
           };
         })
-      );
-      // Kurangi stok + catat ledger SALE. Stok yang habis (0) otomatis
-      // menonaktifkan produk biar tidak bisa dijual lagi.
-      for (const pid of productIds) {
-        const p = byId.get(pid)!;
-        const qty = merged.get(pid)!;
-        const newStock = p.stock - qty;
-        await db
+      ),
+      // Stok dipotong di SQL (stock = stock - qty), bukan dari angka yang
+      // dibaca tadi: dua kasir yang jualan bersamaan sama-sama terpotong
+      // dengan benar. Kalau stok tak cukup, CHECK product_stock_nonneg
+      // menggagalkan batch → seluruh struk rollback.
+      ...productIds.map((pid) =>
+        db
           .update(product)
-          .set({ stock: newStock, isActive: newStock <= 0 ? false : p.isActive, updatedAt: new Date() })
-          .where(eq(product.id, pid));
-        await db.insert(stockMovement).values({
+          .set({ stock: sql`${product.stock} - ${merged.get(pid)!}`, updatedAt: new Date() })
+          .where(and(eq(product.id, pid), eq(product.businessId, businessId)))
+      ),
+      db.insert(stockMovement).values(
+        productIds.map((pid) => ({
           id: crypto.randomUUID(),
           businessId,
           productId: pid,
-          qtyChange: -qty,
-          reason: 'SALE',
+          qtyChange: -merged.get(pid)!,
+          reason: 'SALE' as const,
           refTxId: txId,
           createdBy: userId
-        });
+        }))
+      )
+    ];
+
+    try {
+      await db.batch(statements as unknown as Parameters<typeof db.batch>[0]);
+    } catch (e) {
+      if (isStockCheckViolation(e)) {
+        return fail(409, { message: 'Stok berubah — ada produk yang sudah terjual habis oleh kasir lain. Muat ulang lalu coba lagi.' });
       }
-    } catch {
-      await db.delete(stockMovement).where(eq(stockMovement.refTxId, txId));
-      await db.delete(transactionItem).where(eq(transactionItem.transactionId, txId));
-      await db.delete(transaction).where(eq(transaction.id, txId));
       return fail(500, { message: 'Gagal menyimpan transaksi, coba lagi.' });
     }
 
@@ -229,39 +245,40 @@ export const actions: Actions = {
       .where(and(eq(transaction.id, txId), eq(transaction.businessId, businessId)));
     if (!existing) return fail(404, { message: 'Struk tidak ditemukan.' });
 
-    // Kembalikan stok yang tadi dikurangi + catat ledger. Produk yang
-    // stoknya 0 (otomatis nonaktif saat habis) aktif lagi.
-    const voidItems = await db
-      .select({ productId: transactionItem.productId, quantity: transactionItem.quantity })
-      .from(transactionItem)
-      .where(eq(transactionItem.transactionId, txId));
-    const voidStocks = new Map<string, number>();
-    if (voidItems.length > 0) {
-      const stockRows = await db
-        .select({ id: product.id, stock: product.stock })
-        .from(product)
-        .where(inArray(product.id, voidItems.map((i) => i.productId)));
-      for (const r of stockRows) voidStocks.set(r.id, r.stock);
-    }
-    for (const i of voidItems) {
-      const curStock = voidStocks.get(i.productId) ?? 0;
-      await db
-        .update(product)
-        .set({ stock: curStock + i.quantity, isActive: true, updatedAt: new Date() })
-        .where(eq(product.id, i.productId));
-      await db.insert(stockMovement).values({
-        id: crypto.randomUUID(),
-        businessId,
-        productId: i.productId,
-        qtyChange: i.quantity,
-        reason: 'VOID_RESTORE',
-        refTxId: txId,
-        createdBy: locals.user!.id as string
-      });
-    }
-
-    await db.delete(transactionItem).where(eq(transactionItem.transactionId, txId));
-    await db.delete(transaction).where(eq(transaction.id, txId));
+    // Satu statement (CTE) = atomik dan idempoten: item struk dihapus dan
+    // langsung dipakai sebagai sumber pengembalian stok + ledger, lalu header
+    // struk dihapus. Kalau owner klik dua kali / dua tab membatalkan struk
+    // yang sama, yang kedua menemukan item sudah tidak ada → stok tidak
+    // dikembalikan dua kali. isActive tidak disentuh.
+    await db.execute(sql`
+      with removed as (
+        delete from transaction_item ti
+        where ti.transaction_id = ${txId}
+          and exists (
+            select 1 from "transaction" t
+            where t.id = ti.transaction_id and t.business_id = ${businessId}
+          )
+        returning ti.product_id, ti.quantity
+      ),
+      restored as (
+        update product p
+        set stock = p.stock + r.qty, updated_at = now()
+        from (
+          select product_id, sum(quantity)::integer as qty
+          from removed
+          group by product_id
+        ) r
+        where p.id = r.product_id and p.business_id = ${businessId}
+        returning p.id as product_id, r.qty
+      ),
+      ledger as (
+        insert into stock_movement (id, business_id, product_id, qty_change, reason, ref_tx_id, created_by)
+        select gen_random_uuid()::text, ${businessId}::text, product_id, qty,
+               'VOID_RESTORE'::stock_reason, ${txId}::text, ${locals.user.id as string}::text
+        from restored
+      )
+      delete from "transaction" where id = ${txId} and business_id = ${businessId}
+    `);
     return { success: true };
   }
 };

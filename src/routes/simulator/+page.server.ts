@@ -2,58 +2,44 @@ import { db } from '$lib/server/db';
 import { product, transaction, transactionItem } from '$lib/server/db/schema';
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { calculateMargin } from '$lib/analytics';
+import { startOfDayWita, endOfDayWita, addDaysWita, toWita, parseDayWita, fmtWita } from '$lib/time';
 import type { PageServerLoad } from './$types';
 
 type RangeKey = 'today' | 'week' | 'month' | 'all' | 'custom';
-
-function startOfDay(d: Date): Date {
-  const c = new Date(d);
-  c.setHours(0, 0, 0, 0);
-  return c;
-}
-
-function endOfDay(d: Date): Date {
-  const c = new Date(d);
-  c.setHours(23, 59, 59, 999);
-  return c;
-}
-
-function parseDateParam(v: string | null): Date | null {
-  if (!v) return null;
-  // Terima YYYY-MM-DD dari <input type="date">.
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v.trim());
-  if (!m) return null;
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return isNaN(d.getTime()) ? null : d;
-}
 
 function resolveRange(url: URL): { key: RangeKey; from: Date | null; to: Date | null; label: string; fromISO: string; toISO: string } {
   const raw = (url.searchParams.get('range') ?? 'month').toLowerCase();
   const now = new Date();
   if (raw === 'today') {
-    const from = startOfDay(now);
+    const from = startOfDayWita(now);
     return { key: 'today', from, to: now, label: 'Hari ini', fromISO: '', toISO: '' };
   }
   if (raw === 'week') {
-    // Minggu ini: Senin 00:00 → sekarang (konvensi Indonesia).
-    const offset = (now.getDay() + 6) % 7;
-    const from = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset));
+    // Minggu ini: Senin 00:00 WITA → sekarang (konvensi Indonesia).
+    const dow = toWita(now).getUTCDay();
+    const offset = (dow + 6) % 7;
+    const from = startOfDayWita(addDaysWita(now, -offset));
     return { key: 'week', from, to: now, label: 'Minggu ini (Senin–sekarang)', fromISO: '', toISO: '' };
   }
   if (raw === 'month') {
-    const from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const w = toWita(now);
+    const from = new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), 1) - 8 * 3600_000);
     return { key: 'month', from, to: now, label: 'Bulan ini', fromISO: '', toISO: '' };
   }
   if (raw === 'custom') {
-    const f = parseDateParam(url.searchParams.get('from'));
-    const t = parseDateParam(url.searchParams.get('to'));
-    if (!f && !t) return { key: 'all', from: null, to: null, label: 'Semua waktu', fromISO: '', toISO: '' };
-    const from = f ? startOfDay(f) : null;
-    const to = t ? endOfDay(t) : now;
-    const fmt = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-    const label = from && t ? `${fmt(from)} – ${fmt(endOfDay(t))}` : from ? `Sejak ${fmt(from)}` : `Sampai ${fmt(to!)}`;
-    const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    return { key: 'custom', from, to, label: `Custom: ${label}`, fromISO: from ? iso(from) : '', toISO: t ? iso(endOfDay(t)) : '' };
+    const f = parseDayWita(url.searchParams.get('from') ?? '');
+    const tRaw = parseDayWita(url.searchParams.get('to') ?? '');
+    if (!f && !tRaw) return { key: 'all', from: null, to: null, label: 'Semua waktu', fromISO: '', toISO: '' };
+    const from = f ?? null;
+    const to = tRaw ? endOfDayWita(tRaw) : now;
+    const fmt = (d: Date) => fmtWita(d, { day: 'numeric', month: 'short', year: 'numeric' });
+    const label = from && tRaw ? `${fmt(from)} – ${fmt(endOfDayWita(tRaw))}` : from ? `Sejak ${fmt(from)}` : `Sampai ${fmt(to!)}`;
+    // iso buat <input type="date"> memakai hari WITA.
+    const witaIso = (d: Date) => {
+      const w2 = toWita(d);
+      return `${w2.getUTCFullYear()}-${String(w2.getUTCMonth() + 1).padStart(2, '0')}-${String(w2.getUTCDate()).padStart(2, '0')}`;
+    };
+    return { key: 'custom', from, to, label: `Custom: ${label}`, fromISO: from ? witaIso(from) : '', toISO: tRaw ? witaIso(endOfDayWita(tRaw)) : '' };
   }
   return { key: 'all', from: null, to: null, label: 'Semua waktu', fromISO: '', toISO: '' };
 }

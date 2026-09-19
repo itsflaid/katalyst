@@ -7,8 +7,9 @@ Semua angka (omzet, modal, untung, margin) dihitung langsung dari data transaksi
 ## Fitur
 
 - **Dashboard owner** — KPI revenue, transaksi, profit, margin + tren harian 30 hari terakhir dan delta vs 30 hari sebelumnya, top 5 produk, transaksi terbaru, dan insight otomatis (misal produk laris tapi margin tipis).
-- **Produk** — CRUD, aktif/nonaktif, badge margin, halaman detail per produk (terjual, revenue, profit, margin) + deep-link ke simulator.
+- **Produk** — CRUD, aktif/nonaktif, badge margin, ambang menipis per produk, restock/koreksi tercatat, tab riwayat stok (Owner), halaman detail per produk (terjual, revenue, profit, margin) + deep-link ke simulator.
 - **Transaksi (kasir)** — keranjang multi-produk, 1 struk tersimpan sebagai 1 transaksi + N item dengan snapshot harga. Riwayat dikelompokkan Hari > Struk > Item + subtotal. Struk yang salah catat dibatalkan utuh oleh owner lalu dibuatkan struk koreksi (tanpa edit diam-diam, biar teraudit).
+- **Statistik** — laporan per periode: tren revenue/profit (unit adaptif rb/jt), performa per produk (toggle Revenue/Profit/Margin), struk per hari, jam tersibuk & pola hari (WITA), penjualan per kasir, panel inventori (nilai stok, estimasi hari stok, stok mati), pergerakan stok mingguan, dan matriks Volume vs Margin.
 - **Simulator "what-if"** — lab satu produk: geser harga jual, diskon, modal, volume, langsung lihat dampak revenue/profit/margin, titik impas, dan diskon maksimum. Baseline bisa hari ini, minggu ini, bulan ini, atau custom.
 - **Copilot** — tanya jawab soal performa bisnis berbasis angka yang sama.
 - **Pengaturan** — identitas bisnis + kelola staff (tambah/hapus, role OWNER/STAFF). Riwayat struk staff yang sudah dihapus tetap menampilkan namanya.
@@ -22,12 +23,19 @@ Semua angka (omzet, modal, untung, margin) dihitung langsung dari data transaksi
 ![Simulator](docs/preview/simulator.png)
 ![Copilot](docs/preview/copilot.png)
 
+> Catatan: screenshot di atas diambil dari data demo sebelumnya (Resto Etam).
+> Data demo saat ini: Cindera Etam (toko oleh-oleh khas Kaltim).
+
+## Zona waktu
+
+Semua angka harian/jam dihitung dalam WITA (`Asia/Makassar`), bukan UTC.
+
 ## Cara jalan
 
 1. `cp .env.example .env`, isi `DATABASE_URL` (Neon, pooled endpoint) dan `BETTER_AUTH_SECRET`
 2. `npm install`
 3. `npx drizzle-kit migrate`
-4. `npm run db:seed` (data demo: Resto Etam, 10 menu, 90 hari transaksi)
+4. `npm run db:seed` (data demo: Cindera Etam, 10 produk khas Kaltim, 90 hari transaksi)
 5. `npm run dev`
 
 Akun demo setelah seed:

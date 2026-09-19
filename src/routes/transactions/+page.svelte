@@ -5,30 +5,31 @@
   import { enhance } from '$app/forms';
   import { goto } from '$app/navigation';
   import type { SubmitFunction } from '@sveltejs/kit';
+  import { fmtWita, dayKeyWita, startOfDayWita, addDaysWita } from '$lib/time';
   export let data;
   export let form;
 
   const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
-  const fmtTime = (d: string | Date) => new Date(d).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  // Jam struk tampil WITA (bukan zona lokal browser) biar sama dengan SSR.
+  const fmtTime = (d: string | Date) => fmtWita(d, { hour: '2-digit', minute: '2-digit' });
 
   function dayLabel(d: Date) {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const key = (x: Date) => x.toDateString();
-    const dateStr = d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
-    if (key(d) === key(today)) return `Hari ini · ${dateStr}`;
-    if (key(d) === key(yesterday)) return `Kemarin · ${dateStr}`;
+    const todayKey = dayKeyWita(new Date());
+    const yesterdayKey = dayKeyWita(addDaysWita(startOfDayWita(new Date()), -1));
+    const key = dayKeyWita(d);
+    const dateStr = fmtWita(d, { weekday: 'long', day: 'numeric', month: 'long' });
+    if (key === todayKey) return `Hari ini · ${dateStr}`;
+    if (key === yesterdayKey) return `Kemarin · ${dateStr}`;
     return dateStr;
   }
 
-  // Kelompokkan struk (sudah urut desc dari server) per hari + subtotal.
+  // Kelompokkan struk (sudah urut desc dari server) per hari WITA + subtotal.
   // `key` disimpan biar bisa dipakai filter dropdown hari di bawah.
   $: dayGroups = (() => {
     const map = new Map<string, { key: string; label: string; rows: typeof data.receipts; subtotal: number }>();
     for (const t of data.receipts) {
       const d = new Date(t.createdAt);
-      const key = d.toDateString();
+      const key = dayKeyWita(d);
       if (!map.has(key)) map.set(key, { key, label: dayLabel(d), rows: [], subtotal: 0 });
       const g = map.get(key)!;
       g.rows.push(t);

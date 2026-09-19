@@ -2,6 +2,7 @@ node_modules
 package-lock.json
 .svelte-kit
 build
+.wrangler
 .env
 .env.*
 !.env.example
