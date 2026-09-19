@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "db:seed": "tsx src/lib/server/db/seed.ts",
-    "verify:engine": "tsx script/verify-engine.ts"
+    "verify:engine": "tsx script/verify-engine.ts",
+    "verify:time": "tsx script/verify-time.ts",
+    "verify:stock": "tsx script/verify-stock.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

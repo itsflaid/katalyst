@@ -50,6 +50,20 @@
       "when": 1789801292731,
       "tag": "0006_admin_plugin_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789824251806,
+      "tag": "0007_stock_nonneg_check",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789825125541,
+      "tag": "0008_add_min_stock",
+      "breakpoints": true
     }
   ]
 }

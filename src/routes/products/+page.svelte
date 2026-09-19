@@ -1,93 +1,63 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import { page } from "$app/stores";
   import type { SubmitFunction } from "@sveltejs/kit";
-  import Input from "$lib/components/ui/Input.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import Badge from "$lib/components/ui/Badge.svelte";
-  import Table from "$lib/components/ui/Table.svelte";
-  import SlideOver from "$lib/components/ui/SlideOver.svelte";
   import PageHeader from "$lib/components/ui/PageHeader.svelte";
-  import { fade, scale } from "svelte/transition";
+  import ProductToolbar from "$lib/components/products/ProductToolbar.svelte";
+  import type { StockFilter } from "$lib/components/products/ProductToolbar.svelte";
+  import ProductTabs from "$lib/components/products/ProductTabs.svelte";
+  import ProductTable from "$lib/components/products/ProductTable.svelte";
+  import ProductFormSlideOver from "$lib/components/products/ProductFormSlideOver.svelte";
+  import StockSlideOver from "$lib/components/products/StockSlideOver.svelte";
+  import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
   export let data;
   export let form;
 
-  const idr = (n: number) =>
-    new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0,
-    }).format(n);
+  type StatusFilter = "all" | "active" | "inactive";
 
-  const marginOf = (p: { costPrice: number; sellingPrice: number }) =>
-    p.sellingPrice > 0
-      ? Math.round(((p.sellingPrice - p.costPrice) / p.sellingPrice) * 100)
-      : null;
-  const marginTone = (m: number | null) =>
-    m === null ? "neutral" : m >= 30 ? "positive" : "warning";
-
-  const statusOptions = [
-    { value: "all", label: "Semua" },
-    { value: "active", label: "Aktif" },
-    { value: "inactive", label: "Nonaktif" },
-  ] as const;
-  type StatusFilter = (typeof statusOptions)[number]["value"];
+  const minOf = (p: { minStock?: number | null }) => p.minStock ?? 5;
 
   let query = "";
   let statusFilter: StatusFilter = "all";
-  $: filtered = data.products.filter((p) => {
-    const q = query.trim().toLowerCase();
-    const matchQuery = !q || p.name.toLowerCase().includes(q);
-    const matchStatus =
-      statusFilter === "all" ||
-      (statusFilter === "active" ? p.isActive : !p.isActive);
-    return matchQuery && matchStatus;
-  });
+  // Nilai awal dari ?stok=restock|habis (dipakai tautan dari dashboard).
+  const stokParam = $page.url.searchParams.get("stok");
+  let stockFilter: StockFilter = stokParam === "habis" ? "habis" : stokParam === "restock" ? "restock" : "all";
+  $: restockCount = data.products.filter((p) => p.stock <= minOf(p)).length;
+  $: outCount = data.products.filter((p) => p.stock <= 0).length;
+  $: filtered = data.products
+    .filter((p) => {
+      const q = query.trim().toLowerCase();
+      const matchQuery = !q || p.name.toLowerCase().includes(q);
+      const matchStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" ? p.isActive : !p.isActive);
+      const matchStock =
+        stockFilter === "all" ||
+        (stockFilter === "restock" ? p.stock <= minOf(p) : p.stock <= 0);
+      return matchQuery && matchStatus && matchStock;
+    })
+    // Saat filter stok aktif, urutkan stok naik (yang paling kritis dulu).
+    .sort((a, b) => (stockFilter === "all" ? 0 : a.stock - b.stock));
   $: activeCount = data.products.filter((p) => p.isActive).length;
+  // STAFF boleh lihat daftar & stok, tapi semua aksi ubah data ditolak server
+  // (OWNER-only) — di sini tombolnya disembunyikan biar tidak ada dead-end.
+  $: isOwner = data.role === "OWNER";
 
   let showCreate = false;
   let stockModal: { mode: 'restock' | 'adjust'; id: string; name: string; stock: number } | null = null;
-  let sQty = '';
-  let sStock = '';
-  let sNote = '';
-  let editing: {
-    id: string;
-    name: string;
-    costPrice: string;
-    sellingPrice: string;
-    isActive: boolean;
-  } | null = null;
+  let editing: { id: string; name: string; costPrice: string; sellingPrice: string; isActive: boolean; minStock: string } | null = null;
   let pendingDelete: { id: string; name: string } | null = null;
 
-  let cName = "";
-  let cCost = "";
-  let cSell = "";
-  let cStock = "";
-  let cActive = true;
-
-  function openEdit(p: {
-    id: string;
-    name: string;
-    costPrice: number;
-    sellingPrice: number;
-    isActive: boolean;
-  }) {
-    editing = {
-      id: p.id,
-      name: p.name,
-      costPrice: String(p.costPrice),
-      sellingPrice: String(p.sellingPrice),
-      isActive: p.isActive,
-    };
+  function openEdit(p: { id: string; name: string; costPrice: number; sellingPrice: number; isActive: boolean; minStock?: number | null }) {
+    editing = { id: p.id, name: p.name, costPrice: String(p.costPrice), sellingPrice: String(p.sellingPrice), isActive: p.isActive, minStock: String(p.minStock ?? 5) };
   }
   function openStock(p: { id: string; name: string; stock: number }, mode: 'restock' | 'adjust') {
     stockModal = { mode, id: p.id, name: p.name, stock: p.stock };
-    sQty = '';
-    sStock = String(p.stock);
-    sNote = '';
   }
   function switchStockMode(mode: 'restock' | 'adjust') {
     if (!stockModal) return;
-    openStock({ id: stockModal.id, name: stockModal.name, stock: stockModal.stock }, mode);
+    stockModal = { ...stockModal, mode };
   }
   function closeModals() {
     showCreate = false;
@@ -95,22 +65,12 @@
     pendingDelete = null;
     stockModal = null;
   }
-  function resetCreate() {
-    cName = "";
-    cCost = "";
-    cSell = "";
-    cStock = "";
-    cActive = true;
-  }
 
   const afterSubmit: SubmitFunction =
     () =>
     async ({ result, update }) => {
       await update();
-      if (result.type === "success") {
-        closeModals();
-        resetCreate();
-      }
+      if (result.type === "success") closeModals();
     };
 
   function onKeydown(e: KeyboardEvent) {
@@ -122,40 +82,20 @@
 
 <PageHeader title="Produk" subtitle={`${data.products.length} produk terdaftar · ${activeCount} aktif`} />
 
-<div class="flex flex-wrap items-center gap-3 my-4">
-  <Input
-    bind:value={query}
-    placeholder="Cari nama produk…"
-    class="max-w-sm flex-1 min-w-[200px]"
-    aria-label="Cari nama produk"
-  />
-  <div
-    class="flex rounded border border-border-input overflow-hidden"
-    role="group"
-    aria-label="Filter status"
-  >
-    {#each statusOptions as o}
-      <button
-        type="button"
-        on:click={() => (statusFilter = o.value)}
-        aria-pressed={statusFilter === o.value}
-        class="px-3 h-9 text-body-md border-none cursor-pointer {statusFilter === o.value
-          ? 'bg-ink-navy text-white font-semibold'
-          : 'bg-white text-muted hover:bg-table-header'}"
-      >
-        {o.label}
-      </button>
-    {/each}
-  </div>
-  <Button on:click={() => (showCreate = true)} class="flex-shrink-0 ml-auto">+ Tambah</Button>
-</div>
+<ProductTabs {isOwner} />
+
+<ProductToolbar bind:query bind:statusFilter bind:stockFilter {restockCount} {outCount} {isOwner} onAdd={() => (showCreate = true)} />
 
 {#if data.products.length === 0}
   <div class="rounded-panel border-2 border-dashed border-border-input text-center py-12 px-4">
-    <p class="text-body-md text-muted mb-4">
-      Belum ada produk. Tambahkan produk pertama untuk mulai mencatat transaksi.
+    <p class="text-body-md text-muted {isOwner ? 'mb-4' : ''}">
+      {isOwner
+        ? "Belum ada produk. Tambahkan produk pertama untuk mulai mencatat transaksi."
+        : "Belum ada produk. Minta Owner menambahkan produk dulu."}
     </p>
-    <Button on:click={() => (showCreate = true)}>+ Tambah Produk</Button>
+    {#if isOwner}
+      <Button on:click={() => (showCreate = true)}>+ Tambah Produk</Button>
+    {/if}
   </div>
 {:else if filtered.length === 0}
   <div class="rounded-panel border-2 border-dashed border-border-input text-center py-12 px-4">
@@ -164,304 +104,49 @@
     </p>
   </div>
 {:else}
-  <Table headers={["Produk", "Modal", "Jual", "Margin", "Stok", "Status", "Aksi"]}>
-    {#each filtered as p}
-      {@const m = marginOf(p)}
-      <tr class={!p.isActive ? "opacity-60" : ""}>
-        <td class="px-3 py-2 text-ink font-semibold whitespace-nowrap"><a href={`/products/${p.id}`} class="text-ink-navy hover:underline">{p.name}</a></td>
-        <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{idr(p.costPrice)}</td>
-        <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(p.sellingPrice)}</td>
-        <td class="px-3 py-2">
-          <Badge size="sm" tone={marginTone(m)}>{m === null ? "—" : `${m}%`}</Badge>
-        </td>
-        <td class="px-3 py-2 whitespace-nowrap">
-          {#if p.stock <= 0}
-            <Badge size="sm" tone="negative">Habis</Badge>
-          {:else if p.stock <= 5}
-            <span class="tabular text-muted">{p.stock} </span><Badge size="sm" tone="warning">Menipis</Badge>
-          {:else}
-            <span class="tabular text-ink">{p.stock}</span>
-          {/if}
-        </td>
-        <td class="px-3 py-2">
-          <form method="POST" action="?/toggle" use:enhance={afterSubmit}>
-            <input type="hidden" name="id" value={p.id} />
-            <input type="hidden" name="isActive" value={p.isActive ? "off" : "on"} />
-            <button
-              type="submit"
-              role="switch"
-              aria-checked={p.isActive}
-              aria-label={p.isActive ? `Nonaktifkan ${p.name}` : `Aktifkan ${p.name}`}
-              title={p.isActive ? "Klik untuk menonaktifkan" : "Klik untuk mengaktifkan"}
-              class="relative block h-6 w-10 rounded-full border transition-colors cursor-pointer {p.isActive
-                ? 'bg-status-positive border-status-positive'
-                : 'bg-surface-dim border-border-input'}"
-            >
-              <span
-                class="absolute top-0.5 h-[18px] w-[18px] rounded-full bg-white shadow transition-all {p.isActive
-                  ? 'left-[18px]'
-                  : 'left-0.5'}"
-              ></span>
-            </button>
-          </form>
-        </td>
-        <td class="px-3 py-2 whitespace-nowrap">
-          <div class="flex items-center gap-3">
-            <a href={`/products/${p.id}`} class="text-body-sm font-semibold text-ink-navy hover:underline">
-              Detail
-            </a>
-            <button
-              type="button"
-              on:click={() => openStock(p, 'restock')}
-              class="text-body-sm font-semibold text-status-positive hover:underline bg-transparent border-none cursor-pointer p-0"
-            >
-              Stok
-            </button>
-            <button
-              type="button"
-              on:click={() => openEdit(p)}
-              class="text-body-sm font-semibold text-ink-navy hover:underline bg-transparent border-none cursor-pointer p-0"
-            >
-              Edit
-            </button>
-            <a href={`/simulator?productId=${p.id}`} class="text-body-sm text-muted hover:underline">
-              Simulasikan
-            </a>
-            <button
-              type="button"
-              on:click={() => (pendingDelete = { id: p.id, name: p.name })}
-              class="text-body-sm font-semibold text-status-negative hover:underline bg-transparent border-none cursor-pointer p-0"
-            >
-              Hapus
-            </button>
-          </div>
-        </td>
-      </tr>
-    {/each}
-  </Table>
+  <ProductTable
+    products={filtered}
+    {isOwner}
+    onSubmit={afterSubmit}
+    onStock={openStock}
+    onEdit={openEdit}
+    onDelete={(p) => (pendingDelete = p)}
+  />
   <p class="text-body-sm text-muted mt-2">
     Menampilkan {filtered.length} dari {data.products.length} produk.
   </p>
 {/if}
 
 {#if showCreate}
-  <SlideOver title="Tambah Produk" onClose={closeModals}>
-    <form
-      method="POST"
-      action="?/create"
-      use:enhance={afterSubmit}
-      class="flex flex-col gap-3"
-    >
-      <label for="c-name" class="flex flex-col gap-1 text-body-md text-ink">
-        Nama produk
-        <Input
-          id="c-name"
-          name="name"
-          bind:value={cName}
-          placeholder="Contoh: Kopi Susu"
-          required
-        />
-      </label>
-      <label for="c-cost" class="flex flex-col gap-1 text-body-md text-ink">
-        Harga modal
-        <Input
-          id="c-cost"
-          name="costPrice"
-          type="number"
-          min="0"
-          bind:value={cCost}
-          placeholder="15000"
-          required
-        />
-      </label>
-      <label for="c-sell" class="flex flex-col gap-1 text-body-md text-ink">
-        Harga jual
-        <Input
-          id="c-sell"
-          name="sellingPrice"
-          type="number"
-          min="1"
-          bind:value={cSell}
-          placeholder="25000"
-          required
-        />
-      </label>
-      <label for="c-stock" class="flex flex-col gap-1 text-body-md text-ink">
-        Stok awal
-        <Input
-          id="c-stock"
-          name="stock"
-          type="number"
-          min="0"
-          step="1"
-          bind:value={cStock}
-          placeholder="0"
-        />
-      </label>
-      <label class="flex items-center gap-2 text-body-md text-ink">
-        <input
-          type="checkbox"
-          name="isActive"
-          bind:checked={cActive}
-          class="h-4 w-4 accent-ink-navy"
-        />
-        Aktif dijual
-      </label>
-      {#if form?.for === "create"}<p class="text-body-sm text-status-negative">
-          {form.message}
-        </p>{/if}
-      <div class="flex justify-end gap-2 mt-1">
-        <Button variant="secondary" type="button" on:click={closeModals}
-          >Batal</Button
-        >
-        <Button type="submit">Simpan</Button>
-      </div>
-    </form>
-  </SlideOver>
+  <ProductFormSlideOver mode="create" {form} onSubmit={afterSubmit} onClose={closeModals} />
 {/if}
 
 {#if editing}
-  <SlideOver title="Edit Produk" onClose={closeModals}>
-    <form
-      method="POST"
-      action="?/update"
-      use:enhance={afterSubmit}
-      class="flex flex-col gap-3"
-    >
-      <input type="hidden" name="id" value={editing.id} />
-      <label for="e-name" class="flex flex-col gap-1 text-body-md text-ink">
-        Nama produk
-        <Input id="e-name" name="name" bind:value={editing.name} required />
-      </label>
-      <label for="e-cost" class="flex flex-col gap-1 text-body-md text-ink">
-        Harga modal
-        <Input
-          id="e-cost"
-          name="costPrice"
-          type="number"
-          min="0"
-          bind:value={editing.costPrice}
-          required
-        />
-      </label>
-      <label for="e-sell" class="flex flex-col gap-1 text-body-md text-ink">
-        Harga jual
-        <Input
-          id="e-sell"
-          name="sellingPrice"
-          type="number"
-          min="1"
-          bind:value={editing.sellingPrice}
-          required
-        />
-      </label>
-      <label class="flex items-center gap-2 text-body-md text-ink">
-        <input
-          type="checkbox"
-          name="isActive"
-          bind:checked={editing.isActive}
-          class="h-4 w-4 accent-ink-navy"
-        />
-        Aktif dijual
-      </label>
-      {#if form?.for === "update"}<p class="text-body-sm text-status-negative">
-          {form.message}
-        </p>{/if}
-      <div class="flex items-center justify-between gap-2 mt-1">
-        <a
-          href={`/simulator?productId=${editing.id}`}
-          class="text-body-sm text-ink-navy underline">Simulasikan</a
-        >
-        <div class="flex gap-2">
-          <Button variant="secondary" type="button" on:click={closeModals}
-            >Batal</Button
-          >
-          <Button type="submit">Simpan</Button>
-        </div>
-      </div>
-    </form>
-  </SlideOver>
+  <ProductFormSlideOver mode="edit" product={editing} {form} onSubmit={afterSubmit} onClose={closeModals} />
 {/if}
 
 {#if pendingDelete}
-  <button
-    type="button"
-    class="fixed inset-0 z-50 bg-ink/40 border-none cursor-default p-0"
-    transition:fade={{ duration: 150 }}
-    aria-label="Batalkan hapus"
-    on:click={closeModals}
-  ></button>
-  <div class="fixed inset-0 z-50 grid place-items-center p-4 pointer-events-none">
-    <div
-      class="pointer-events-auto w-full max-w-sm rounded-panel border border-border-cool bg-surface p-5 shadow-level3"
-      transition:scale={{ duration: 150, start: 0.96 }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Konfirmasi hapus produk"
-    >
-      <h2 class="text-headline-sm text-ink mb-2">Hapus produk?</h2>
-      <p class="text-body-md text-muted">
-        “{pendingDelete.name}” akan dihapus permanen. Produk yang sudah punya
-        riwayat transaksi tidak bisa dihapus — nonaktifkan saja.
-      </p>
-      <div class="flex gap-2 mt-4">
-        <Button variant="secondary" class="flex-1" on:click={closeModals}>Batal</Button>
-        <form
-          method="POST"
-          action="?/delete"
-          use:enhance={afterSubmit}
-          class="flex-1"
-        >
-          <input type="hidden" name="id" value={pendingDelete.id} />
-          <Button variant="destructive" type="submit" class="w-full">Hapus</Button>
-        </form>
-      </div>
-    </div>
-  </div>
+  <ConfirmDialog title="Hapus produk?" onClose={closeModals}>
+    “{pendingDelete.name}” akan dihapus permanen. Produk yang sudah punya
+    riwayat penjualan tidak bisa dihapus — nonaktifkan saja.
+    {#if form?.for === "delete"}<p class="text-body-sm text-status-negative mt-2">{form.message}</p>{/if}
+    <svelte:fragment slot="actions">
+      <Button variant="secondary" class="flex-1" on:click={closeModals}>Batal</Button>
+      <form
+        method="POST"
+        action="?/delete"
+        use:enhance={afterSubmit}
+        class="flex-1"
+      >
+        <input type="hidden" name="id" value={pendingDelete.id} />
+        <Button variant="destructive" type="submit" class="w-full">Hapus</Button>
+      </form>
+    </svelte:fragment>
+  </ConfirmDialog>
 {/if}
 
 {#if stockModal}
-  <SlideOver title={stockModal.mode === 'restock' ? `Restock — ${stockModal.name}` : `Koreksi Stok — ${stockModal.name}`} onClose={closeModals}>
-    {#if stockModal.mode === 'restock'}
-      <form method="POST" action="?/restock" use:enhance={afterSubmit} class="flex flex-col gap-3">
-        <input type="hidden" name="id" value={stockModal.id} />
-        <p class="text-body-sm text-muted">Stok sekarang: <strong class="text-ink tabular">{stockModal.stock}</strong></p>
-        <label for="s-qty" class="flex flex-col gap-1 text-body-md text-ink">
-          Jumlah tambah
-          <Input id="s-qty" name="qty" type="number" min="1" step="1" bind:value={sQty} placeholder="10" required />
-        </label>
-        <label for="s-note" class="flex flex-col gap-1 text-body-md text-ink">
-          Catatan (opsional)
-          <Input id="s-note" name="note" bind:value={sNote} placeholder="Barang dari supplier" />
-        </label>
-        {#if form?.for === "restock"}<p class="text-body-sm text-status-negative">{form.message}</p>{/if}
-        <div class="flex justify-end gap-2 mt-1">
-          <Button variant="secondary" type="button" on:click={closeModals}>Batal</Button>
-          <Button type="submit">Tambah Stok</Button>
-        </div>
-      </form>
-    {:else}
-      <form method="POST" action="?/adjust" use:enhance={afterSubmit} class="flex flex-col gap-3">
-        <input type="hidden" name="id" value={stockModal.id} />
-        <label for="s-stock" class="flex flex-col gap-1 text-body-md text-ink">
-          Stok hasil opname
-          <Input id="s-stock" name="stock" type="number" min="0" step="1" bind:value={sStock} required />
-        </label>
-        <label for="s-note2" class="flex flex-col gap-1 text-body-md text-ink">
-          Alasan (wajib)
-          <Input id="s-note2" name="note" bind:value={sNote} placeholder="Selisih hitung fisik" required />
-        </label>
-        {#if form?.for === "adjust"}<p class="text-body-sm text-status-negative">{form.message}</p>{/if}
-        <div class="flex justify-end gap-2 mt-1">
-          <Button variant="secondary" type="button" on:click={() => switchStockMode('restock')}>Ke Restock</Button>
-          <Button type="submit">Simpan Koreksi</Button>
-        </div>
-      </form>
-    {/if}
-    {#if stockModal.mode === 'restock'}
-      <button type="button" on:click={() => switchStockMode('adjust')} class="text-body-sm text-muted hover:text-ink mt-3 bg-transparent border-none cursor-pointer p-0">
-        Malah mau koreksi hasil opname?
-      </button>
-    {/if}
-  </SlideOver>
+  {#key stockModal.id + stockModal.mode}
+    <StockSlideOver modal={stockModal} {form} onSubmit={afterSubmit} onClose={closeModals} onSwitchMode={switchStockMode} />
+  {/key}
 {/if}

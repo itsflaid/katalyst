@@ -1,12 +1,15 @@
 import { db } from '$lib/server/db';
 import { product, transaction, transactionItem, user } from '$lib/server/db/schema';
-import { eq, and, count, desc, sql, gte } from 'drizzle-orm';
+import { eq, and, asc, count, desc, sql, gte } from 'drizzle-orm';
 import {
   calculateMargin,
   getBusinessInsights,
   getTopProducts,
   type ProductSummary
 } from '$lib/analytics';
+import { startOfDayWita, addDaysWita, dayKeyWita, toWita } from '$lib/time';
+import { witaDate } from '$lib/server/sql';
+import { pickMoneyUnit, scaleMoney } from '$lib/format';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -20,10 +23,11 @@ export const load: PageServerLoad = async ({ locals }) => {
   // lokasi hitungnya pindah ke database.
   // Query ke-5: agregat harian 60 hari terakhir — 1 query melayani tren
   // (30 hari terakhir) + delta (30 hari ini vs 30 hari sebelumnya).
-  const sixtyDaysAgo = new Date();
-  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 59);
-  sixtyDaysAgo.setHours(0, 0, 0, 0);
-  const [products, grouped, countRows, recentTransactions, dailyRows] = await Promise.all([
+  // Semua batas hari & bucket memakai WITA (bukan UTC / lokal server).
+  const sixtyDaysAgo = startOfDayWita(addDaysWita(new Date(), -59));
+  // Objek ekspresi yang sama dipakai di select & groupBy (lihat sql.ts).
+  const dayExpr = witaDate(transaction.createdAt);
+  const [products, grouped, countRows, recentTransactions, dailyRows, restockList, restockCounts] = await Promise.all([
     db
       .select({ id: product.id, name: product.name })
       .from(product)
@@ -73,7 +77,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
     db
       .select({
-        day: sql<string>`(${transaction.createdAt}::date)::text`,
+        day: sql<string>`(${dayExpr})::text`,
         revenue: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale})::text`,
         cost: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.costAtSale})::text`,
         txCount: sql<string>`count(distinct ${transaction.id})::text`
@@ -81,7 +85,30 @@ export const load: PageServerLoad = async ({ locals }) => {
       .from(transaction)
       .innerJoin(transactionItem, eq(transactionItem.transactionId, transaction.id))
       .where(and(eq(transaction.businessId, businessId), gte(transaction.createdAt, sixtyDaysAgo)))
-      .groupBy(sql`(${transaction.createdAt}::date)`)
+      .groupBy(dayExpr),
+
+    // Kartu "Perlu restock": produk aktif dengan stok <= ambang, 5 paling
+    // kritis + hitungan habis & menipis.
+    db
+      .select({ id: product.id, name: product.name, stock: product.stock, minStock: product.minStock })
+      .from(product)
+      .where(
+        and(
+          eq(product.businessId, businessId),
+          eq(product.isActive, true),
+          sql`${product.stock} <= ${product.minStock}`
+        )
+      )
+      .orderBy(asc(product.stock))
+      .limit(5),
+
+    db
+      .select({
+        habis: sql<string>`count(*) filter (where ${product.stock} <= 0)::text`,
+        menipis: sql<string>`count(*) filter (where ${product.stock} > 0 and ${product.stock} <= ${product.minStock})::text`
+      })
+      .from(product)
+      .where(eq(product.businessId, businessId))
   ]);
 
   const productNames = Object.fromEntries(products.map((p) => [p.id, p.name]));
@@ -126,16 +153,15 @@ export const load: PageServerLoad = async ({ locals }) => {
     ])
   );
   const days: { key: string; label: string; revenue: number; profit: number; tx: number }[] = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const todayStart = startOfDayWita(new Date());
   for (let i = 59; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const d = addDaysWita(todayStart, -i);
+    const key = dayKeyWita(d);
+    const w = toWita(d);
     const v = byDay.get(key) ?? { revenue: 0, cost: 0, tx: 0 };
     days.push({
       key,
-      label: `${d.getDate()}/${d.getMonth() + 1}`,
+      label: `${w.getUTCDate()}/${w.getUTCMonth() + 1}`,
       revenue: v.revenue,
       profit: v.revenue - v.cost,
       tx: v.tx
@@ -157,11 +183,19 @@ export const load: PageServerLoad = async ({ locals }) => {
   };
   const curMargin = calculateMargin(curRev, curProfit);
   const prevMargin = calculateMargin(prevRev, prevProfit);
+  // Unit sumbu adaptif (rb/jt) biar warung omzet ratusan ribu tidak patah-patah.
+  const moneyUnit = pickMoneyUnit(Math.max(Math.abs(curRev), Math.abs(curProfit), 0));
   const trend = {
     labels: cur.map((d) => d.label),
-    // jt Rp 1 desimal — sumbu chart tetap terbaca walau omzet jutaan.
-    revenue: cur.map((d) => Math.round((d.revenue / 1_000_000) * 10) / 10),
-    profit: cur.map((d) => Math.round((d.profit / 1_000_000) * 10) / 10)
+    revenue: scaleMoney(
+      cur.map((d) => d.revenue),
+      moneyUnit
+    ),
+    profit: scaleMoney(
+      cur.map((d) => d.profit),
+      moneyUnit
+    ),
+    unitLabel: moneyUnit.label
   };
   const deltas = {
     revenue: pct(curRev, prevRev),
@@ -171,5 +205,12 @@ export const load: PageServerLoad = async ({ locals }) => {
     margin: prevRev === 0 && curRev === 0 ? 0 : (curMargin - prevMargin) * 100
   };
 
-  return { summary, topByRevenue, recentTransactions, transactionCount, trend, deltas, insights };
+  const [{ habis, menipis }] = restockCounts;
+  const restock = {
+    list: restockList,
+    habis: Number(habis ?? 0),
+    menipis: Number(menipis ?? 0)
+  };
+
+  return { summary, topByRevenue, recentTransactions, transactionCount, trend, deltas, insights, restock };
 };

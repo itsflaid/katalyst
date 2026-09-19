@@ -8,6 +8,8 @@ import {
     getBusinessInsights,
     compareBusinessPeriods,
     compareProductPeriods,
+    quadrantOf,
+    estimateDaysCover,
     TransactionItemLike,
 } from "../src/lib/analytics";
 import { simulateScenario, ProductLike } from "../src/lib/simulation";
@@ -161,6 +163,49 @@ if (cmpB && cmpB.previous === null && cmpB.change.revenueChangePercent === 0) {
     passCount++;
 } else {
     console.log("  \x1b[31mFAIL\x1b[0m  compareProductPeriods: Produk B (baru) seharusnya previous=null & change=0");
+    failCount++;
+}
+
+// ============================================================
+// 5. Analytics — matriks volume vs margin + estimasi hari stok
+// ============================================================
+console.log("\n== Analytics: quadrant & days cover ==");
+
+if (quadrantOf(100, 0.5, 50, 0.3) === "bintang") {
+    console.log("  \x1b[32mPASS\x1b[0m  quadrantOf laku+margin baik = bintang");
+    passCount++;
+} else {
+    console.log("  \x1b[31mFAIL\x1b[0m  quadrantOf laku+margin baik seharusnya bintang");
+    failCount++;
+}
+if (quadrantOf(100, 0.1, 50, 0.3) === "laris-tipis") {
+    console.log("  \x1b[32mPASS\x1b[0m  quadrantOf laris+margin tipis = laris-tipis");
+    passCount++;
+} else {
+    console.log("  \x1b[31mFAIL\x1b[0m  quadrantOf laris+margin tipis seharusnya laris-tipis");
+    failCount++;
+}
+if (quadrantOf(5, 0.6, 50, 0.3) === "margin-kurang-laku") {
+    console.log("  \x1b[32mPASS\x1b[0m  quadrantOf margin bagus+kurang laku = margin-kurang-laku");
+    passCount++;
+} else {
+    console.log("  \x1b[31mFAIL\x1b[0m  quadrantOf margin bagus+kurang laku seharusnya margin-kurang-laku");
+    failCount++;
+}
+if (quadrantOf(5, 0.1, 50, 0.3) === "evaluasi") {
+    console.log("  \x1b[32mPASS\x1b[0m  quadrantOf dua-duanya rendah = evaluasi");
+    passCount++;
+} else {
+    console.log("  \x1b[31mFAIL\x1b[0m  quadrantOf dua-duanya rendah seharusnya evaluasi");
+    failCount++;
+}
+
+check("estimateDaysCover 70 stok / 140 per 14 hari", estimateDaysCover(70, 140, 14), 7, 0.001);
+if (!isFinite(estimateDaysCover(10, 0, 14))) {
+    console.log("  \x1b[32mPASS\x1b[0m  estimateDaysCover tanpa penjualan = Infinity");
+    passCount++;
+} else {
+    console.log("  \x1b[31mFAIL\x1b[0m  estimateDaysCover tanpa penjualan seharusnya Infinity");
     failCount++;
 }
 
