@@ -20,6 +20,9 @@
   let pendingReset: { id: string; name: string } | null = null;
   let resetting = false;
   let resetResult: { name: string; tempPassword: string } | null = null;
+  let editingUsername: { id: string; name: string; current: string | null } | null = null;
+  let usernameValue = '';
+  let savingUsername = false;
   let listError = '';
   let busyInviteId = '';
 
@@ -134,6 +137,32 @@
     pendingReset = null;
   }
 
+  function openUsernameEditor(staff: { id: string; name: string | null; username: string | null }) {
+    editingUsername = { id: staff.id, name: staff.name ?? staff.username ?? 'Staff', current: staff.username };
+    usernameValue = staff.username ?? '';
+    listError = '';
+  }
+
+  async function saveUsername() {
+    if (!editingUsername) return;
+    savingUsername = true;
+    listError = '';
+    const res = await fetch('/api/staff', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: editingUsername.id, username: usernameValue })
+    });
+    savingUsername = false;
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      listError = body.message ?? 'Gagal menyimpan username.';
+      return;
+    }
+    const body = await res.json();
+    staffList = staffList.map((s) => (s.id === editingUsername?.id ? { ...s, username: body.username } : s));
+    editingUsername = null;
+  }
+
   async function deleteStaff() {
     if (!pendingDelete) return;
     deleting = true;
@@ -181,6 +210,13 @@
                 <td class="px-3 py-2"><Badge size="sm" tone={staff.role === 'OWNER' ? 'neutral' : 'positive'}>{staff.role}</Badge></td>
                 <td class="px-3 py-2 whitespace-nowrap">
                   {#if staff.role === 'STAFF' && staff.id !== currentUserId}
+                    <button
+                      type="button"
+                      on:click={() => openUsernameEditor(staff)}
+                      class="text-body-sm font-semibold text-ink-navy hover:underline bg-transparent border-none cursor-pointer p-0 mr-3"
+                    >
+                      Username
+                    </button>
                     <button
                       type="button"
                       on:click={() => (pendingReset = { id: staff.id, name: staff.name ?? staff.username ?? 'Staff' })}
@@ -336,6 +372,25 @@
       <div class="flex gap-2 mt-4">
         <Button variant="secondary" class="flex-1" on:click={() => (pendingDelete = null)}>Batal</Button>
         <Button variant="destructive" class="flex-1" disabled={deleting} on:click={deleteStaff}>{deleting ? 'Menghapus...' : 'Hapus'}</Button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if editingUsername}
+  <div class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Atur username">
+    <button type="button" class="absolute inset-0 bg-ink/40 border-none cursor-default p-0" aria-label="Batal" on:click={() => (editingUsername = null)}></button>
+    <div class="relative w-full max-w-sm rounded-panel border border-border-cool bg-surface p-5 shadow-level3">
+      <h3 class="text-headline-sm text-ink mb-2">Username “{editingUsername.name}”</h3>
+      <p class="text-body-sm text-muted mb-3">Dipakai staff untuk masuk. 3–20 karakter: huruf kecil, angka, titik, underscore, strip.</p>
+      <label for="staff-username-edit" class="flex flex-col gap-1 text-body-md text-ink">
+        Username
+        <Input id="staff-username-edit" type="text" placeholder="mis. budi" bind:value={usernameValue} />
+      </label>
+      {#if listError}<p role="alert" class="rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative mt-3">{listError}</p>{/if}
+      <div class="flex gap-2 mt-4">
+        <Button variant="secondary" class="flex-1" on:click={() => (editingUsername = null)}>Batal</Button>
+        <Button class="flex-1" disabled={savingUsername} on:click={saveUsername}>{savingUsername ? 'Menyimpan...' : 'Simpan'}</Button>
       </div>
     </div>
   </div>
