@@ -1,5 +1,7 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { admin } from 'better-auth/plugins';
+import { adminAc, userAc } from 'better-auth/plugins/admin/access';
 import { db } from './db';
 import * as schema from './db/schema';
 import { env } from '$env/dynamic/private';
@@ -14,6 +16,15 @@ export const auth = betterAuth({
     provider: 'pg',
     schema
   }),
+  plugins: [
+    // Admin plugin dipakai server-side saja (auth.api.setUserPassword,
+    // revokeUserSessions buat reset password staff oleh owner). Nama role
+    // kita (OWNER/STAFF) wajib didaftarkan di `roles` — tanpa ini build
+    // melempar "Invalid admin roles". OWNER dapat izin admin penuh
+    // (set-password, revoke, ...), STAFF tidak dapat izin apa pun.
+    // Kolom tambahan plugin (banned, dsb) tidak dipakai jadi tidak perlu migrasi.
+    admin({ adminRoles: ['OWNER'], roles: { OWNER: adminAc, STAFF: userAc } })
+  ],
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 6
