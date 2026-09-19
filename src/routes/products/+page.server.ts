@@ -1,5 +1,6 @@
 import { db } from '$lib/server/db';
 import { product, stockMovement, transactionItem } from '$lib/server/db/schema';
+import { denyUnlessOwner, getOwnedProduct, parseProductFields, parseInitialStock } from '$lib/server/products';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 // crypto.randomUUID global (bukan import 'crypto') biar jalan di Workers.
@@ -13,52 +14,6 @@ export const load: PageServerLoad = async ({ locals }) => {
   const role: 'OWNER' | 'STAFF' = locals.user!.role === 'OWNER' ? 'OWNER' : 'STAFF';
   return { products, role };
 };
-
-// -----------------------------------------------------------------------
-// Helper
-// -----------------------------------------------------------------------
-
-// STAFF boleh buka /products (lihat stok & harga), tapi semua perubahan
-// data produk OWNER-only. Dicek di server — menyembunyikan tombol di UI
-// saja tidak cukup karena form action bisa dipanggil langsung.
-function denyUnlessOwner(locals: App.Locals, forKey: string, message: string) {
-  if (locals.user?.role !== 'OWNER') return fail(403, { for: forKey, message });
-  return null;
-}
-
-async function getOwnedProduct(id: string, businessId: string) {
-  const [row] = await db
-    .select({ id: product.id, stock: product.stock })
-    .from(product)
-    .where(and(eq(product.id, id), eq(product.businessId, businessId)));
-  return row ?? null;
-}
-
-// Field produk yang boleh diubah lewat form tambah/edit. SENGAJA tanpa
-// `stock`: stok cuma berubah lewat penjualan, restock, atau koreksi
-// (semuanya tercatat di ledger). Dulu parser ini ikut membaca `stock`, dan
-// form edit tidak mengirimnya → tiap edit nama/harga stok kereset jadi 0.
-function parseProductFields(form: FormData) {
-  const name = String(form.get('name') ?? '').trim();
-  const costPrice = Number(form.get('costPrice'));
-  const sellingPrice = Number(form.get('sellingPrice'));
-  const isActive = form.get('isActive') === 'on';
-  if (!name) return { error: 'Nama produk wajib diisi.' };
-  if (!Number.isFinite(costPrice) || costPrice < 0) return { error: 'Harga modal harus angka ≥ 0.' };
-  if (!Number.isFinite(sellingPrice) || sellingPrice <= 0) return { error: 'Harga jual harus angka > 0.' };
-  return {
-    data: { name, costPrice: Math.round(costPrice), sellingPrice: Math.round(sellingPrice), isActive }
-  };
-}
-
-function parseInitialStock(form: FormData) {
-  const raw = form.get('stock');
-  const stock = raw === null || raw === '' ? 0 : Number(raw);
-  if (!Number.isInteger(stock) || stock < 0 || stock > 1000000) {
-    return { error: 'Stok awal harus bilangan bulat 0–1000000.' };
-  }
-  return { data: stock };
-}
 
 // -----------------------------------------------------------------------
 // Actions
