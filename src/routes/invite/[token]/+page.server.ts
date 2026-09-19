@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { auth } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import { business, staffInvitation, user } from '$lib/server/db/schema';
-import { hashInviteToken } from '$lib/server/invites';
+import { hashInviteToken, staffPlaceholderEmail } from '$lib/server/invites';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -27,13 +27,13 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     return {
       status: 'expired' as InviteStatus,
       businessName: b?.name ?? 'Bisnis',
-      email: invite.email
+      username: invite.username
     };
   }
   return {
     status: 'valid' as InviteStatus,
     businessName: b?.name ?? 'Bisnis',
-    email: invite.email,
+    username: invite.username,
     name: invite.name ?? '',
     expiresAt: invite.expiresAt.toISOString()
   };
@@ -54,7 +54,7 @@ export const actions: Actions = {
     const form = await request.formData();
     const password = String(form.get('password') ?? '');
     const confirm = String(form.get('confirmPassword') ?? '');
-    const name = String(form.get('name') ?? '').trim() || invite.name || invite.email.split('@')[0];
+    const name = String(form.get('name') ?? '').trim() || invite.name || invite.username;
 
     if (password.length < 6) {
       return fail(400, { message: 'Password minimal 6 karakter.' });
@@ -63,18 +63,27 @@ export const actions: Actions = {
       return fail(400, { message: 'Konfirmasi password tidak cocok.' });
     }
 
-    const [existingUser] = await db.select({ id: user.id }).from(user).where(eq(user.email, invite.email));
+    const [existingUser] = await db.select({ id: user.id }).from(user).where(eq(user.username, invite.username));
     if (existingUser) {
-      return fail(409, { message: 'Email ini sudah terdaftar. Silakan masuk.' });
+      return fail(409, { message: 'Username ini sudah dipakai. Silakan masuk.' });
     }
 
     let signUpResult;
     try {
+      // Kolom user.email NOT NULL tapi staff tak wajib punya email:
+      // pakai email sintetis (domain reserved, tak bisa di-routing).
+      // Login staff selalu via username, email ini tak pernah ditampilkan.
       signUpResult = await auth.api.signUpEmail({
-        body: { email: invite.email, password, name }
+        body: { email: staffPlaceholderEmail(invite.username), password, name, username: invite.username }
       });
     } catch {
-      return fail(409, { message: 'Email ini sudah terdaftar. Silakan masuk.' });
+      // Bedakan duplikat beneran (race: username dibuat di sela cek dan signup)
+      // dari kegagalan lain — pesan "dipakai" untuk error sembarang
+      // menutupi bug beneran (pernah kejadian: default role plugin "user"
+      // bukan anggota enum PG sehingga SEMUA signup gagal).
+      const [raced] = await db.select({ id: user.id }).from(user).where(eq(user.username, invite.username));
+      if (raced) return fail(409, { message: 'Username ini sudah dipakai. Silakan masuk.' });
+      return fail(500, { message: 'Gagal membuat akun, coba lagi.' });
     }
 
     await db.update(user).set({ role: 'STAFF', businessId: invite.businessId }).where(eq(user.id, signUpResult.user.id));

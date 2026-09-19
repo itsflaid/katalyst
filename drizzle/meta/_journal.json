@@ -64,6 +64,20 @@
       "when": 1789825125541,
       "tag": "0008_add_min_stock",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789828242232,
+      "tag": "0009_invite_username_add",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789828650247,
+      "tag": "0010_invite_username_only",
+      "breakpoints": true
     }
   ]
 }

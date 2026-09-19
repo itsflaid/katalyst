@@ -174,8 +174,8 @@ async function main() {
   const ownerId = ownerSignUp.user.id;
   const staffId = staffSignUp.user.id;
 
-  await db.update(user).set({ role: 'OWNER', businessId }).where(eq(user.id, ownerId));
-  await db.update(user).set({ role: 'STAFF', businessId }).where(eq(user.id, staffId));
+  await db.update(user).set({ role: 'OWNER', businessId, username: 'owner' }).where(eq(user.id, ownerId));
+  await db.update(user).set({ role: 'STAFF', businessId, username: 'staff' }).where(eq(user.id, staffId));
 
   const productIds: Record<string, string> = {};
   for (const p of PRODUCTS) {

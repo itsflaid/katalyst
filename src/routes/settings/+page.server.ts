@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ locals }) => {
   // terlama ke terbaru (createdAt naik). CASE eksplisit biar tidak
   // bergantung pada urutan alfabet nilai enum.
   const staffList = await db
-    .select({ id: user.id, name: user.name, email: user.email, role: user.role })
+    .select({ id: user.id, name: user.name, username: user.username, role: user.role })
     .from(user)
     .where(eq(user.businessId, businessId))
     .orderBy(sql`CASE WHEN ${user.role} = 'OWNER' THEN 0 ELSE 1 END`, asc(user.createdAt));
@@ -19,7 +19,7 @@ export const load: PageServerLoad = async ({ locals }) => {
   const pendingInvites = await db
     .select({
       id: staffInvitation.id,
-      email: staffInvitation.email,
+      username: staffInvitation.username,
       name: staffInvitation.name,
       expiresAt: staffInvitation.expiresAt,
       createdAt: staffInvitation.createdAt

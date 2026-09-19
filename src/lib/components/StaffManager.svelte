@@ -5,21 +5,24 @@
   import Input from '$lib/components/ui/Input.svelte';
   import Badge from '$lib/components/ui/Badge.svelte';
 
-  export let staffList: { id: string; name: string | null; email: string; role: string }[] = [];
-  export let pendingInvites: { id: string; email: string; name: string | null; expiresAt: string; createdAt: string }[] = [];
+  export let staffList: { id: string; name: string | null; username: string | null; role: string }[] = [];
+  export let pendingInvites: { id: string; username: string; name: string | null; expiresAt: string; createdAt: string }[] = [];
   export let currentUserId = '';
 
-  let email = '';
+  let username = '';
   let name = '';
   let loading = false;
   let error = '';
-  let createdInvite: { email: string; link: string } | null = null;
+  let createdInvite: { username: string; link: string } | null = null;
   let copied = false;
   let pendingDelete: { id: string; name: string } | null = null;
   let deleting = false;
   let pendingReset: { id: string; name: string } | null = null;
   let resetting = false;
   let resetResult: { name: string; tempPassword: string } | null = null;
+  let editingUsername: { id: string; name: string; current: string | null } | null = null;
+  let usernameValue = '';
+  let savingUsername = false;
   let listError = '';
   let busyInviteId = '';
 
@@ -45,7 +48,7 @@
     }
   }
 
-  // Buat undangan: owner cuma input nama+email, password dibuat staff
+  // Buat undangan: owner cuma input username+nama, password dibuat staff
   // sendiri via link (48 jam, sekali pakai). Token mentah cuma muncul
   // sekali di modal — habis ditutup tidak bisa dilihat lagi.
   async function addStaff() {
@@ -54,7 +57,7 @@
     const res = await fetch('/api/staff', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, name })
+      body: JSON.stringify({ username, name })
     });
     loading = false;
     if (!res.ok) {
@@ -64,12 +67,12 @@
     }
     const created = await res.json();
     pendingInvites = [
-      { id: created.id, email: created.email, name: created.name ?? (name.trim() || null), expiresAt: created.expiresAt, createdAt: new Date().toISOString() },
+      { id: created.id, username: created.username, name: created.name ?? (name.trim() || null), expiresAt: created.expiresAt, createdAt: new Date().toISOString() },
       ...pendingInvites
     ];
-    createdInvite = { email: created.email, link: inviteLink(created.token) };
+    createdInvite = { username: created.username, link: inviteLink(created.token) };
     copied = false;
-    email = '';
+    username = '';
     name = '';
   }
 
@@ -92,7 +95,7 @@
     pendingInvites = pendingInvites.map((i) =>
       i.id === inviteId ? { ...i, id: created.id, expiresAt: created.expiresAt } : i
     );
-    createdInvite = { email: created.email, link: inviteLink(created.token) };
+    createdInvite = { username: created.username, link: inviteLink(created.token) };
     copied = false;
   }
 
@@ -134,6 +137,32 @@
     pendingReset = null;
   }
 
+  function openUsernameEditor(staff: { id: string; name: string | null; username: string | null }) {
+    editingUsername = { id: staff.id, name: staff.name ?? staff.username ?? 'Staff', current: staff.username };
+    usernameValue = staff.username ?? '';
+    listError = '';
+  }
+
+  async function saveUsername() {
+    if (!editingUsername) return;
+    savingUsername = true;
+    listError = '';
+    const res = await fetch('/api/staff', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: editingUsername.id, username: usernameValue })
+    });
+    savingUsername = false;
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      listError = body.message ?? 'Gagal menyimpan username.';
+      return;
+    }
+    const body = await res.json();
+    staffList = staffList.map((s) => (s.id === editingUsername?.id ? { ...s, username: body.username } : s));
+    editingUsername = null;
+  }
+
   async function deleteStaff() {
     if (!pendingDelete) return;
     deleting = true;
@@ -173,24 +202,31 @@
       {:else}
         <div class="[&>div]:!rounded-t-none [&>div]:!border-t-0">
           {#if listError}<p role="alert" class="rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative mb-3">{listError}</p>{/if}
-          <Table headers={['Nama', 'Email', 'Role', 'Aksi']}>
+          <Table headers={['Nama', 'Username', 'Role', 'Aksi']}>
             {#each staffList as staff}
               <tr>
                 <td class="px-3 py-2 text-ink">{staff.name ?? '—'}</td>
-                <td class="px-3 py-2 text-muted">{staff.email}</td>
+                <td class="px-3 py-2 text-muted tabular">{staff.username ?? '—'}</td>
                 <td class="px-3 py-2"><Badge size="sm" tone={staff.role === 'OWNER' ? 'neutral' : 'positive'}>{staff.role}</Badge></td>
                 <td class="px-3 py-2 whitespace-nowrap">
                   {#if staff.role === 'STAFF' && staff.id !== currentUserId}
                     <button
                       type="button"
-                      on:click={() => (pendingReset = { id: staff.id, name: staff.name ?? staff.email })}
+                      on:click={() => openUsernameEditor(staff)}
+                      class="text-body-sm font-semibold text-ink-navy hover:underline bg-transparent border-none cursor-pointer p-0 mr-3"
+                    >
+                      Username
+                    </button>
+                    <button
+                      type="button"
+                      on:click={() => (pendingReset = { id: staff.id, name: staff.name ?? staff.username ?? 'Staff' })}
                       class="text-body-sm font-semibold text-ink-navy hover:underline bg-transparent border-none cursor-pointer p-0 mr-3"
                     >
                       Reset password
                     </button>
                     <button
                       type="button"
-                      on:click={() => (pendingDelete = { id: staff.id, name: staff.name ?? staff.email })}
+                      on:click={() => (pendingDelete = { id: staff.id, name: staff.name ?? staff.username ?? 'Staff' })}
                       class="text-body-sm font-semibold text-status-negative hover:underline bg-transparent border-none cursor-pointer p-0"
                     >
                       Hapus
@@ -219,13 +255,13 @@
         </Card>
       {:else}
         <div class="[&>div]:!rounded-t-none [&>div]:!border-t-0">
-          <Table headers={['Email', 'Status', 'Aksi']}>
+          <Table headers={['Username', 'Status', 'Aksi']}>
             {#each pendingInvites as invite}
               {@const expired = isExpired(invite.expiresAt)}
               <tr>
                 <td class="px-3 py-2">
-                  <p class="text-ink text-body-md">{invite.name ?? invite.email}</p>
-                  <p class="text-body-sm text-muted">{invite.email}</p>
+                  <p class="text-ink text-body-md">{invite.name ?? invite.username}</p>
+                  <p class="text-body-sm text-muted tabular">@{invite.username}</p>
                   <p class="text-body-sm text-muted tabular">s/d {formatExpiry(invite.expiresAt)}</p>
                 </td>
                 <td class="px-3 py-2"><Badge size="sm" tone={expired ? 'negative' : 'warning'}>{expired ? 'KEDALUWARSA' : 'MENUNGGU'}</Badge></td>
@@ -266,10 +302,11 @@
             Nama
             <Input id="staff-name" type="text" placeholder="Nama" bind:value={name} />
           </label>
-          <label for="staff-email" class="flex flex-col gap-1 text-body-md text-ink">
-            Email
-            <Input id="staff-email" type="email" placeholder="Email" bind:value={email} required />
+          <label for="staff-username" class="flex flex-col gap-1 text-body-md text-ink">
+            Username
+            <Input id="staff-username" type="text" placeholder="mis. budi" bind:value={username} required />
           </label>
+          <p class="text-body-sm text-muted -mt-2">3–20 karakter: huruf kecil, angka, titik, underscore, strip. Dipakai staff untuk masuk.</p>
           {#if error}<p class="text-body-sm text-status-negative">{error}</p>{/if}
           <Button type="submit" disabled={loading}>{loading ? 'Membuat...' : 'Buat Undangan'}</Button>
         </form>
@@ -283,7 +320,7 @@
     <button type="button" class="absolute inset-0 bg-ink/40 border-none cursor-default p-0" aria-label="Tutup" on:click={() => (createdInvite = null)}></button>
     <div class="relative w-full max-w-sm rounded-panel border border-border-cool bg-surface p-5 shadow-level3">
       <h3 class="text-headline-sm text-ink mb-2">Undangan dibuat</h3>
-      <p class="text-body-md text-muted">Teruskan link ini ke <strong class="text-ink">{createdInvite.email}</strong> (mis. via WA). Link tampil <strong class="text-ink">sekali ini saja</strong>, berlaku 48 jam dan sekali pakai.</p>
+      <p class="text-body-md text-muted">Teruskan link ini ke <strong class="text-ink">@{createdInvite.username}</strong> (mis. via WA). Link tampil <strong class="text-ink">sekali ini saja</strong>, berlaku 48 jam dan sekali pakai.</p>
       <div class="mt-3 flex gap-2">
         <Input value={createdInvite.link} readonly class="flex-1" aria-label="Link undangan" />
         <Button variant="secondary" on:click={() => createdInvite && copyLink(createdInvite.link)}>{copied ? 'Tersalin!' : 'Salin'}</Button>
@@ -335,6 +372,25 @@
       <div class="flex gap-2 mt-4">
         <Button variant="secondary" class="flex-1" on:click={() => (pendingDelete = null)}>Batal</Button>
         <Button variant="destructive" class="flex-1" disabled={deleting} on:click={deleteStaff}>{deleting ? 'Menghapus...' : 'Hapus'}</Button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if editingUsername}
+  <div class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Atur username">
+    <button type="button" class="absolute inset-0 bg-ink/40 border-none cursor-default p-0" aria-label="Batal" on:click={() => (editingUsername = null)}></button>
+    <div class="relative w-full max-w-sm rounded-panel border border-border-cool bg-surface p-5 shadow-level3">
+      <h3 class="text-headline-sm text-ink mb-2">Username “{editingUsername.name}”</h3>
+      <p class="text-body-sm text-muted mb-3">Dipakai staff untuk masuk. 3–20 karakter: huruf kecil, angka, titik, underscore, strip.</p>
+      <label for="staff-username-edit" class="flex flex-col gap-1 text-body-md text-ink">
+        Username
+        <Input id="staff-username-edit" type="text" placeholder="mis. budi" bind:value={usernameValue} />
+      </label>
+      {#if listError}<p role="alert" class="rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative mt-3">{listError}</p>{/if}
+      <div class="flex gap-2 mt-4">
+        <Button variant="secondary" class="flex-1" on:click={() => (editingUsername = null)}>Batal</Button>
+        <Button class="flex-1" disabled={savingUsername} on:click={saveUsername}>{savingUsername ? 'Menyimpan...' : 'Simpan'}</Button>
       </div>
     </div>
   </div>
