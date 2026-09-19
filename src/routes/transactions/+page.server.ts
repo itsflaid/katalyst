@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { stockMovement, transaction, transactionItem, product, user } from '$lib/server/db/schema';
-import { eq, desc, and, inArray } from 'drizzle-orm';
+import { eq, desc, and, asc, inArray, sql } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -11,8 +11,25 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
   const offset = (page - 1) * PAGE_SIZE;
 
+  // Opsi filter kasir: semua user aktif bisnis ini (Owner paling atas).
+  // Value = userId (stabil walau staff ganti nama), label = nama TERKINI.
+  const staffRows = await db
+    .select({ id: user.id, name: user.name, email: user.email })
+    .from(user)
+    .where(eq(user.businessId, businessId))
+    .orderBy(sql`CASE WHEN ${user.role} = 'OWNER' THEN 0 ELSE 1 END`, asc(user.createdAt));
+  const staffOptions = staffRows.map((s) => ({ id: s.id, name: s.name ?? s.email.split('@')[0] }));
+
+  // Filter kasir berbasis userId — bukan nama. Struk lama staff yang sudah
+  // ganti nama tetap keikut karena transaction.userId tidak berubah-ubah
+  // (yang berubah cuma snapshot cashier_name buat tampilan).
+  const kasirParam = url.searchParams.get('kasir') ?? '';
+  const kasir = staffRows.some((s) => s.id === kasirParam) ? kasirParam : null;
+
   // Header struk dulu (paginasi per struk, bukan per item) — leftJoin user
   // biar struk staff yang sudah dihapus tetap tampil via cashier_name.
+  const conditions = [eq(transaction.businessId, businessId)];
+  if (kasir) conditions.push(eq(transaction.userId, kasir));
   const headers = await db
     .select({
       id: transaction.id,
@@ -22,7 +39,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     })
     .from(transaction)
     .leftJoin(user, eq(user.id, transaction.userId))
-    .where(eq(transaction.businessId, businessId))
+    .where(and(...conditions))
     .orderBy(desc(transaction.createdAt))
     .limit(PAGE_SIZE + 1)
     .offset(offset);
@@ -80,7 +97,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     .from(product)
     .where(and(eq(product.businessId, businessId), eq(product.isActive, true)));
 
-  return { receipts, products, page, hasMore };
+  return { receipts, products, page, hasMore, staffOptions, kasir };
 };
 
 export const actions: Actions = {
