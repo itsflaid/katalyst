@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { auth } from '$lib/server/domains/auth';
 import { db } from '$lib/server/db';
 import { business, staffInvitation, user } from '$lib/server/db/schema';
-import { hashInviteToken, staffPlaceholderEmail } from '$lib/server/domains/invites';
+import { hashInviteToken, placeholderEmail } from '$lib/server/domains/invites';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -70,11 +70,12 @@ export const actions: Actions = {
 
     let signUpResult;
     try {
-      // Kolom user.email NOT NULL tapi staff tak wajib punya email:
-      // pakai email sintetis (domain reserved, tak bisa di-routing).
-      // Login staff selalu via username, email ini tak pernah ditampilkan.
+      // Kolom user.email NOT NULL (wajib struktural better-auth) tapi tak
+      // ada user yang wajib punya email beneran: pakai email sintetis
+      // (domain reserved, tak bisa di-routing). Login selalu via username,
+      // email ini tak pernah ditampilkan.
       signUpResult = await auth.api.signUpEmail({
-        body: { email: staffPlaceholderEmail(invite.username), password, name, username: invite.username }
+        body: { email: placeholderEmail(invite.username), password, name, username: invite.username }
       });
     } catch {
       // Bedakan duplikat beneran (race: username dibuat di sela cek dan signup)
