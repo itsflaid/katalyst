@@ -4,7 +4,7 @@
   import Badge from '$lib/components/ui/Badge.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import ProductTabs from '$lib/components/products/ProductTabs.svelte';
-  import { fmtWita } from '$lib/time';
+  import { fmtWita } from '$lib/shared/time';
   export let data;
 
   const fmtDate = (d: string | Date) => fmtWita(d, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });

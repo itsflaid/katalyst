@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { product, stockMovement, transactionItem } from '$lib/server/db/schema';
-import { denyUnlessOwner, getOwnedProduct, parseProductFields, parseInitialStock } from '$lib/server/products';
+import { denyUnlessOwner, getOwnedProduct, parseProductFields, parseInitialStock } from '$lib/server/domains/products';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 // crypto.randomUUID global (bukan import 'crypto') biar jalan di Workers.

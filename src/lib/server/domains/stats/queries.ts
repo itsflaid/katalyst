@@ -2,7 +2,7 @@ import { db } from '$lib/server/db';
 import { product, stockMovement, transaction, transactionItem, user } from '$lib/server/db/schema';
 import { and, count, eq, gte, lte, sql } from 'drizzle-orm';
 import { witaHour, witaWeekStart } from '$lib/server/sql';
-import { startOfDayWita, addDaysWita } from '$lib/time';
+import { startOfDayWita, addDaysWita } from '$lib/shared/time';
 
 // Jendela inventori tetap 14 hari (tidak ikut filter rentang halaman).
 export const INVENTORY_WINDOW_DAYS = 14;

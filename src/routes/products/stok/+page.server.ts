@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { product, stockMovement, user } from '$lib/server/db/schema';
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
-import { parseDayWita, endOfDayWita, dayKeyWita } from '$lib/time';
+import { parseDayWita, endOfDayWita, dayKeyWita } from '$lib/shared/time';
 import type { PageServerLoad } from './$types';
 
 const PAGE_SIZE = 30;
