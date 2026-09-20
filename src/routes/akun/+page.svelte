@@ -97,10 +97,10 @@
         <Input id="account-name" type="text" placeholder="Nama kamu" bind:value={name} maxlength={100} required />
       </label>
       <div class="flex items-center gap-2 text-body-md">
-        <span class="text-muted">{data.email}</span>
+        <span class="text-muted">{data.username}</span>
         <Badge size="sm" tone={data.role === 'OWNER' ? 'neutral' : 'positive'}>{data.role}</Badge>
       </div>
-      <p class="text-body-sm text-muted">Email tidak bisa diganti sendiri — hubungi owner kalau emailmu salah.</p>
+      <p class="text-body-sm text-muted">Username tidak bisa diganti sendiri — hubungi owner kalau usernamemu salah.</p>
       {#if nameError}<p role="alert" class="text-body-sm text-status-negative">{nameError}</p>{/if}
       <div><Button type="submit" disabled={savingName}>{savingName ? 'Menyimpan...' : 'Simpan Nama'}</Button></div>
       {#if nameSaved}<p role="status" class="text-body-sm text-status-positive">Nama tersimpan.</p>{/if}
