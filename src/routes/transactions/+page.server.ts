@@ -24,11 +24,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   // Opsi filter kasir: semua user aktif bisnis ini (Owner paling atas).
   // Value = userId (stabil walau staff ganti nama), label = nama TERKINI.
   const staffRows = await db
-    .select({ id: user.id, name: user.name, email: user.email })
+    .select({ id: user.id, name: user.name, username: user.username })
     .from(user)
     .where(eq(user.businessId, businessId))
     .orderBy(sql`CASE WHEN ${user.role} = 'OWNER' THEN 0 ELSE 1 END`, asc(user.createdAt));
-  const staffOptions = staffRows.map((s) => ({ id: s.id, name: s.name ?? s.email.split('@')[0] }));
+  const staffOptions = staffRows.map((s) => ({ id: s.id, name: s.name ?? s.username ?? '—' }));
 
   // Filter kasir berbasis userId — bukan nama. Struk lama staff yang sudah
   // ganti nama tetap keikut karena transaction.userId tidak berubah-ubah
@@ -169,7 +169,7 @@ export const actions: Actions = {
     const byId = new Map(dbProducts.map((p) => [p.id, p]));
     const cashierName =
       (locals.user?.name as string | null | undefined) ??
-      (locals.user?.email as string | undefined)?.split('@')[0] ??
+      ((locals.user as { username?: string | null } | null | undefined)?.username) ??
       null;
 
     // neon-http tidak punya db.transaction interaktif, tapi db.batch([...])
