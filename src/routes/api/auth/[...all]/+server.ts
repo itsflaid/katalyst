@@ -1,4 +1,4 @@
-import { auth } from '$lib/server/auth';
+import { auth } from '$lib/server/domains/auth';
 import type { RequestHandler } from './$types';
 
 // Satu handler nangkep semua route better-auth (/api/auth/sign-in, /sign-up,

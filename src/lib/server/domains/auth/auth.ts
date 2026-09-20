@@ -2,8 +2,8 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { admin, username } from 'better-auth/plugins';
 import { adminAc, userAc } from 'better-auth/plugins/admin/access';
-import { db } from './db';
-import * as schema from './db/schema';
+import { db } from '$lib/server/db';
+import * as schema from '$lib/server/db/schema';
 import { env } from '$env/dynamic/private';
 
 // Setara authOptions di app/api/auth/[...nextauth]/route.ts versi Next.

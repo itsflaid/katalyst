@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { staffInvitation, user } from '$lib/server/db/schema';
-import { generateInviteToken, hashInviteToken, INVITE_TTL_MS } from '$lib/server/invites';
+import { generateInviteToken, hashInviteToken, INVITE_TTL_MS } from '$lib/server/domains/invites';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 

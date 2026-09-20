@@ -1,3 +1,5 @@
+import { calculateMargin } from './margin';
+
 export interface TransactionItemLike {
     productId: string;
     quantity: number;
@@ -34,29 +36,6 @@ export interface BusinessInsight {
     message: string;
 }
 
-export interface PeriodComparison {
-    current: BusinessSummary;
-    previous: BusinessSummary;
-    change: {
-        revenueChangePercent: number;
-        profitChangePercent: number;
-        marginChangePoints: number;
-    };
-}
-
-export interface ProductPeriodComparison {
-    productId: string;
-    name: string;
-    current: ProductSummary;
-    previous: ProductSummary | null;
-    change: {
-        quantityChangePercent: number;
-        revenueChangePercent: number;
-        profitChangePercent: number;
-        marginChangePoints: number;
-    };
-}
-
 // Perhitungan dasar
 
 export function calculateRevenue(items: TransactionItemLike[]): number {
@@ -69,12 +48,6 @@ export function calculateCost(items: TransactionItemLike[]): number {
 
 export function calculateProfit(items: TransactionItemLike[]): number {
     return calculateRevenue(items) - calculateCost(items);
-}
-
-/** Margin = profit / revenue. Revenue 0 -> margin 0 (bukan NaN/Infinity). */
-export function calculateMargin(revenue: number, profit: number): number {
-    if (revenue === 0) return 0;
-    return profit / revenue;
 }
 
 export function getBusinessSummary(items: TransactionItemLike[]): BusinessSummary {
@@ -145,13 +118,6 @@ export function getTopProducts(
     return [...summaries].sort((a, b) => b[by] - a[by]).slice(0, limit);
 }
 
-export function getLowMarginProducts(
-    summaries: ProductSummary[],
-    marginThreshold = 0.15
-): ProductSummary[] {
-    return summaries.filter((p) => p.margin < marginThreshold);
-}
-
 // ---------------------------------------------------------------------------
 // Matriks Volume vs Margin (Fase 5): kuadran tiap produk relatif ke ambang.
 // - 'bintang': laku & margin baik (qty >= ambang, margin >= ambang)
@@ -167,14 +133,6 @@ export function quadrantOf(qty: number, margin: number, xThreshold: number, yThr
     if (qty >= xThreshold) return "laris-tipis";
     if (margin >= yThreshold) return "margin-kurang-laku";
     return "evaluasi";
-}
-
-// Estimasi berapa hari stok bertahan: stock / (soldLastNDays / n).
-// Tanpa penjualan di jendela → Infinity (caller mengecualikan dari chart
-// "paling mendesak" dan memasukkannya ke kandidat stok mati).
-export function estimateDaysCover(stock: number, soldLastNDays: number, n: number): number {
-    if (n <= 0 || soldLastNDays <= 0) return Infinity;
-    return stock / (soldLastNDays / n);
 }
 
 // Insight otomatis
@@ -245,79 +203,4 @@ export function getBusinessInsights(summaries: ProductSummary[]): BusinessInsigh
     }
 
     return insights;
-}
-
-// ---------------------------------------------------------------------------
-// Perbandingan periode (buat Copilot jawab "kenapa berubah", bukan cuma
-// "kondisi sekarang"). Dipakai bareng getBusinessSummary/summarizeByProduct:
-// caller yang tanggung jawab misahin currentItems vs previousItems by tanggal.
-// ---------------------------------------------------------------------------
-
-/** Persen perubahan (a vs b relatif ke b). Baseline 0 -> 0 (bukan NaN/Infinity). */
-function percentChange(current: number, previous: number): number {
-    if (previous === 0) return 0;
-    return (current - previous) / previous;
-}
-
-export function compareBusinessPeriods(
-    currentItems: TransactionItemLike[],
-    previousItems: TransactionItemLike[]
-): PeriodComparison {
-    const current = getBusinessSummary(currentItems);
-    const previous = getBusinessSummary(previousItems);
-
-    return {
-        current,
-        previous,
-        change: {
-            revenueChangePercent: percentChange(current.revenue, previous.revenue),
-            profitChangePercent: percentChange(current.profit, previous.profit),
-            marginChangePoints: current.margin - previous.margin,
-        },
-    };
-}
-
-/**
- * Bandingin performa per produk antar dua periode. Produk yang cuma muncul
- * di currentSummaries (baru laku periode ini) tetap masuk hasil dengan
- * previous = null dan change = 0 di semua field, supaya caller nggak perlu
- * null-check manual buat setiap field angka.
- */
-export function compareProductPeriods(
-    currentSummaries: ProductSummary[],
-    previousSummaries: ProductSummary[]
-): ProductPeriodComparison[] {
-    const previousById = new Map(previousSummaries.map((p) => [p.productId, p]));
-
-    return currentSummaries.map((curr) => {
-        const prev = previousById.get(curr.productId) ?? null;
-
-        if (!prev) {
-            return {
-                productId: curr.productId,
-                name: curr.name,
-                current: curr,
-                previous: null,
-                change: {
-                    quantityChangePercent: 0,
-                    revenueChangePercent: 0,
-                    profitChangePercent: 0,
-                    marginChangePoints: 0,
-                },
-            };
-        }
-
-        return {
-            productId: curr.productId,
-            name: curr.name,
-            current: curr,
-            previous: prev,
-            change: {
-                quantityChangePercent: percentChange(curr.quantitySold, prev.quantitySold),
-                revenueChangePercent: percentChange(curr.revenue, prev.revenue),
-                profitChangePercent: percentChange(curr.profit, prev.profit),
-                marginChangePoints: curr.margin - prev.margin,
-            },
-        };
-    });
 }

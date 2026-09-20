@@ -10,8 +10,8 @@ import {
   parseDayWita,
   isoDowWita,
   fmtWita
-} from '../src/lib/time';
-import { pickMoneyUnit } from '../src/lib/format';
+} from '../src/lib/shared/time';
+import { pickMoneyUnit } from '../src/lib/shared/format';
 
 let passCount = 0;
 let failCount = 0;
