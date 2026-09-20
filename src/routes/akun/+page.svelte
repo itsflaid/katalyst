@@ -100,7 +100,6 @@
         <span class="text-muted">{data.username}</span>
         <Badge size="sm" tone={data.role === 'OWNER' ? 'neutral' : 'positive'}>{data.role}</Badge>
       </div>
-      <p class="text-body-sm text-muted">Username tidak bisa diganti sendiri — hubungi owner kalau usernamemu salah.</p>
       {#if nameError}<p role="alert" class="text-body-sm text-status-negative">{nameError}</p>{/if}
       <div><Button type="submit" disabled={savingName}>{savingName ? 'Menyimpan...' : 'Simpan Nama'}</Button></div>
       {#if nameSaved}<p role="status" class="text-body-sm text-status-positive">Nama tersimpan.</p>{/if}
