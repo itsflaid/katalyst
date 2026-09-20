@@ -35,17 +35,17 @@ Semua angka harian/jam dihitung dalam WITA (`Asia/Makassar`), bukan UTC.
 1. `cp .env.example .env`, isi `DATABASE_URL` (Neon, pooled endpoint) dan `BETTER_AUTH_SECRET`
 2. `npm install`
 3. `npx drizzle-kit migrate`
-4. `npm run db:seed` (data demo: Cindera Etam, 10 produk khas Kaltim, 90 hari transaksi)
+4. `npm run db:seed:demo` (data demo: Cindera Etam, 10 produk khas Kaltim, 90 hari transaksi)
 5. `npm run dev`
 
 Akun demo setelah seed:
 
-| Role  | Email            | Password   | Mendarat di     |
-| ----- | ---------------- | ---------- | --------------- |
-| Owner | `owner@test.com` | `password` | `/dashboard`    |
-| Staff | `staff` (atau `staff@test.com`) | `password` | `/transactions` |
+| Role  | Username                                           | Password   | Mendarat di     |
+| ----- | -------------------------------------------------- | ---------- | --------------- |
+| Owner | `owner123`                                         | `password` | `/dashboard`    |
+| Staff | `prabowo02`, `jokowi00`, `anis01`, `ganjar03`       | `password` | `/transactions` |
 
-Staff masuk pakai username (owner undang pakai username, tanpa email).
+Semua akun masuk pakai username (owner undang staff pakai username, tanpa email).
 
 ## Tech stack
 

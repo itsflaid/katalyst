@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "db:seed": "tsx src/lib/server/db/seed.ts",
+    "db:seed:demo": "tsx src/lib/server/db/seed-demo.ts",
+    "db:seed:real": "tsx src/lib/server/db/seed-real.ts",
     "verify:engine": "tsx script/verify-engine.ts",
     "verify:time": "tsx script/verify-time.ts",
     "verify:stock": "tsx script/verify-stock.ts"
