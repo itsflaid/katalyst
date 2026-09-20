@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { cn } from '$lib/utils';
+  import { cn } from '$lib/shared/utils';
 
   export let variant: 'primary' | 'secondary' | 'destructive' = 'primary';
   export let size: 'default' | 'compact' = 'default';

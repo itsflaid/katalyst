@@ -2,7 +2,7 @@ import { db } from '$lib/server/db';
 import { product, transaction, transactionItem } from '$lib/server/db/schema';
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { calculateMargin } from '$lib/analytics';
-import { startOfDayWita, endOfDayWita, addDaysWita, toWita, parseDayWita, fmtWita } from '$lib/time';
+import { startOfDayWita, endOfDayWita, addDaysWita, toWita, parseDayWita, fmtWita } from '$lib/shared/time';
 import type { PageServerLoad } from './$types';
 
 type RangeKey = 'today' | 'week' | 'month' | 'all' | 'custom';

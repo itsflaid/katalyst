@@ -7,9 +7,9 @@ import {
   getTopProducts,
   type ProductSummary
 } from '$lib/analytics';
-import { startOfDayWita, addDaysWita, dayKeyWita, toWita } from '$lib/time';
+import { startOfDayWita, addDaysWita, dayKeyWita, toWita } from '$lib/shared/time';
 import { witaDate } from '$lib/server/sql';
-import { pickMoneyUnit, scaleMoney } from '$lib/format';
+import { pickMoneyUnit, scaleMoney } from '$lib/shared/format';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
