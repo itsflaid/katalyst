@@ -8,10 +8,10 @@ import {
   getLowMarginProducts,
   type ProductSummary
 } from '$lib/analytics';
-import { startOfDayWita, endOfDayWita, addDaysWita, dayKeyWita, toWita, parseDayWita, fmtWita, isoDowWita } from '$lib/time';
+import { startOfDayWita, endOfDayWita, addDaysWita, dayKeyWita, toWita, parseDayWita, fmtWita, isoDowWita } from '$lib/shared/time';
 import { witaDate } from '$lib/server/sql';
-import { queryCashiers, queryHourly, queryInventory, queryMovementWeekly, querySusut, INVENTORY_WINDOW_DAYS } from '$lib/server/stats';
-import { pickMoneyUnit, scaleMoney } from '$lib/format';
+import { queryCashiers, queryHourly, queryInventory, queryMovementWeekly, querySusut, INVENTORY_WINDOW_DAYS } from '$lib/server/domains/stats';
+import { pickMoneyUnit, scaleMoney } from '$lib/shared/format';
 import type { PageServerLoad } from './$types';
 
 type RangeKey = 'today' | 'week' | '30d' | 'month' | 'custom';

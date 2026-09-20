@@ -3,7 +3,7 @@
   import Badge from '$lib/components/ui/Badge.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
-  import { fmtWita } from '$lib/time';
+  import { fmtWita } from '$lib/shared/time';
   export let data;
   const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
   const num = (n: number) => new Intl.NumberFormat('id-ID').format(n);

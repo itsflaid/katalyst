@@ -1,8 +1,8 @@
 import { json, error } from '@sveltejs/kit';
-import { auth } from '$lib/server/auth';
+import { auth } from '$lib/server/domains/auth';
 import { db } from '$lib/server/db';
 import { user } from '$lib/server/db/schema';
-import { generateTempPassword } from '$lib/server/invites';
+import { generateTempPassword } from '$lib/server/domains/invites';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 

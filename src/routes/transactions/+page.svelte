@@ -5,7 +5,7 @@
   import { enhance } from '$app/forms';
   import { goto } from '$app/navigation';
   import type { SubmitFunction } from '@sveltejs/kit';
-  import { fmtWita, dayKeyWita, startOfDayWita, addDaysWita } from '$lib/time';
+  import { fmtWita, dayKeyWita, startOfDayWita, addDaysWita } from '$lib/shared/time';
   export let data;
   export let form;
 

@@ -1,8 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { auth } from '$lib/server/auth';
+import { auth } from '$lib/server/domains/auth';
 import { db } from '$lib/server/db';
 import { business, staffInvitation, user } from '$lib/server/db/schema';
-import { hashInviteToken, staffPlaceholderEmail } from '$lib/server/invites';
+import { hashInviteToken, staffPlaceholderEmail } from '$lib/server/domains/invites';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
