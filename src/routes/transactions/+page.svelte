@@ -83,6 +83,16 @@
     if (result.type === 'success') cart = [];
   };
 
+  // Notifikasi "Transaksi tersimpan." muncul tiap struk tercatat lalu
+  // hilang sendiri setelah 5 detik.
+  let showSavedMsg = false;
+  let savedMsgTimer: ReturnType<typeof setTimeout> | null = null;
+  $: if (form?.success) {
+    showSavedMsg = true;
+    if (savedMsgTimer) clearTimeout(savedMsgTimer);
+    savedMsgTimer = setTimeout(() => (showSavedMsg = false), 5000);
+  }
+
   // Batalkan struk (OWNER-only di server): pola audit POS — struk salah dibatalkan
   // utuh lalu buat struk koreksi baru, tanpa edit qty in-place.
   $: isOwner = data.user?.role === 'OWNER';
@@ -289,7 +299,7 @@
           <form method="POST" action="?/create" use:enhance={afterCreate}>
             <input type="hidden" name="items" value={cartPayload} />
             {#if form?.message}<p role="alert" class="rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative mb-3">{form.message}</p>{/if}
-            {#if form?.success}<p role="status" class="rounded border border-status-positive-border bg-status-positive-bg px-3 py-2 text-body-sm text-status-positive mb-3">Transaksi tersimpan.</p>{/if}
+            {#if showSavedMsg}<p role="status" class="rounded border border-status-positive-border bg-status-positive-bg px-3 py-2 text-body-sm text-status-positive mb-3">Transaksi tersimpan.</p>{/if}
             <Button type="submit" class="w-full" disabled={cart.length === 0}>Catat Transaksi</Button>
           </form>
         {/if}

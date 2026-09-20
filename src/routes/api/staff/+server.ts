@@ -129,7 +129,7 @@ export const DELETE: RequestHandler = async ({ request, locals }) => {
   if (id === locals.user!.id) throw error(400, 'Tidak bisa menghapus akun sendiri.');
 
   const [target] = await db
-    .select({ id: user.id, name: user.name, email: user.email, role: user.role, businessId: user.businessId })
+    .select({ id: user.id, name: user.name, username: user.username, role: user.role, businessId: user.businessId })
     .from(user)
     .where(and(eq(user.id, id), eq(user.businessId, businessId)));
   if (!target) throw error(404, 'Staff tidak ditemukan.');
@@ -140,7 +140,7 @@ export const DELETE: RequestHandler = async ({ request, locals }) => {
   // ini menutup race struk yang dibuat di antara migrate dan hapus).
   await db
     .update(transaction)
-    .set({ cashierName: target.name ?? target.email.split('@')[0] })
+    .set({ cashierName: target.name ?? target.username ?? '—' })
     .where(and(eq(transaction.userId, id), isNull(transaction.cashierName)));
   await db.delete(user).where(eq(user.id, id));
 
