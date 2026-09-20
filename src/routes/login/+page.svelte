@@ -13,14 +13,10 @@
   async function handleSubmit() {
     loading = true;
     error = '';
-    // Ada '@' → email (owner), selain itu username (staff).
-    const id = identity.trim();
-    const { error: signInError } = id.includes('@')
-      ? await signIn.email({ email: id, password })
-      : await signIn.username({ username: id, password });
+    const { error: signInError } = await signIn.username({ username: identity.trim(), password });
     loading = false;
     if (signInError) {
-      error = signInError.message ?? 'Login gagal, cek username/email + password.';
+      error = signInError.message ?? 'Login gagal, cek username + password.';
       return;
     }
     // invalidateAll: paksa load function layout (+layout.server.ts) jalan
@@ -69,12 +65,12 @@
 
         <form on:submit|preventDefault={handleSubmit} class="mt-5 flex flex-col gap-4">
           <label for="login-identity" class="flex flex-col gap-1.5">
-            <span class="text-label-md text-ink">Username atau email</span>
+            <span class="text-label-md text-ink">Username</span>
             <Input
               id="login-identity"
               type="text"
               bind:value={identity}
-              placeholder="username / nama@bisnis.com"
+              placeholder="username"
               autocomplete="username"
               required
             />

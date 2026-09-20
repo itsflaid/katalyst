@@ -7,6 +7,7 @@ import * as schema from './schema';
 import { business, user, product, transaction, transactionItem, stockMovement } from './schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import { placeholderEmail } from '../domains/invites';
 
 // -----------------------------------------------------------------------
 // Script ini di-run standalone lewat `tsx` (bukan lewat SvelteKit/Vite), jadi
@@ -44,8 +45,8 @@ const auth = betterAuth({
 // sebagai demo data portfolio. Semua yang dijual adalah BARANG berstok
 // (bukan masakan racik) — konsisten dengan invarian stok aplikasi.
 //
-// 10 produk ini SENGAJA dikasih variasi biar lib/analytics.ts &
-// lib/simulation.ts ada "bahan" buat didemoin, bukan cuma nama doang:
+// 10 produk ini SENGAJA dikasih variasi biar lib/analytics/ &
+ // lib/simulation.ts ada "bahan" buat didemoin, bukan cuma nama doang:
 //  - margin spread 14%-50% (Kerupuk Ikan Curah sengaja tipis ~14% tapi laris
 //    → bahan insight "laris tapi margin tipis" + kuadran matriks)
 //  - 3 tingkat volatilitas harga beli dari supplier/pengrajin
@@ -164,18 +165,31 @@ async function main() {
   // (providerId "credential") ke-generate otomatis dengan bentuk yang benar.
   // Baru abis itu businessId/role di-patch manual karena signUpEmail cuma
   // tau field bawaan + additionalFields yang diizinkan diisi dari client.
-  const ownerSignUp = await auth.api.signUpEmail({
-    body: { email: 'owner@test.com', password: 'password', name: 'Owner Demo' }
-  });
-  const staffSignUp = await auth.api.signUpEmail({
-    body: { email: 'staff@test.com', password: 'password', name: 'Budi (Staff)' }
-  });
+  // Email selalu sintetis via placeholderEmail (kolom user.email wajib
+  // struktural NOT NULL + unique di better-auth, tapi fungsional mati —
+  // login selalu via username).
+  const ACCOUNTS = [
+    { username: 'owner123', name: 'Owner', role: 'OWNER' as const },
+    { username: 'prabowo02', name: 'Prabowo', role: 'STAFF' as const },
+    { username: 'jokowi00', name: 'Jokowi', role: 'STAFF' as const },
+    { username: 'anis01', name: 'Anis', role: 'STAFF' as const },
+    { username: 'ganjar03', name: 'Ganjar', role: 'STAFF' as const }
+  ];
 
-  const ownerId = ownerSignUp.user.id;
-  const staffId = staffSignUp.user.id;
+  const accountIds: Record<string, string> = {};
+  for (const acc of ACCOUNTS) {
+    const signUp = await auth.api.signUpEmail({
+      body: { email: placeholderEmail(acc.username), password: 'password', name: acc.name }
+    });
+    accountIds[acc.username] = signUp.user.id;
+    await db
+      .update(user)
+      .set({ role: acc.role, businessId, username: acc.username })
+      .where(eq(user.id, signUp.user.id));
+  }
 
-  await db.update(user).set({ role: 'OWNER', businessId, username: 'owner' }).where(eq(user.id, ownerId));
-  await db.update(user).set({ role: 'STAFF', businessId, username: 'staff' }).where(eq(user.id, staffId));
+  const ownerId = accountIds['owner123'];
+  const staffIds = ['prabowo02', 'jokowi00', 'anis01', 'ganjar03'].map((u) => accountIds[u]);
 
   const productIds: Record<string, string> = {};
   for (const p of PRODUCTS) {
@@ -256,7 +270,7 @@ async function main() {
         const createdAt = witaTime(day, randInt(8, 21), randInt(0, 59));
 
         const txId = randomUUID();
-        const servedBy = rand() < 0.7 ? staffId : ownerId;
+        const servedBy = rand() < 0.7 ? staffIds[Math.floor(rand() * staffIds.length)] : ownerId;
 
         txRows.push({ id: txId, businessId, userId: servedBy, createdAt });
         itemRows.push({
@@ -413,8 +427,8 @@ async function main() {
   }
 
   console.log(`Seed selesai: ${PRODUCTS.length} produk, ${totalTx} transaksi selama ${HISTORY_DAYS} hari.`);
-  console.log('Login sebagai Owner: owner@test.com / password');
-  console.log('Login sebagai Staff: staff@test.com / password');
+  console.log('Login sebagai Owner: owner123 / password');
+  console.log('Login sebagai Staff: prabowo02, jokowi00, anis01, ganjar03 (semua password: password)');
 }
 
 main()

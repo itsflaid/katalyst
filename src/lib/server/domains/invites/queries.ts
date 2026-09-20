@@ -36,11 +36,14 @@ export function isValidUsername(username: string): boolean {
   return u.length >= 3 && u.length <= 20 && USERNAME_RE.test(u);
 }
 
-// Email sintetis buat baris user staff (kolom user.email NOT NULL + unique,
-// tapi staff operasional tidak wajib punya email). Domain `staff.internal`
-// (reserved, tidak bisa di-routing) biar jelas bukan email beneran.
-// Tampilan/UI tidak pernah memakai email staff — selalu pakai name/username.
-export function staffPlaceholderEmail(username: string): string {
+// Email sintetis buat baris user mana pun (Owner maupun staff). Kolom
+// user.email NOT NULL + unique karena better-auth mewajibkannya secara
+// struktural (core field, tak bisa dihapus walau plugin username aktif),
+// tapi secara fungsional kolom ini mati: tidak pernah dipakai login,
+// tidak pernah ditampilkan. Domain `staff.internal` (reserved, tidak bisa
+// di-routing) biar jelas bukan email beneran. Tampilan/UI selalu pakai
+// name/username.
+export function placeholderEmail(username: string): string {
   return `${normalizeUsername(username)}@staff.internal`;
 }
 
