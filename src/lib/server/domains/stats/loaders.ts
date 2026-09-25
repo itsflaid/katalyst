@@ -150,6 +150,7 @@ export async function getStatistikPageData(businessId: string, url: URL) {
   const names = Object.fromEntries(products.map((p) => [p.id, p.name]));
   const cur = toSummaries(curRows, names);
   const prev = toSummaries(prevRows, names);
+  // Rumus Tabel Performa + Δ: qty/rev/profit/margin kini; Δ=(kini−lalu)÷|lalu|×100% vs periode sama panjang.
   const rows = compareProductPeriods(cur, prev).sort((a, b) => b.current.revenue - a.current.revenue);
 
   const sum = (arr: ProductSummary[], f: (p: ProductSummary) => number) => arr.reduce((s, p) => s + f(p), 0);
@@ -164,8 +165,8 @@ export async function getStatistikPageData(businessId: string, url: URL) {
   const tx = dailyRows.reduce((s, r) => s + Number(r.txCount), 0);
   const prevTx = prevTxRows[0]?.value ?? 0;
 
-  // Deret harian berurutan (isi 0 hari kosong) dengan unit adaptif.
-  // Kunci hari & label memakai WITA.
+  // Rumus Tren Revenue/Profit/Margin/Struk: revenue=Σ(qty×jual), profit=rev−Σ(qty×modal),
+  // margin=profit/rev×100% per hari WITA (hari kosong=0, best day=rev max).
   const byDay = new Map(dailyRows.map((r) => [r.day, r]));
   const labels: string[] = [];
   const revenueRaw: number[] = [];
@@ -201,14 +202,13 @@ export async function getStatistikPageData(businessId: string, url: URL) {
   const revenue = scaleMoney(revenueRaw, moneyUnit);
   const profit = scaleMoney(profitRaw, moneyUnit);
 
-  // 5.0 Performa per produk (maks 30, toggle Revenue|Profit|Margin di klien).
+  // Rumus Performa per Produk: top 30 by revenue; klien toggle revenue/profit/margin (margin=profit/revenue).
   const productPerf = [...cur]
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 30)
     .map((p) => ({ id: p.productId, name: p.name, qty: p.quantitySold, revenue: p.revenue, profit: p.profit, margin: p.margin }));
 
-  // Komposisi profit: 8 produk paling menguntungkan + "Lainnya".
-  // Hanya profit positif yang masuk pie (slice negatif merusak chart).
+  // Rumus Komposisi Profit: 8 profit>0 terbesar + "Lainnya"=sisa profit; negatif dibuang.
   const profitable = [...cur].filter((p) => p.profit > 0).sort((a, b) => b.profit - a.profit);
   const pieTop = profitable.slice(0, 8);
   const pieRest = curProfit - pieTop.reduce((s, p) => s + p.profit, 0);
@@ -219,11 +219,12 @@ export async function getStatistikPageData(businessId: string, url: URL) {
     pieData.push(pieRest);
   }
   const withSales = cur.filter((p) => p.revenue > 0);
+  // Rumus highlight: rata2 struk=rev÷struk; margin max/min=sort margin desc.
   const byMargin = [...withSales].sort((a, b) => b.margin - a.margin);
   const avgTicket = tx === 0 ? 0 : curRev / tx;
   const prevAvg = prevTx === 0 ? 0 : prevRev / prevTx;
 
-  // 5.1 Struk per hari + rata-rata struk (null bila 0 struk → garis terputus).
+  // Rumus Rata-rata Struk/hari: rev hari÷struk hari; null kalau struk=0 (garis putus).
   const avgRaw: (number | null)[] = revenueRaw.map((rev, i) => (txRaw[i] === 0 ? null : rev / txRaw[i]));
   const avgMax = avgRaw.reduce<number>((s, v) => Math.max(s, v ?? 0), 0);
   const avgUnit = pickMoneyUnit(avgMax);
@@ -232,8 +233,7 @@ export async function getStatistikPageData(businessId: string, url: URL) {
     v === null ? null : Math.round((v / avgUnit.divisor) * avgF) / avgF
   );
 
-  // 5.2 Jam tersibuk (WITA). Isi 0 untuk jam kosong, potong ke rentang
-  // jam-buka (min–maks jam berisi penjualan, minimal 8 jam).
+  // Rumus Jam Tersibuk: count struk per jam WITA (kosong=0); puncak=jam max.
   const byHour = new Map(hourlyRows.map((h) => [h.hour, h.tx]));
   const activeHours = [...byHour.entries()].filter(([, t]) => t > 0).map(([h]) => h);
   let hourStart = 0;
@@ -269,8 +269,7 @@ export async function getStatistikPageData(businessId: string, url: URL) {
     total: hourlyTotal
   };
 
-  // 5.3 Pola hari dalam seminggu: rata-rata revenue per hari-ISO = total
-  // revenue hari itu ÷ jumlah hari tersebut di dalam rentang.
+  // Rumus Hari Seminggu: rata2 revenue=Σ rev÷kemunculan hari itu; tampil kalau ≥14 hari.
   const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
   const dowSums = [0, 0, 0, 0, 0, 0, 0, 0];
   const dowCounts = [0, 0, 0, 0, 0, 0, 0, 0];
@@ -281,11 +280,11 @@ export async function getStatistikPageData(businessId: string, url: URL) {
   const weekdayAvg = [1, 2, 3, 4, 5, 6, 7].map((d) => (dowCounts[d] === 0 ? 0 : Math.round(dowSums[d] / dowCounts[d])));
   const weekday = { labels: dayNames, data: weekdayAvg, show: labels.length >= 14 };
 
-  // 5.4 Penjualan per kasir — tampil hanya bila ≥ 2 kasir di periode.
+  // Rumus per Kasir: revenue=Σ(qty×jual), rata2=rev÷struk; tampil kalau ≥2 kasir.
   const cashiers = [...cashierRows].sort((a, b) => b.revenue - a.revenue);
   const cashierStats = { list: cashiers, show: cashiers.length >= 2 };
 
-  // 5.5 Panel inventori (jendela tetap 14 hari, tidak ikut filter rentang).
+  // Rumus Inventori (14 hari tetap): nilai=Σ(stok×modal); mati=stok>0 & sold14=0; hari=stok÷(sold14/14).
   const invProducts = invData.products;
   const stockValue = invProducts.reduce((s, p) => s + p.stock * p.costPrice, 0);
   const invOut = invProducts.filter((p) => p.stock <= 0).length;
@@ -311,7 +310,7 @@ export async function getStatistikPageData(businessId: string, url: URL) {
     deadList: deadFull.slice(0, 5)
   };
 
-  // 5.6 Pergerakan stok per minggu: 4 dataset bertanda + ringkasan susut.
+  // Rumus Gerak Stok/minggu: Σ qtyChange per Senin WITA×alasan; Terjual=-(SALE); susut=koreksi negatif×modal.
   const weeks = [...new Set(moveRows.map((r) => r.week))].sort();
   const moveBy = new Map(moveRows.map((r) => [`${r.week}|${r.reason}`, r.qty]));
   const moveLabels = weeks.map((wk) => {
@@ -327,7 +326,7 @@ export async function getStatistikPageData(businessId: string, url: URL) {
     susut: susut
   };
 
-  // 5.7 Matriks Volume vs Margin (klik titik → simulator produk itu).
+  // Rumus Matriks: x=qty, y=margin%, ukuran=√(rev/maxRev); garis=median qty & margin bisnis.
   const quantities = withSales.map((p) => p.quantitySold).sort((a, b) => a - b);
   const medianQty = quantities.length === 0 ? 0 : quantities[Math.floor(quantities.length / 2)];
   const overallMargin = calculateMargin(curRev, curProfit);
@@ -385,6 +384,7 @@ export async function getStatistikPageData(businessId: string, url: URL) {
       totalQty: sum(cur, (p) => p.quantitySold)
     },
     rows,
+    // Rumus Margin tipis: margin=profit/revenue <15%.
     lowMargin: getLowMarginProducts(cur, 0.15).map((p) => ({ name: p.name, margin: p.margin }))
   };
 }
