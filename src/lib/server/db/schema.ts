@@ -9,11 +9,20 @@ import { sql } from 'drizzle-orm';
 
 export const roleEnum = pgEnum('role', ['OWNER', 'STAFF']);
 
-export const business = pgTable('business', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow()
-});
+export const business = pgTable(
+  'business',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    // Zona waktu operasional bisnis (bukan zona perangkat). Dipakai semua
+    // bucket waktu & tampilan; default WITA agar perilaku lama tidak berubah.
+    timezone: text('timezone').notNull().default('Asia/Makassar'),
+    createdAt: timestamp('created_at').notNull().defaultNow()
+  },
+  (t) => [
+    check('business_timezone_valid', sql`${t.timezone} in ('Asia/Jakarta','Asia/Makassar','Asia/Jayapura')`)
+  ]
+);
 
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
