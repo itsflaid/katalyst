@@ -1,6 +1,7 @@
 import { db } from '$lib/server/db';
 import { stockMovement, transaction, transactionItem, product, user } from '$lib/server/db/schema';
 import { eq, desc, and, asc, inArray, gt, sql } from 'drizzle-orm';
+import { DEFAULT_TZ } from '$lib/shared/time';
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -108,7 +109,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     .from(product)
     .where(and(eq(product.businessId, businessId), eq(product.isActive, true), gt(product.stock, 0)));
 
-  return { receipts, products, page, hasMore, staffOptions, kasir };
+  return { receipts, products, page, hasMore, staffOptions, kasir, timezone: locals.business?.timezone ?? DEFAULT_TZ };
 };
 
 export const actions: Actions = {

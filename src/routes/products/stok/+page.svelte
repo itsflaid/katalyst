@@ -4,10 +4,11 @@
   import Badge from '$lib/components/ui/Badge.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import ProductTabs from '$lib/components/products/ProductTabs.svelte';
-  import { fmtWita } from '$lib/shared/time';
+  import { makeTime, DEFAULT_TZ } from '$lib/shared/time';
   export let data;
 
-  const fmtDate = (d: string | Date) => fmtWita(d, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  $: T = makeTime(data.timezone ?? DEFAULT_TZ);
+  $: fmtDate = (d: string | Date) => T.fmt(d, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const reasonLabel: Record<string, string> = { SALE: 'Penjualan', VOID_RESTORE: 'Batal struk', RESTOCK: 'Restock', ADJUST: 'Koreksi' };
   const reasonTone = (r: string) =>
     r === 'RESTOCK' ? 'positive' : r === 'SALE' ? 'neutral' : r === 'VOID_RESTORE' ? 'neutral' : 'warning';
