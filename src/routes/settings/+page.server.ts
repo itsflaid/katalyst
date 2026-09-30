@@ -1,6 +1,7 @@
 import { db } from '$lib/server/db';
 import { business, staffInvitation, user } from '$lib/server/db/schema';
 import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
+import { DEFAULT_TZ, isBizTz } from '$lib/shared/time';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -36,6 +37,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
   return {
     businessName: b?.name ?? '',
+    timezone: isBizTz(b?.timezone) ? b.timezone : DEFAULT_TZ,
     staffList,
     pendingInvites: pendingInvites.map((i) => ({ ...i, expiresAt: i.expiresAt.toISOString(), createdAt: i.createdAt.toISOString() })),
     currentUserId: locals.user!.id as string

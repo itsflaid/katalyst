@@ -18,7 +18,7 @@
 <section id="profil" class="mb-10 scroll-mt-4">
   <h2 class="text-label-sm uppercase text-muted mb-3">Identitas Bisnis</h2>
   <Card class="max-w-sm">
-    <BusinessProfileForm businessName={data.businessName} />
+    <BusinessProfileForm businessName={data.businessName} timezone={data.timezone} />
   </Card>
 </section>
 
