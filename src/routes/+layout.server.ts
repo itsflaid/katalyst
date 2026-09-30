@@ -1,27 +1,19 @@
-import { auth } from '$lib/server/domains/auth';
-import { db } from '$lib/server/db';
-import { business } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { DEFAULT_TZ } from '$lib/shared/time';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ request }) => {
-  const session = await auth.api.getSession({ headers: request.headers });
-  if (!session?.user) return { user: null, businessName: null };
+export const load: LayoutServerLoad = async ({ locals }) => {
+  const sessionUser = locals.user;
+  if (!sessionUser) return { user: null, businessName: null, timezone: DEFAULT_TZ };
 
   // additionalFields better-auth (role/businessId) balik sebagai string biasa,
   // bukan literal type 'OWNER' | 'STAFF' — di-cast di sini, satu tempat,
   // biar Sidebar.svelte gak perlu tau soal ketidaksempurnaan typing ini.
-  const role = (session.user.role as 'OWNER' | 'STAFF' | null) ?? 'STAFF';
-  const businessId = (session.user.businessId as string | null) ?? null;
-
-  let businessName: string | null = null;
-  if (businessId) {
-    const [b] = await db.select({ name: business.name }).from(business).where(eq(business.id, businessId));
-    businessName = b?.name ?? null;
-  }
+  // Bisnis dibaca dari locals (diisi hooks) agar cukup satu query per request.
+  const role = (sessionUser.role as 'OWNER' | 'STAFF' | null) ?? 'STAFF';
 
   return {
-    user: { ...session.user, role },
-    businessName
+    user: { ...sessionUser, role },
+    businessName: locals.business?.name ?? null,
+    timezone: locals.business?.timezone ?? DEFAULT_TZ
   };
 };
