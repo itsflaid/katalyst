@@ -13,6 +13,16 @@ export const TZ_INFO: Record<BizTz, { short: 'WIB' | 'WITA' | 'WIT'; offsetHours
 export const isBizTz = (v: unknown): v is BizTz =>
   typeof v === 'string' && (BIZ_TZS as readonly string[]).includes(v);
 
+// Petakan zona IANA perangkat ke zona bisnis (saran di Pengaturan, tidak
+// mengubah apa pun otomatis). Disimpan di sini agar literal IANA tidak
+// tersebar ke komponen (gerbang grep Fase 0).
+export function deviceTzToBizTz(tz: string): BizTz | null {
+  if (tz === 'Asia/Jakarta' || tz === 'Asia/Pontianak') return 'Asia/Jakarta';
+  if (tz === 'Asia/Makassar') return 'Asia/Makassar';
+  if (tz === 'Asia/Jayapura') return 'Asia/Jayapura';
+  return null;
+}
+
 // Pabrik helper terikat satu zona. Offset tetap valid karena Indonesia tanpa DST.
 export function makeTime(tz: BizTz) {
   const info = TZ_INFO[tz];
