@@ -10,45 +10,46 @@ import {
   getTopProducts,
   type ProductSummary
 } from '$lib/analytics';
-import { startOfDayWita, endOfDayWita, addDaysWita, dayKeyWita, toWita, parseDayWita, fmtWita, isoDowWita } from '$lib/shared/time';
-import { witaDate } from '$lib/server/sql';
+import { makeTime, type BizTz } from '$lib/shared/time';
+import { localDate } from '$lib/server/sql';
 import { queryCashiers, queryHourly, queryInventory, queryMovementWeekly, querySusut, INVENTORY_WINDOW_DAYS } from './queries';
 import { pickMoneyUnit, scaleMoney } from '$lib/shared/format';
 
 type StatistikRangeKey = 'today' | 'week' | '30d' | 'month' | 'custom';
 
-function resolveStatistikRange(url: URL): { key: StatistikRangeKey; from: Date; to: Date; label: string; fromISO: string; toISO: string } {
+function resolveStatistikRange(url: URL, tz: BizTz): { key: StatistikRangeKey; from: Date; to: Date; label: string; fromISO: string; toISO: string } {
+  const T = makeTime(tz);
   const raw = (url.searchParams.get('range') ?? '30d').toLowerCase();
   const now = new Date();
-  const iso = (d: Date) => dayKeyWita(d);
+  const iso = (d: Date) => T.dayKey(d);
   if (raw === 'today') {
-    const from = startOfDayWita(now);
+    const from = T.startOfDay(now);
     return { key: 'today', from, to: now, label: 'Hari ini', fromISO: '', toISO: '' };
   }
   if (raw === 'week') {
-    // Senin 00:00 WITA → sekarang (konvensi Indonesia).
-    const dow = toWita(now).getUTCDay();
+    // Senin 00:00 zona bisnis → sekarang (konvensi Indonesia).
+    const dow = T.toLocal(now).getUTCDay();
     const offset = (dow + 6) % 7;
-    const from = startOfDayWita(addDaysWita(now, -offset));
+    const from = T.startOfDay(T.addDays(now, -offset));
     return { key: 'week', from, to: now, label: 'Minggu ini (Senin–sekarang)', fromISO: '', toISO: '' };
   }
   if (raw === 'month') {
-    const w = toWita(now);
-    const firstWita = new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), 1) - 8 * 3600_000);
-    return { key: 'month', from: firstWita, to: now, label: 'Bulan ini', fromISO: '', toISO: '' };
+    const w = T.toLocal(now);
+    const firstLocal = new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), 1) - T.offsetMs);
+    return { key: 'month', from: firstLocal, to: now, label: 'Bulan ini', fromISO: '', toISO: '' };
   }
   if (raw === 'custom') {
-    const f = parseDayWita(url.searchParams.get('from') ?? '');
-    const tRaw = parseDayWita(url.searchParams.get('to') ?? '');
+    const f = T.parseDay(url.searchParams.get('from') ?? '');
+    const tRaw = T.parseDay(url.searchParams.get('to') ?? '');
     if (f || tRaw) {
-      const from = f ?? addDaysWita(startOfDayWita(now), -29);
-      const to = tRaw ? endOfDayWita(tRaw) : now;
+      const from = f ?? T.addDays(T.startOfDay(now), -29);
+      const to = tRaw ? T.endOfDay(tRaw) : now;
       const [a, b] = from <= to ? [from, to] : [to, from];
-      const fmt = (d: Date) => fmtWita(d, { day: 'numeric', month: 'short', year: 'numeric' });
+      const fmt = (d: Date) => T.fmt(d, { day: 'numeric', month: 'short', year: 'numeric' });
       return { key: 'custom', from: a, to: b, label: `Custom: ${fmt(a)} – ${fmt(b)}`, fromISO: iso(a), toISO: iso(b) };
     }
   }
-  const from = startOfDayWita(addDaysWita(now, -29));
+  const from = T.startOfDay(T.addDays(now, -29));
   return { key: '30d', from, to: now, label: '30 hari terakhir', fromISO: '', toISO: '' };
 }
 
@@ -73,8 +74,9 @@ function toSummaries(
   });
 }
 
-export async function getStatistikPageData(businessId: string, url: URL) {
-  const range = resolveStatistikRange(url);
+export async function getStatistikPageData(businessId: string, url: URL, tz: BizTz) {
+  const T = makeTime(tz);
+  const range = resolveStatistikRange(url, tz);
 
   // Periode pembanding: durasi sama panjang, tepat sebelum periode aktif.
   const dur = range.to.getTime() - range.from.getTime();
@@ -101,8 +103,8 @@ export async function getStatistikPageData(businessId: string, url: URL) {
       .groupBy(transactionItem.productId);
 
   // Objek ekspresi yang sama dipakai di select & groupBy (lihat sql.ts).
-  const witaDayExpr = witaDate(transaction.createdAt);
-  const witaDayText = sql<string>`(${witaDayExpr})::text`;
+  const dayExprLocal = localDate(transaction.createdAt, tz);
+  const dayTextLocal = sql<string>`(${dayExprLocal})::text`;
 
   const [products, curRows, prevRows, dailyRows, prevTxRows, hourlyRows, cashierRows, moveRows, invData, susut] = await Promise.all([
     db
@@ -113,7 +115,7 @@ export async function getStatistikPageData(businessId: string, url: URL) {
     perProduct(prevFrom, prevTo),
     db
       .select({
-        day: witaDayText,
+        day: dayTextLocal,
         revenue: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale})::text`,
         cost: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.costAtSale})::text`,
         txCount: sql<string>`count(distinct ${transaction.id})::text`
@@ -129,7 +131,7 @@ export async function getStatistikPageData(businessId: string, url: URL) {
       )
       // Objek dayExpr dipakai ulang di select & groupBy — jangan inline dua
       // kali (nomor parameter berbeda → Postgres error GROUP BY).
-      .groupBy(witaDayExpr),
+      .groupBy(dayExprLocal),
     db
       .select({ value: count() })
       .from(transaction)
@@ -140,10 +142,10 @@ export async function getStatistikPageData(businessId: string, url: URL) {
           lte(transaction.createdAt, prevTo)
         )
       ),
-    queryHourly(businessId, range.from, range.to),
+    queryHourly(businessId, range.from, range.to, tz),
     queryCashiers(businessId, range.from, range.to),
-    queryMovementWeekly(businessId, range.from, range.to),
-    queryInventory(businessId, new Date()),
+    queryMovementWeekly(businessId, range.from, range.to, tz),
+    queryInventory(businessId, new Date(), tz),
     querySusut(businessId, range.from, range.to)
   ]);
 
@@ -166,7 +168,7 @@ export async function getStatistikPageData(businessId: string, url: URL) {
   const prevTx = prevTxRows[0]?.value ?? 0;
 
   // Rumus Tren Revenue/Profit/Margin/Struk: revenue=Σ(qty×jual), profit=rev−Σ(qty×modal),
-  // margin=profit/rev×100% per hari WITA (hari kosong=0, best day=rev max).
+  // margin=profit/rev×100% per hari zona bisnis (hari kosong=0, best day=rev max).
   const byDay = new Map(dailyRows.map((r) => [r.day, r]));
   const labels: string[] = [];
   const revenueRaw: number[] = [];
@@ -176,27 +178,27 @@ export async function getStatistikPageData(businessId: string, url: URL) {
   const marginTrend: number[] = [];
   let bestDayLabel = '—';
   let bestDayRevenue = 0;
-  let cursor = startOfDayWita(range.from);
+  let cursor = T.startOfDay(range.from);
   const end = range.to;
   while (cursor <= end) {
-    const key = dayKeyWita(cursor);
+    const key = T.dayKey(cursor);
     const v = byDay.get(key);
     const rev = v ? Number(v.revenue) : 0;
     const cost = v ? Number(v.cost) : 0;
     const txd = v ? Number(v.txCount) : 0;
-    const w = toWita(cursor);
+    const w = T.toLocal(cursor);
     const label = `${w.getUTCDate()}/${w.getUTCMonth() + 1}`;
     labels.push(label);
     revenueRaw.push(rev);
     profitRaw.push(rev - cost);
     txRaw.push(txd);
-    dowRaw.push(isoDowWita(cursor));
+    dowRaw.push(T.isoDow(cursor));
     marginTrend.push(rev === 0 ? 0 : Math.round(((rev - cost) / rev) * 1000) / 10);
     if (rev > bestDayRevenue) {
       bestDayRevenue = rev;
-      bestDayLabel = fmtWita(cursor, { weekday: 'long', day: 'numeric', month: 'short' });
+      bestDayLabel = T.fmt(cursor, { weekday: 'long', day: 'numeric', month: 'short' });
     }
-    cursor = addDaysWita(cursor, 1);
+    cursor = T.addDays(cursor, 1);
   }
   const moneyUnit = pickMoneyUnit(Math.max(Math.abs(curRev), Math.abs(curProfit), 0));
   const revenue = scaleMoney(revenueRaw, moneyUnit);
@@ -233,7 +235,7 @@ export async function getStatistikPageData(businessId: string, url: URL) {
     v === null ? null : Math.round((v / avgUnit.divisor) * avgF) / avgF
   );
 
-  // Rumus Jam Tersibuk: count struk per jam WITA (kosong=0); puncak=jam max.
+  // Rumus Jam Tersibuk: count struk per jam zona bisnis (kosong=0); puncak=jam max.
   const byHour = new Map(hourlyRows.map((h) => [h.hour, h.tx]));
   const activeHours = [...byHour.entries()].filter(([, t]) => t > 0).map(([h]) => h);
   let hourStart = 0;
@@ -310,7 +312,7 @@ export async function getStatistikPageData(businessId: string, url: URL) {
     deadList: deadFull.slice(0, 5)
   };
 
-  // Rumus Gerak Stok/minggu: Σ qtyChange per Senin WITA×alasan; Terjual=-(SALE); susut=koreksi negatif×modal.
+  // Rumus Gerak Stok/minggu: Σ qtyChange per Senin zona bisnis×alasan; Terjual=-(SALE); susut=koreksi negatif×modal.
   const weeks = [...new Set(moveRows.map((r) => r.week))].sort();
   const moveBy = new Map(moveRows.map((r) => [`${r.week}|${r.reason}`, r.qty]));
   const moveLabels = weeks.map((wk) => {
@@ -389,7 +391,8 @@ export async function getStatistikPageData(businessId: string, url: URL) {
   };
 }
 
-export async function getDashboardPageData(businessId: string) {
+export async function getDashboardPageData(businessId: string, tz: BizTz) {
+  const T = makeTime(tz);
   // 4 query independen — jalan PARALEL dalam satu round-trip, bukan serial.
   // Agregasi KPI dihitung di SQL (GROUP BY + SUM) sehingga yang ditransfer
   // cuma 1 baris per produk, bukan 1 baris per item transaksi (yang tumbuh
@@ -398,10 +401,10 @@ export async function getDashboardPageData(businessId: string) {
   // lokasi hitungnya pindah ke database.
   // Query ke-5: agregat harian 60 hari terakhir — 1 query melayani tren
   // (30 hari terakhir) + delta (30 hari ini vs 30 hari sebelumnya).
-  // Semua batas hari & bucket memakai WITA (bukan UTC / lokal server).
-  const sixtyDaysAgo = startOfDayWita(addDaysWita(new Date(), -59));
+  // Semua batas hari & bucket memakai zona bisnis (bukan UTC / lokal server).
+  const sixtyDaysAgo = T.startOfDay(T.addDays(new Date(), -59));
   // Objek ekspresi yang sama dipakai di select & groupBy (lihat sql.ts).
-  const dayExpr = witaDate(transaction.createdAt);
+  const dayExpr = localDate(transaction.createdAt, tz);
   const [products, grouped, countRows, recentTransactions, dailyRows, restockList, restockCounts] = await Promise.all([
     db
       .select({ id: product.id, name: product.name })
@@ -528,11 +531,11 @@ export async function getDashboardPageData(businessId: string) {
     ])
   );
   const days: { key: string; label: string; revenue: number; profit: number; tx: number }[] = [];
-  const todayStart = startOfDayWita(new Date());
+  const todayStart = T.startOfDay(new Date());
   for (let i = 59; i >= 0; i--) {
-    const d = addDaysWita(todayStart, -i);
-    const key = dayKeyWita(d);
-    const w = toWita(d);
+    const d = T.addDays(todayStart, -i);
+    const key = T.dayKey(d);
+    const w = T.toLocal(d);
     const v = byDay.get(key) ?? { revenue: 0, cost: 0, tx: 0 };
     days.push({
       key,
@@ -592,45 +595,43 @@ export async function getDashboardPageData(businessId: string) {
 
 type SimulatorRangeKey = 'today' | 'week' | 'month' | 'all' | 'custom';
 
-function resolveSimulatorRange(url: URL): { key: SimulatorRangeKey; from: Date | null; to: Date | null; label: string; fromISO: string; toISO: string } {
+function resolveSimulatorRange(url: URL, tz: BizTz): { key: SimulatorRangeKey; from: Date | null; to: Date | null; label: string; fromISO: string; toISO: string } {
+  const T = makeTime(tz);
   const raw = (url.searchParams.get('range') ?? 'month').toLowerCase();
   const now = new Date();
   if (raw === 'today') {
-    const from = startOfDayWita(now);
+    const from = T.startOfDay(now);
     return { key: 'today', from, to: now, label: 'Hari ini', fromISO: '', toISO: '' };
   }
   if (raw === 'week') {
-    // Minggu ini: Senin 00:00 WITA → sekarang (konvensi Indonesia).
-    const dow = toWita(now).getUTCDay();
+    // Minggu ini: Senin 00:00 zona bisnis → sekarang (konvensi Indonesia).
+    const dow = T.toLocal(now).getUTCDay();
     const offset = (dow + 6) % 7;
-    const from = startOfDayWita(addDaysWita(now, -offset));
+    const from = T.startOfDay(T.addDays(now, -offset));
     return { key: 'week', from, to: now, label: 'Minggu ini (Senin–sekarang)', fromISO: '', toISO: '' };
   }
   if (raw === 'month') {
-    const w = toWita(now);
-    const from = new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), 1) - 8 * 3600_000);
+    const w = T.toLocal(now);
+    const from = new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), 1) - T.offsetMs);
     return { key: 'month', from, to: now, label: 'Bulan ini', fromISO: '', toISO: '' };
   }
   if (raw === 'custom') {
-    const f = parseDayWita(url.searchParams.get('from') ?? '');
-    const tRaw = parseDayWita(url.searchParams.get('to') ?? '');
+    const f = T.parseDay(url.searchParams.get('from') ?? '');
+    const tRaw = T.parseDay(url.searchParams.get('to') ?? '');
     if (!f && !tRaw) return { key: 'all', from: null, to: null, label: 'Semua waktu', fromISO: '', toISO: '' };
     const from = f ?? null;
-    const to = tRaw ? endOfDayWita(tRaw) : now;
-    const fmt = (d: Date) => fmtWita(d, { day: 'numeric', month: 'short', year: 'numeric' });
-    const label = from && tRaw ? `${fmt(from)} – ${fmt(endOfDayWita(tRaw))}` : from ? `Sejak ${fmt(from)}` : `Sampai ${fmt(to!)}`;
-    // iso buat <input type="date"> memakai hari WITA.
-    const witaIso = (d: Date) => {
-      const w2 = toWita(d);
-      return `${w2.getUTCFullYear()}-${String(w2.getUTCMonth() + 1).padStart(2, '0')}-${String(w2.getUTCDate()).padStart(2, '0')}`;
-    };
-    return { key: 'custom', from, to, label: `Custom: ${label}`, fromISO: from ? witaIso(from) : '', toISO: tRaw ? witaIso(endOfDayWita(tRaw)) : '' };
+    const to = tRaw ? T.endOfDay(tRaw) : now;
+    const fmt = (d: Date) => T.fmt(d, { day: 'numeric', month: 'short', year: 'numeric' });
+    const label = from && tRaw ? `${fmt(from)} – ${fmt(T.endOfDay(tRaw))}` : from ? `Sejak ${fmt(from)}` : `Sampai ${fmt(to!)}`;
+    // iso buat <input type="date"> memakai hari zona bisnis.
+    const localIso = (d: Date) => T.dayKey(d);
+    return { key: 'custom', from, to, label: `Custom: ${label}`, fromISO: from ? localIso(from) : '', toISO: tRaw ? localIso(T.endOfDay(tRaw)) : '' };
   }
   return { key: 'all', from: null, to: null, label: 'Semua waktu', fromISO: '', toISO: '' };
 }
 
-export async function getSimulatorPageData(businessId: string, url: URL) {
-  const range = resolveSimulatorRange(url);
+export async function getSimulatorPageData(businessId: string, url: URL, tz: BizTz) {
+  const range = resolveSimulatorRange(url, tz);
 
   // Baseline per produk dihitung di SQL (GROUP BY) — yang ditransfer cuma
   // 1 baris per produk, bukan 1 baris per item transaksi. Sebelumnya load

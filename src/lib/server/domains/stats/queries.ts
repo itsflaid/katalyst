@@ -1,16 +1,16 @@
 import { db } from '$lib/server/db';
 import { product, stockMovement, transaction, transactionItem, user } from '$lib/server/db/schema';
 import { and, count, eq, gte, lte, sql } from 'drizzle-orm';
-import { witaHour, witaWeekStart } from '$lib/server/sql';
-import { startOfDayWita, addDaysWita } from '$lib/shared/time';
+import { localHour, localWeekStart } from '$lib/server/sql';
+import { makeTime, type BizTz } from '$lib/shared/time';
 
 // Jendela inventori tetap 14 hari (tidak ikut filter rentang halaman).
 export const INVENTORY_WINDOW_DAYS = 14;
 
-// Jam tersibuk: jumlah struk per jam dinding WITA.
-export async function queryHourly(businessId: string, from: Date, to: Date) {
+// Jam tersibuk: jumlah struk per jam dinding zona bisnis.
+export async function queryHourly(businessId: string, from: Date, to: Date, tz: BizTz) {
   // Objek ekspresi yang sama dipakai di select & groupBy (lihat sql.ts).
-  const hourExpr = witaHour(transaction.createdAt);
+  const hourExpr = localHour(transaction.createdAt, tz);
   const rows = await db
     .select({
       hour: sql<number>`${hourExpr}`,
@@ -50,9 +50,9 @@ export async function queryCashiers(businessId: string, from: Date, to: Date) {
   }));
 }
 
-// Pergerakan stok per minggu kalender WITA (Senin) × alasan.
-export async function queryMovementWeekly(businessId: string, from: Date, to: Date) {
-  const weekExpr = witaWeekStart(stockMovement.createdAt);
+// Pergerakan stok per minggu kalender zona bisnis (Senin) × alasan.
+export async function queryMovementWeekly(businessId: string, from: Date, to: Date, tz: BizTz) {
+  const weekExpr = localWeekStart(stockMovement.createdAt, tz);
   const rows = await db
     .select({
       week: sql<string>`(${weekExpr})::text`,
@@ -94,8 +94,10 @@ export async function querySusut(businessId: string, from: Date, to: Date) {
 }
 
 // Data mentah panel inventori: semua produk + qty terjual 14 hari terakhir.
-export async function queryInventory(businessId: string, now: Date) {
-  const since = startOfDayWita(addDaysWita(now, -(INVENTORY_WINDOW_DAYS - 1)));
+export async function queryInventory(businessId: string, now: Date, tz: BizTz) {
+  // Jendela 14 hari dihitung dalam kalender zona bisnis.
+  const T = makeTime(tz);
+  const since = T.startOfDay(T.addDays(now, -(INVENTORY_WINDOW_DAYS - 1)));
   const [prods, soldRows] = await Promise.all([
     db
       .select({

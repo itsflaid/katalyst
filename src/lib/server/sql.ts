@@ -29,17 +29,3 @@ export const localIsoDow = (col: SQLWrapper, tz: BizTz) =>
   sql`extract(isodow from ${localTs(col, tz)})::int`;
 export const localWeekStart = (col: SQLWrapper, tz: BizTz) =>
   sql`(date_trunc('week', ${localTs(col, tz)}))::date`;
-
-// ---------------------------------------------------------------------------
-// Wrapper lama — @deprecated, dipertahankan sementara sampai 0.5.
-// ---------------------------------------------------------------------------
-/** @deprecated pakai localTs(col, tz) */
-export const witaTs = (col: SQLWrapper) => localTs(col, 'Asia/Makassar');
-/** @deprecated pakai localDate(col, tz) */
-export const witaDate = (col: SQLWrapper) => localDate(col, 'Asia/Makassar');
-/** @deprecated pakai localHour(col, tz) */
-export const witaHour = (col: SQLWrapper) => localHour(col, 'Asia/Makassar');
-/** @deprecated pakai localIsoDow(col, tz) */
-export const witaIsoDow = (col: SQLWrapper) => localIsoDow(col, 'Asia/Makassar');
-/** @deprecated pakai localWeekStart(col, tz) */
-export const witaWeekStart = (col: SQLWrapper) => localWeekStart(col, 'Asia/Makassar');

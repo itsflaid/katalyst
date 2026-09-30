@@ -12,6 +12,7 @@
     "db:seed:real": "tsx src/lib/server/db/seed-real.ts",
     "verify:engine": "tsx script/verify-engine.ts",
     "verify:time": "tsx script/verify-time.ts",
+    "verify:tz-sql": "tsx script/verify-tz-sql.ts",
     "verify:stock": "tsx script/verify-stock.ts"
   },
   "dependencies": {

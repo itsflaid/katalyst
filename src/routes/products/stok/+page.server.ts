@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { product, stockMovement, user } from '$lib/server/db/schema';
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
-import { parseDayWita, endOfDayWita, dayKeyWita } from '$lib/shared/time';
+import { DEFAULT_TZ, makeTime } from '$lib/shared/time';
 import type { PageServerLoad } from './$types';
 
 const PAGE_SIZE = 30;
@@ -9,16 +9,19 @@ const REASONS = ['SALE', 'VOID_RESTORE', 'RESTOCK', 'ADJUST'] as const;
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   const businessId = locals.user!.businessId as string;
+  // Zona bisnis untuk parsing & label tanggal (bukan zona perangkat).
+  const tz = locals.business?.timezone ?? DEFAULT_TZ;
+  const T = makeTime(tz);
   const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
   const offset = (page - 1) * PAGE_SIZE;
 
   const reasonParam = url.searchParams.get('reason') ?? '';
   const reason = (REASONS as readonly string[]).includes(reasonParam) ? reasonParam : null;
   const productParam = url.searchParams.get('product') ?? '';
-  const fromParsed = parseDayWita(url.searchParams.get('from') ?? '');
-  const toParsed = parseDayWita(url.searchParams.get('to') ?? '');
+  const fromParsed = T.parseDay(url.searchParams.get('from') ?? '');
+  const toParsed = T.parseDay(url.searchParams.get('to') ?? '');
   const from = fromParsed;
-  const to = toParsed ? endOfDayWita(toParsed) : null;
+  const to = toParsed ? T.endOfDay(toParsed) : null;
 
   const conditions = [eq(stockMovement.businessId, businessId)];
   if (reason) conditions.push(eq(stockMovement.reason, reason as (typeof REASONS)[number]));
@@ -69,8 +72,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     const params = new URLSearchParams();
     if (reason) params.set('reason', reason);
     if (productParam) params.set('product', productParam);
-    if (fromParsed) params.set('from', dayKeyWita(fromParsed));
-    if (toParsed) params.set('to', dayKeyWita(toParsed));
+    if (fromParsed) params.set('from', T.dayKey(fromParsed));
+    if (toParsed) params.set('to', T.dayKey(toParsed));
     for (const [k, v] of Object.entries(extra)) params.set(k, String(v));
     const s = params.toString();
     return `/products/stok${s ? `?${s}` : ''}`;
@@ -85,7 +88,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     moreHref: qs({ page: page + 1 }),
     reason,
     productFilter: productParam,
-    fromISO: fromParsed ? dayKeyWita(fromParsed) : '',
-    toISO: toParsed ? dayKeyWita(toParsed) : ''
+    fromISO: fromParsed ? T.dayKey(fromParsed) : '',
+    toISO: toParsed ? T.dayKey(toParsed) : '',
+    timezone: tz
   };
 };

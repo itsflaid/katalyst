@@ -8,6 +8,7 @@ import { business, user, product, transaction, transactionItem, stockMovement } 
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { placeholderEmail } from '../domains/invites';
+import { makeTime } from '../../shared/time';
 
 // -----------------------------------------------------------------------
 // Script ini di-run standalone lewat `tsx` (bukan lewat SvelteKit/Vite), jadi
@@ -146,12 +147,11 @@ function applyVolatility(base: number, level: Volatility): number {
   return Math.max(1, Math.round(base * (1 + delta)));
 }
 
-// Jam 8-21 yang dimaksud adalah jam dinding WITA (bukan UTC): 08.00 WITA =
-// 00.00 UTC, jadi jam UTC = jam WITA - 8.
+// Jam 8-21 yang dimaksud adalah jam dinding zona bisnis demo (Kaltim = WITA,
+// sengaja memakai makeTime('Asia/Makassar')): dihitung dari 00:00 lokal.
+const _demoTime = makeTime('Asia/Makassar');
 function witaTime(base: Date, hourWita: number, minute: number): Date {
-  const d = new Date(base);
-  d.setUTCHours(hourWita - 8, minute, 0, 0);
-  return d;
+  return new Date(_demoTime.startOfDay(base).getTime() + hourWita * 3600_000 + minute * 60_000);
 }
 
 async function main() {

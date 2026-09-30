@@ -2,6 +2,7 @@ import { db } from '$lib/server/db';
 import { product, stockMovement, transaction, transactionItem, user } from '$lib/server/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { getProductPerformance, type TransactionItemLike } from '$lib/analytics';
+import { DEFAULT_TZ } from '$lib/shared/time';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
@@ -43,5 +44,5 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     .orderBy(desc(stockMovement.createdAt))
     .limit(20);
 
-  return { product: p, performance, movements, role: locals.user!.role === 'OWNER' ? 'OWNER' : 'STAFF' };
+  return { product: p, performance, movements, role: locals.user!.role === 'OWNER' ? 'OWNER' : 'STAFF', timezone: locals.business?.timezone ?? DEFAULT_TZ };
 };

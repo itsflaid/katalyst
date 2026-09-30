@@ -7,11 +7,12 @@
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import StockBadge from '$lib/components/products/StockBadge.svelte';
   import { page } from '$app/stores';
-  import { fmtWita } from '$lib/shared/time';
+  import { makeTime, DEFAULT_TZ } from '$lib/shared/time';
   export let data;
   const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
   const num = (n: number) => new Intl.NumberFormat('id-ID').format(n);
-  const fmtDate = (d: string | Date) => fmtWita(d, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  $: T = makeTime(data.timezone ?? DEFAULT_TZ);
+  $: fmtDate = (d: string | Date) => T.fmt(d, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
   // Tren + delta 30 hari dihitung di load (agregat harian SQL 60 hari:
   // 30 terakhir buat chart, 30 vs 30 sebelumnya buat delta). Nilai tren

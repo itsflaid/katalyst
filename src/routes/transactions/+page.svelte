@@ -5,38 +5,43 @@
   import { enhance } from '$app/forms';
   import { goto } from '$app/navigation';
   import type { SubmitFunction } from '@sveltejs/kit';
-  import { fmtWita, dayKeyWita, startOfDayWita, addDaysWita } from '$lib/shared/time';
+  import { makeTime, DEFAULT_TZ, type BizTime } from '$lib/shared/time';
   export let data;
   export let form;
 
   const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
-  // Jam struk tampil WITA (bukan zona lokal browser) biar sama dengan SSR.
-  const fmtTime = (d: string | Date) => fmtWita(d, { hour: '2-digit', minute: '2-digit' });
+  // Zona bisnis (bukan zona perangkat). T diteruskan eksplisit ke fungsi
+  // pembantu karena Svelte 4 tidak melacak variabel yang hanya dirujuk
+  // di dalam badan fungsi.
+  $: T = makeTime(data.timezone ?? DEFAULT_TZ);
+  // Jam struk tampil zona bisnis (bukan zona lokal browser) biar sama dengan SSR.
+  const fmtTime = (d: string | Date, T: BizTime) => T.fmt(d, { hour: '2-digit', minute: '2-digit' });
 
-  function dayLabel(d: Date) {
-    const todayKey = dayKeyWita(new Date());
-    const yesterdayKey = dayKeyWita(addDaysWita(startOfDayWita(new Date()), -1));
-    const key = dayKeyWita(d);
-    const dateStr = fmtWita(d, { weekday: 'long', day: 'numeric', month: 'long' });
+  function dayLabel(d: Date, T: BizTime) {
+    const todayKey = T.dayKey(new Date());
+    const yesterdayKey = T.dayKey(T.addDays(T.startOfDay(new Date()), -1));
+    const key = T.dayKey(d);
+    const dateStr = T.fmt(d, { weekday: 'long', day: 'numeric', month: 'long' });
     if (key === todayKey) return `Hari ini · ${dateStr}`;
     if (key === yesterdayKey) return `Kemarin · ${dateStr}`;
     return dateStr;
   }
 
-  // Kelompokkan struk (sudah urut desc dari server) per hari WITA + subtotal.
+  // Kelompokkan struk (sudah urut desc dari server) per hari zona bisnis + subtotal.
   // `key` disimpan biar bisa dipakai filter dropdown hari di bawah.
-  $: dayGroups = (() => {
+  // T diteruskan sebagai argumen IIFE agar blok reaktif terpicu saat zona berubah.
+  $: dayGroups = ((T) => {
     const map = new Map<string, { key: string; label: string; rows: typeof data.receipts; subtotal: number }>();
     for (const t of data.receipts) {
       const d = new Date(t.createdAt);
-      const key = dayKeyWita(d);
-      if (!map.has(key)) map.set(key, { key, label: dayLabel(d), rows: [], subtotal: 0 });
+      const key = T.dayKey(d);
+      if (!map.has(key)) map.set(key, { key, label: dayLabel(d, T), rows: [], subtotal: 0 });
       const g = map.get(key)!;
       g.rows.push(t);
       g.subtotal += t.total;
     }
     return Array.from(map.values());
-  })();
+  })(T);
 
   // Navigasi hari — filter client-side dari struk yang sudah di-load server.
   // Default 'all' biar riwayat tetap kelihatan.
@@ -148,7 +153,10 @@
     <!-- Header bar biru navy yang nyambung langsung ke list di bawahnya:
          rounded atas saja, tanpa margin bawah biar nempel. -->
     <div class="flex flex-wrap items-center justify-between gap-3 bg-ink-navy px-5 py-3 rounded-t-panel border border-ink-navy">
-      <h2 class="text-headline-sm text-white">Daftar Transaksi</h2>
+      <div class="flex flex-col">
+        <h2 class="text-headline-sm text-white">Daftar Transaksi</h2>
+        <p class="text-body-sm text-white/60">Waktu ditampilkan dalam {T.short}</p>
+      </div>
       <div class="flex flex-wrap items-center gap-3">
         {#if data.staffOptions.length > 1}
           <label for="t-kasir" class="flex items-center gap-2 text-body-sm text-white/70">
@@ -208,7 +216,7 @@
                 <li class="px-5 py-3 text-body-md border-b border-table-divider last:border-b-0">
                   <div class="flex justify-between items-center gap-4">
                     <div class="min-w-0">
-                      <p class="text-ink font-semibold tabular whitespace-nowrap">Struk · {fmtTime(r.createdAt)} · {r.cashier}</p>
+                      <p class="text-ink font-semibold tabular whitespace-nowrap">Struk · {fmtTime(r.createdAt, T)} · {r.cashier}</p>
                       <p class="text-body-sm text-muted">{r.items.reduce((s, i) => s + i.quantity, 0)} item · {r.items.length} jenis produk</p>
                     </div>
                     <span class="tabular font-semibold text-ink whitespace-nowrap">{idr(r.total)}</span>
