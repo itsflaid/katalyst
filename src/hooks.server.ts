@@ -1,4 +1,8 @@
 import { auth } from '$lib/server/domains/auth';
+import { db } from '$lib/server/db';
+import { business } from '$lib/server/db/schema';
+import { DEFAULT_TZ, isBizTz } from '$lib/shared/time';
+import { eq } from 'drizzle-orm';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
@@ -19,6 +23,8 @@ export const handle: Handle = async ({ event, resolve }) => {
   const session = await auth.api.getSession({ headers: event.request.headers });
   event.locals.session = session?.session ?? null;
   event.locals.user = session?.user ?? null;
+  // Default: belum diketahui bisnisnya.
+  event.locals.business = null;
 
   const path = event.url.pathname;
   const isProtected = PROTECTED_PATHS.some((p) => path.startsWith(p));
@@ -29,6 +35,20 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   if (OWNER_ONLY_PATHS.some((p) => path.startsWith(p)) && event.locals.user?.role !== 'OWNER') {
     throw redirect(303, '/transactions');
+  }
+
+  // Isi bisnis sekali per request (kecuali auth API) agar layout & loader
+  // tidak query business sendiri-sendiri. Fallback DEFAULT_TZ bila nilai
+  // di DB tak valid; null bila baris bisnis tak ada.
+  const businessId = (event.locals.user as { businessId?: unknown } | null)?.businessId;
+  if (typeof businessId === 'string' && businessId && !path.startsWith('/api/auth')) {
+    const [b] = await db
+      .select({ id: business.id, name: business.name, timezone: business.timezone })
+      .from(business)
+      .where(eq(business.id, businessId));
+    event.locals.business = b
+      ? { id: b.id, name: b.name, timezone: isBizTz(b.timezone) ? b.timezone : DEFAULT_TZ }
+      : null;
   }
 
   // Delegasi ke better-auth buat nangani route /api/auth/* secara internal
