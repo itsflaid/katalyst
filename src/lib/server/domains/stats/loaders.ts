@@ -11,7 +11,7 @@ import {
   type ProductSummary
 } from '$lib/analytics';
 import { makeTime, type BizTz } from '$lib/shared/time';
-import { localDate } from '$lib/server/sql';
+import { localDate, lineNet } from '$lib/server/sql';
 import { queryCashiers, queryHourly, queryInventory, queryMovementWeekly, querySusut, INVENTORY_WINDOW_DAYS } from './queries';
 import { pickMoneyUnit, scaleMoney } from '$lib/shared/format';
 
@@ -88,7 +88,7 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
       .select({
         productId: transactionItem.productId,
         qty: sql<string>`sum(${transactionItem.quantity})::text`,
-        revenue: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale})::text`,
+        revenue: sql<string>`sum(${lineNet})::text`,
         cost: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.costAtSale})::text`
       })
       .from(transactionItem)
@@ -116,7 +116,7 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
     db
       .select({
         day: dayTextLocal,
-        revenue: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale})::text`,
+        revenue: sql<string>`sum(${lineNet})::text`,
         cost: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.costAtSale})::text`,
         txCount: sql<string>`count(distinct ${transaction.id})::text`
       })
@@ -418,7 +418,7 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
         // quantity*price di-cast ke bigint dulu biar baris ekstrem gak
         // overflow int4 di sisi database.
         quantitySold: sql<string>`sum(${transactionItem.quantity})::text`,
-        revenue: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale})::text`,
+        revenue: sql<string>`sum(${lineNet})::text`,
         cost: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.costAtSale})::text`
       })
       .from(transactionItem)
@@ -456,7 +456,7 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
     db
       .select({
         day: sql<string>`(${dayExpr})::text`,
-        revenue: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale})::text`,
+        revenue: sql<string>`sum(${lineNet})::text`,
         cost: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.costAtSale})::text`,
         txCount: sql<string>`count(distinct ${transaction.id})::text`
       })
@@ -647,7 +647,7 @@ export async function getSimulatorPageData(businessId: string, url: URL, tz: Biz
       .select({
         productId: transactionItem.productId,
         qty: sql<string>`sum(${transactionItem.quantity})::text`,
-        revenue: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale})::text`,
+        revenue: sql<string>`sum(${lineNet})::text`,
         cost: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.costAtSale})::text`,
         txCount: sql<string>`count(distinct ${transaction.id})::text`
       })
