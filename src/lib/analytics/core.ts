@@ -4,6 +4,9 @@ export interface TransactionItemLike {
     quantity: number;
     priceAtSale: number;
     costAtSale: number;
+    // Total Rp diskon pada baris ini (0 = tanpa diskon). Opsional agar data
+    // lama tanpa kolom diskon tetap valid dan revenue-nya tak berubah.
+    discountAmount?: number;
 }
 
 export interface ProductSummary {
@@ -43,12 +46,13 @@ interface ItemMetrics {
 }
 
 // Hitung revenue/cost/profit satu item (private, fondasi semua agregat).
+// Revenue bersih = qty × harga − diskon baris (0 bila tanpa diskon).
 function calculateItemMetrics(item: TransactionItemLike): ItemMetrics {
     const quantity = item.quantity;
     const priceAtSale = item.priceAtSale;
     const costAtSale = item.costAtSale;
 
-    const revenue = quantity * priceAtSale;
+    const revenue = quantity * priceAtSale - (item.discountAmount ?? 0);
     const cost = quantity * costAtSale;
     const profit = revenue - cost;
 

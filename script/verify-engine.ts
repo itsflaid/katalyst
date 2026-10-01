@@ -209,6 +209,17 @@ if (!isFinite(estimateDaysCover(10, 0, 14))) {
     failCount++;
 }
 
+// Bagian baru Fase 3 (bagian lama di atas tidak diubah): revenue bersih
+// memakai discountAmount per baris; tanpa discountAmount hasil lama tetap.
+console.log("\n== Analytics: revenue bersih (discountAmount) ==");
+const discItem: TransactionItemLike = { productId: "p1", quantity: 100, priceAtSale: 10000, costAtSale: 6000, discountAmount: 150000 };
+check("revenue bersih 100×10000−150000", calculateRevenue([discItem]), 850000, 0.5);
+check("profit bersih 850000−600000", calculateProfit([discItem]), 250000, 0.5);
+check("margin bersih 250000/850000", calculateMargin(850000, 250000), 250000 / 850000, 0.0001);
+const plainItem: TransactionItemLike = { productId: "p1", quantity: 100, priceAtSale: 10000, costAtSale: 6000 };
+check("tanpa discountAmount revenue tetap 1000000", calculateRevenue([plainItem]), 1000000, 0.5);
+check("tanpa discountAmount profit tetap 400000", calculateProfit([plainItem]), 400000, 0.5);
+
 // ============================================================
 console.log(`\n${passCount} passed, ${failCount} failed\n`);
 if (failCount > 0) process.exit(1);

@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "22.x || 24.x",
+    "npm": ">=11"
+  },
+  "packageManager": "npm@11.5.1",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
@@ -12,6 +17,12 @@
     "db:seed:real": "tsx src/lib/server/db/seed-real.ts",
     "verify:engine": "tsx script/verify-engine.ts",
     "verify:time": "tsx script/verify-time.ts",
+    "verify:tz-sql": "tsx script/verify-tz-sql.ts",
+    "verify:discount-db": "tsx script/verify-discount-db.ts",
+    "verify:discount": "tsx script/verify-discount.ts",
+    "verify:e2e-discount": "tsx script/e2e-discount.ts",
+    "verify:deps": "npm ls esbuild @esbuild/win32-x64 wrangler",
+    "verify:lock": "node scripts/lock-optionals.cjs",
     "verify:stock": "tsx script/verify-stock.ts"
   },
   "dependencies": {
@@ -28,7 +39,7 @@
     "@sveltejs/adapter-cloudflare": "^7.2.9",
     "@sveltejs/kit": "^2.5.0",
     "@sveltejs/vite-plugin-svelte": "^3.1.0",
-    "@types/node": "^20.0.0",
+    "@types/node": "^20.19.43",
     "autoprefixer": "^10.4.0",
     "dotenv": "^16.4.0",
     "drizzle-kit": "^0.31.10",

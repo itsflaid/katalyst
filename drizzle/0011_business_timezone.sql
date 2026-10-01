@@ -1,0 +1,2 @@
+ALTER TABLE "business" ADD COLUMN "timezone" text DEFAULT 'Asia/Makassar' NOT NULL;--> statement-breakpoint
+ALTER TABLE "business" ADD CONSTRAINT "business_timezone_valid" CHECK ("business"."timezone" in ('Asia/Jakarta','Asia/Makassar','Asia/Jayapura'));

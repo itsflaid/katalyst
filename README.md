@@ -28,7 +28,7 @@ Semua angka (omzet, modal, untung, margin) dihitung langsung dari data transaksi
 
 ## Zona waktu
 
-Semua angka harian/jam dihitung dalam WITA (`Asia/Makassar`), bukan UTC.
+Zona waktu diatur per bisnis di halaman Pengaturan (Owner), default WITA (`Asia/Makassar`). Pilihan: WIB (`Asia/Jakarta`), WITA (`Asia/Makassar`), WIT (`Asia/Jayapura`). Semua angka harian/jam mengikuti zona bisnis, bukan zona perangkat.
 
 ## Cara jalan
 
