@@ -172,6 +172,25 @@
   $: maxQty = Math.max(histQty, simQty, 1);
   const w = (v: number, max: number) => `${Math.max(2, (v / max) * 100).toFixed(1)}%`;
 
+  // Jembatan ke /diskon: persen simulasi dijadikan draf diskon produk yang
+  // dihitung dari harga jual SAAT INI — makanya tombol aktif hanya bila tuas
+  // harga jual tidak diubah. Baseline week/month parsial (Senin–sekarang /
+  // tgl 1–sekarang), jadi kuota dari simQty hanyalah saran awal.
+  function goToDiscount() {
+    if (!prod || discountPct <= 0 || priceValue !== sellBase) return;
+    const params = new URLSearchParams({
+      new: '1',
+      productId: prod.id,
+      percent: String(Math.round(discountPct))
+    });
+    if (simQty > 0) params.set('quota', String(simQty));
+    const preset = data.range === 'today' ? 'TODAY' : data.range === 'week' ? 'DAYS_7' : null;
+    if (preset) params.set('preset', preset);
+    if (data.rangeLabel) params.set('baseline', data.rangeLabel);
+    goto(`/diskon?${params.toString()}`);
+  }
+  $: discountActive = discountPct > 0 && priceValue === sellBase && !!prod;
+
   function selectProduct(id: string) {
     const p = data.products.find((x) => x.id === id);
     if (!p) return;
@@ -416,6 +435,18 @@
           </div>
         </div>
       </div>
+
+      {#if discountPct > 0 && prod}
+        <div class="rounded-panel border border-border-cool bg-surface p-4">
+          {#if discountActive}
+            <Button on:click={goToDiscount}>Jadikan diskon {Math.round(discountPct)}%</Button>
+            <p class="text-body-sm text-muted mt-2">Membuka draf diskon produk {prod.name} sebesar {Math.round(discountPct)}%{simQty > 0 ? ` dengan saran kuota ${num(simQty)} unit` : ''}.</p>
+          {:else}
+            <Button disabled>Jadikan diskon</Button>
+            <p class="text-body-sm text-muted mt-2">Skenario juga mengubah harga jual. Ubah harga jual di halaman Produk, lalu buat diskonnya secara terpisah.</p>
+          {/if}
+        </div>
+      {/if}
 
       <Card class="min-w-0 overflow-hidden">
         <div class="flex items-center justify-between gap-3 mb-4">

@@ -1,19 +1,37 @@
 import { db } from '$lib/server/db';
-import { stockMovement, transaction, transactionItem, product, user } from '$lib/server/db/schema';
-import { eq, desc, and, asc, inArray, gt, sql } from 'drizzle-orm';
+import { stockMovement, transaction, transactionItem, product, user, discount } from '$lib/server/db/schema';
+import { eq, desc, and, asc, inArray, gt, gte, or, sql } from 'drizzle-orm';
+import { DEFAULT_TZ } from '$lib/shared/time';
+import { calculateCart, getDiscountStatus, quotaDeltas } from '$lib/discount';
+import { getActiveProductDiscounts, getGlobalDiscount } from '$lib/server/domains/discounts';
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
 const PAGE_SIZE = 20;
 
-// CHECK product_stock_nonneg (SQLSTATE 23514) meledak kalau stok terpotong
-// jadi minus — artinya ada penjualan lain yang menghabiskan stok di sela
-// validasi dan penyimpanan. Bentuk error-nya beda antar driver/versi
-// (kode di error langsung atau di `cause`), jadi dicek dua-duanya.
-function isStockCheckViolation(e: unknown): boolean {
-  const err = e as { code?: string; message?: string; cause?: { code?: string; message?: string } } | null;
-  if (err?.code === '23514' || err?.cause?.code === '23514') return true;
-  return /product_stock_nonneg/.test(`${err?.message ?? ''} ${err?.cause?.message ?? ''}`);
+// Format Rp ala kasir (duplikat kecil dari +page.svelte biar pesan server
+// tidak bergantung pada helper client).
+const idr = (n: number) =>
+  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
+
+// CHECK ..._nonneg / ..._not_exceeded (SQLSTATE 23514) meledak kalau stok
+// terpotong jadi minus atau kuota diskon terlampaui — artinya ada kasir lain
+// yang menghabiskan stok/kuota di sela validasi dan penyimpanan. Bentuk
+// error beda antar driver/versi (kode di error langsung atau di `cause`),
+// jadi nama constraint dicari di keduanya. Bentuk pasti dari neon-http
+// dikonfirmasi saat e2e (lihat laporan Fase 5).
+function checkViolationName(e: unknown): string | null {
+  const err = e as {
+    code?: unknown;
+    constraint?: unknown;
+    message?: unknown;
+    cause?: { code?: unknown; constraint?: unknown; message?: unknown };
+  } | null;
+  const hay = `${String(err?.code ?? '')} ${String(err?.constraint ?? '')} ${String(err?.message ?? '')} ${String(err?.cause?.code ?? '')} ${String(err?.cause?.constraint ?? '')} ${String(err?.cause?.message ?? '')}`;
+  if (/discount_quota_not_exceeded/.test(hay)) return 'discount_quota_not_exceeded';
+  if (/product_stock_nonneg/.test(hay)) return 'product_stock_nonneg';
+  if (err?.code === '23514' || err?.cause?.code === '23514') return 'check_23514';
+  return null;
 }
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -60,8 +78,18 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     txId: string;
     createdAt: Date;
     cashier: string;
+    subtotal: number;
+    discountTotal: number;
     total: number;
-    items: { productId: string; productName: string; quantity: number; priceAtSale: number }[];
+    items: {
+      productId: string;
+      productName: string;
+      quantity: number;
+      priceAtSale: number;
+      discountName: string | null;
+      discountedQty: number;
+      discountAmount: number;
+    }[];
   }[] = [];
   if (pageHeaders.length > 0) {
     const txIds = pageHeaders.map((h) => h.id);
@@ -71,7 +99,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         productId: transactionItem.productId,
         productName: product.name,
         quantity: transactionItem.quantity,
-        priceAtSale: transactionItem.priceAtSale
+        priceAtSale: transactionItem.priceAtSale,
+        discountName: transactionItem.discountName,
+        discountedQty: transactionItem.discountedQty,
+        discountAmount: transactionItem.discountAmount
       })
       .from(transactionItem)
       .innerJoin(product, eq(product.id, transactionItem.productId))
@@ -85,16 +116,24 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     }
     receipts = pageHeaders.map((h) => {
       const items = byTx.get(h.id) ?? [];
+      // Subtotal = Σ qty×harga normal; total = subtotal − Σ diskon baris.
+      const subtotal = items.reduce((s, i) => s + i.quantity * i.priceAtSale, 0);
+      const discountTotal = items.reduce((s, i) => s + i.discountAmount, 0);
       return {
         txId: h.id,
         createdAt: h.createdAt,
         cashier: h.cashierName ?? h.userName ?? '—',
-        total: items.reduce((s, i) => s + i.quantity * i.priceAtSale, 0),
+        subtotal,
+        discountTotal,
+        total: subtotal - discountTotal,
         items: items.map((i) => ({
           productId: i.productId,
           productName: i.productName,
           quantity: i.quantity,
-          priceAtSale: i.priceAtSale
+          priceAtSale: i.priceAtSale,
+          discountName: i.discountName,
+          discountedQty: i.discountedQty,
+          discountAmount: i.discountAmount
         }))
       };
     });
@@ -102,13 +141,46 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
   // Buat dropdown produk di panel "Transaksi Baru" — hanya produk aktif yang
   // stoknya masih ada. Habis = tersembunyi dari kasir (turunan dari stok,
-  // isActive sendiri tidak disentuh).
+  // isActive sendiri tidak disentuh). costPrice SENGAJA tidak dipilih —
+  // halaman ini bisa dibuka STAFF.
   const products = await db
     .select({ id: product.id, name: product.name, sellingPrice: product.sellingPrice, stock: product.stock })
     .from(product)
     .where(and(eq(product.businessId, businessId), eq(product.isActive, true), gt(product.stock, 0)));
 
-  return { receipts, products, page, hasMore, staffOptions, kasir };
+  // Diskon untuk preview client: yang isActive dan belum berakhir.
+  // Status final tetap dihitung server saat create (jam server).
+  const now = new Date();
+  const discountRows = await db
+    .select({
+      id: discount.id,
+      name: discount.name,
+      scope: discount.scope,
+      percent: discount.percent,
+      productId: discount.productId,
+      isActive: discount.isActive,
+      startsAt: discount.startsAt,
+      endsAt: discount.endsAt,
+      quota: discount.quota,
+      quotaUsed: discount.quotaUsed,
+      createdAt: discount.createdAt
+    })
+    .from(discount)
+    .where(
+      and(
+        eq(discount.businessId, businessId),
+        eq(discount.isActive, true),
+        or(sql`${discount.endsAt} is null`, gte(discount.endsAt, now))
+      )
+    );
+  const discounts = discountRows.map((d) => ({
+    ...d,
+    startsAt: d.startsAt.toISOString(),
+    endsAt: d.endsAt?.toISOString() ?? null,
+    createdAt: d.createdAt.toISOString()
+  }));
+
+  return { receipts, products, page, hasMore, staffOptions, kasir, timezone: locals.business?.timezone ?? DEFAULT_TZ, serverNow: Date.now(), discounts };
 };
 
 export const actions: Actions = {
@@ -123,6 +195,17 @@ export const actions: Actions = {
       rawItems = JSON.parse(String(form.get('items') ?? '[]'));
     } catch {
       return fail(400, { message: 'Format keranjang tidak valid.' });
+    }
+    // Diskon global pilihan kasir (opsional) + total harapan dari preview
+    // client untuk deteksi harga berubah.
+    const globalDiscountIdRaw = String(form.get('globalDiscountId') ?? '').trim();
+    const globalDiscountId = globalDiscountIdRaw === '' ? null : globalDiscountIdRaw;
+    // Hilang/kosong = klien lama/cacat → tolak (jangan anggap 0, karena
+    // total 0 yang sah — mis. diskon 100% — tetap lolos via '0' eksplisit).
+    const expectedRaw = form.get('expectedTotal');
+    const expectedTotal = expectedRaw === null || String(expectedRaw).trim() === '' ? NaN : Number(expectedRaw);
+    if (!Number.isInteger(expectedTotal) || expectedTotal < 0) {
+      return fail(400, { message: 'Total harapan tidak valid.' });
     }
     if (!Array.isArray(rawItems) || rawItems.length === 0) {
       return fail(400, { message: 'Keranjang masih kosong.' });
@@ -174,21 +257,63 @@ export const actions: Actions = {
 
     // neon-http tidak punya db.transaction interaktif, tapi db.batch([...])
     // menjalankan semua statement dalam SATU transaksi: struk, item, stok,
-    // dan ledger masuk semua atau tidak sama sekali. Jadi tidak ada lagi
-    // struk yatim / stok setengah terpotong yang perlu dibersihkan manual.
+    // ledger, dan quota diskon masuk semua atau tidak sama sekali.
+    // now dipakai sebagai createdAt struk sekaligus jam cek diskon.
+    const now = new Date();
+
+    // Ambil diskon produk ACTIVE + global pilihan (harga tetap dari DB).
+    const productDiscounts = await getActiveProductDiscounts(businessId, productIds, now);
+    let global: Awaited<ReturnType<typeof getGlobalDiscount>> | null = null;
+    if (globalDiscountId) {
+      global = await getGlobalDiscount(businessId, globalDiscountId);
+      if (!global || global.scope !== 'GLOBAL' || getDiscountStatus({ ...global, scope: 'GLOBAL' }, now) !== 'ACTIVE') {
+        return fail(409, {
+          code: 'DISCOUNT_UNAVAILABLE',
+          message: global
+            ? `Diskon "${global.name}" sudah tidak berlaku. Muat ulang lalu coba lagi.`
+            : 'Diskon global tidak ditemukan. Muat ulang lalu coba lagi.'
+        });
+      }
+    }
+
+    // Hitung ulang semua diskon pakai jam server; client mengirim expectedTotal.
+    const cart = calculateCart(
+      productIds.map((pid) => ({ productId: pid, qty: merged.get(pid)!, price: byId.get(pid)!.sellingPrice })),
+      {
+        productDiscounts: productDiscounts.map((d) => ({ ...d, scope: 'PRODUCT' as const })),
+        global: global ? { ...global, scope: 'GLOBAL' as const } : null,
+        now
+      }
+    );
+    if (cart.total !== expectedTotal) {
+      return fail(409, {
+        code: 'PRICE_CHANGED',
+        message: `Harga berubah — total sekarang ${idr(cart.total)}. Periksa keranjang lalu catat ulang.`,
+        newTotal: cart.total
+      });
+    }
+    const lineByPid = new Map(cart.lines.map((l) => [l.productId, l]));
+    const deltas = quotaDeltas(cart);
+
     const txId = crypto.randomUUID();
     const statements = [
-      db.insert(transaction).values({ id: txId, businessId, userId, cashierName }),
+      db.insert(transaction).values({ id: txId, businessId, userId, cashierName, createdAt: now }),
       db.insert(transactionItem).values(
         productIds.map((pid) => {
           const p = byId.get(pid)!;
+          const line = lineByPid.get(pid)!;
           return {
             id: crypto.randomUUID(),
             transactionId: txId,
             productId: pid,
             quantity: merged.get(pid)!,
+            // priceAtSale = harga NORMAL (snapshot); diskon di kolom sendiri.
             priceAtSale: p.sellingPrice,
-            costAtSale: p.costPrice
+            costAtSale: p.costPrice,
+            discountId: line.discountedQty > 0 ? line.discountId : null,
+            discountName: line.discountedQty > 0 ? line.discountName : null,
+            discountedQty: line.discountedQty,
+            discountAmount: line.discountAmount
           };
         })
       ),
@@ -212,14 +337,30 @@ export const actions: Actions = {
           refTxId: txId,
           createdBy: userId
         }))
+      ),
+      // quotaUsed naik per unit terdiskon — JUGA saat quota null (K9: jadi
+      // data "unit terjual dengan diskon ini"). CHECK quota_not_exceeded
+      // yang menjaga race: batch kedua yang kelebihan kuota gagal total.
+      ...deltas.map((d) =>
+        db
+          .update(discount)
+          .set({ quotaUsed: sql`${discount.quotaUsed} + ${d.units}` })
+          .where(and(eq(discount.id, d.discountId), eq(discount.businessId, businessId)))
       )
     ];
 
     try {
       await db.batch(statements as unknown as Parameters<typeof db.batch>[0]);
     } catch (e) {
-      if (isStockCheckViolation(e)) {
+      const violation = checkViolationName(e);
+      if (violation === 'product_stock_nonneg') {
         return fail(409, { message: 'Stok berubah — ada produk yang sudah terjual habis oleh kasir lain. Muat ulang lalu coba lagi.' });
+      }
+      if (violation === 'discount_quota_not_exceeded') {
+        return fail(409, {
+          code: 'QUOTA_CHANGED',
+          message: 'Kuota diskon berubah — dipakai kasir lain. Muat ulang lalu coba lagi.'
+        });
       }
       return fail(500, { message: 'Gagal menyimpan transaksi, coba lagi.' });
     }
@@ -246,10 +387,11 @@ export const actions: Actions = {
     if (!existing) return fail(404, { message: 'Struk tidak ditemukan.' });
 
     // Satu statement (CTE) = atomik dan idempoten: item struk dihapus dan
-    // langsung dipakai sebagai sumber pengembalian stok + ledger, lalu header
-    // struk dihapus. Kalau owner klik dua kali / dua tab membatalkan struk
-    // yang sama, yang kedua menemukan item sudah tidak ada → stok tidak
-    // dikembalikan dua kali. isActive tidak disentuh.
+    // langsung dipakai sebagai sumber pengembalian stok + kuota diskon +
+    // ledger, lalu header struk dihapus. Kalau owner klik dua kali / dua tab
+    // membatalkan struk yang sama, yang kedua menemukan item sudah tidak ada
+    // → stok & kuota tidak dikembalikan dua kali. isActive tidak disentuh.
+    // CHECK quota_used >= 0 jadi jaring pengaman.
     await db.execute(sql`
       with removed as (
         delete from transaction_item ti
@@ -258,7 +400,7 @@ export const actions: Actions = {
             select 1 from "transaction" t
             where t.id = ti.transaction_id and t.business_id = ${businessId}
           )
-        returning ti.product_id, ti.quantity
+        returning ti.product_id, ti.quantity, ti.discount_id, ti.discounted_qty
       ),
       restored as (
         update product p
@@ -270,6 +412,17 @@ export const actions: Actions = {
         ) r
         where p.id = r.product_id and p.business_id = ${businessId}
         returning p.id as product_id, r.qty
+      ),
+      quota_restored as (
+        update discount d
+        set quota_used = d.quota_used - r.units
+        from (
+          select discount_id, sum(discounted_qty)::integer as units
+          from removed where discount_id is not null and discounted_qty > 0
+          group by discount_id
+        ) r
+        where d.id = r.discount_id and d.business_id = ${businessId}
+        returning d.id
       ),
       ledger as (
         insert into stock_movement (id, business_id, product_id, qty_change, reason, ref_tx_id, created_by)

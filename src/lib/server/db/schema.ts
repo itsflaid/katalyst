@@ -9,11 +9,20 @@ import { sql } from 'drizzle-orm';
 
 export const roleEnum = pgEnum('role', ['OWNER', 'STAFF']);
 
-export const business = pgTable('business', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow()
-});
+export const business = pgTable(
+  'business',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    // Zona waktu operasional bisnis (bukan zona perangkat). Dipakai semua
+    // bucket waktu & tampilan; default WITA agar perilaku lama tidak berubah.
+    timezone: text('timezone').notNull().default('Asia/Makassar'),
+    createdAt: timestamp('created_at').notNull().defaultNow()
+  },
+  (t) => [
+    check('business_timezone_valid', sql`${t.timezone} in ('Asia/Jakarta','Asia/Makassar','Asia/Jayapura')`)
+  ]
+);
 
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
@@ -151,6 +160,48 @@ export const product = pgTable(
   ]
 );
 
+export const discountScopeEnum = pgEnum('discount_scope', ['PRODUCT', 'GLOBAL']);
+
+// Diskon persen per bisnis: PRODUCT (satu produk, auto-apply) atau GLOBAL
+// (semua produk, dipilih manual di kasir). Status diturunkan saat dibaca
+// (tidak disimpan): INACTIVE > SCHEDULED > EXPIRED > SOLD_OUT > ACTIVE.
+// quota dalam unit sepanjang umur diskon; quotaUsed selalu dihitung (juga
+// saat quota null) sebagai data "unit terjual dengan diskon ini".
+export const discount = pgTable(
+  'discount',
+  {
+    id: text('id').primaryKey(),
+    businessId: text('business_id')
+      .notNull()
+      .references(() => business.id),
+    name: text('name').notNull(),
+    scope: discountScopeEnum('scope').notNull(),
+    percent: integer('percent').notNull(),
+    // PRODUCT wajib menunjuk satu produk; GLOBAL wajib null.
+    productId: text('product_id').references(() => product.id, { onDelete: 'cascade' }),
+    // Saklar owner. Produk yang pernah dipakai berarti produknya sudah punya
+    // riwayat → delete produk sudah diblok, jadi cascade di sini aman.
+    isActive: boolean('is_active').notNull().default(true),
+    startsAt: timestamp('starts_at').notNull().defaultNow(),
+    endsAt: timestamp('ends_at'),
+    quota: integer('quota'),
+    quotaUsed: integer('quota_used').notNull().default(0),
+    createdAt: timestamp('created_at').notNull().defaultNow()
+  },
+  (t) => [
+    index('discount_business_scope_idx').on(t.businessId, t.scope, t.isActive),
+    index('discount_product_idx').on(t.productId),
+    check('discount_percent_range', sql`${t.percent} between 1 and 100`),
+    check('discount_scope_product', sql`(${t.scope} = 'PRODUCT') = (${t.productId} is not null)`),
+    check('discount_window_valid', sql`${t.endsAt} is null or ${t.endsAt} > ${t.startsAt}`),
+    check('discount_quota_valid', sql`${t.quota} is null or ${t.quota} > 0`),
+    check('discount_quota_used_nonneg', sql`${t.quotaUsed} >= 0`),
+    check('discount_quota_not_exceeded', sql`${t.quota} is null or ${t.quotaUsed} <= ${t.quota}`),
+    // GLOBAL wajib berbatas waktu dan tanpa kuota unit (kuota global ambigu).
+    check('discount_global_time_only', sql`${t.scope} = 'PRODUCT' or (${t.endsAt} is not null and ${t.quota} is null)`)
+  ]
+);
+
 export const transaction = pgTable(
   'transaction',
   {
@@ -185,9 +236,22 @@ export const transactionItem = pgTable(
       .references(() => product.id),
     quantity: integer('quantity').notNull(),
     priceAtSale: integer('price_at_sale').notNull(),
-    costAtSale: integer('cost_at_sale').notNull()
+    costAtSale: integer('cost_at_sale').notNull(),
+    // Snapshot diskon yang kepakai di baris ini (null = tanpa diskon).
+    // discountedQty dalam unit; discountAmount dalam Rp total baris.
+    discountId: text('discount_id').references(() => discount.id, { onDelete: 'set null' }),
+    discountName: text('discount_name'),
+    discountedQty: integer('discounted_qty').notNull().default(0),
+    discountAmount: integer('discount_amount').notNull().default(0)
   },
-  (t) => [index('transaction_item_transaction_id_idx').on(t.transactionId)]
+  (t) => [
+    index('transaction_item_transaction_id_idx').on(t.transactionId),
+    // quantity di-cast bigint agar quantity × price tidak overflow int4.
+    check(
+      'transaction_item_discount_valid',
+      sql`${t.discountedQty} between 0 and ${t.quantity} and ${t.discountAmount} >= 0 and ${t.discountAmount} <= ${t.quantity}::bigint * ${t.priceAtSale}`
+    )
+  ]
 );
 
 export const stockReasonEnum = pgEnum('stock_reason', ['SALE', 'VOID_RESTORE', 'RESTOCK', 'ADJUST']);
