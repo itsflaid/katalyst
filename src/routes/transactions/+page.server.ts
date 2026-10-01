@@ -200,7 +200,10 @@ export const actions: Actions = {
     // client untuk deteksi harga berubah.
     const globalDiscountIdRaw = String(form.get('globalDiscountId') ?? '').trim();
     const globalDiscountId = globalDiscountIdRaw === '' ? null : globalDiscountIdRaw;
-    const expectedTotal = Number(form.get('expectedTotal'));
+    // Hilang/kosong = klien lama/cacat → tolak (jangan anggap 0, karena
+    // total 0 yang sah — mis. diskon 100% — tetap lolos via '0' eksplisit).
+    const expectedRaw = form.get('expectedTotal');
+    const expectedTotal = expectedRaw === null || String(expectedRaw).trim() === '' ? NaN : Number(expectedRaw);
     if (!Number.isInteger(expectedTotal) || expectedTotal < 0) {
       return fail(400, { message: 'Total harapan tidak valid.' });
     }
