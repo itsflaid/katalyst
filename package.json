@@ -13,6 +13,7 @@
     "verify:engine": "tsx script/verify-engine.ts",
     "verify:time": "tsx script/verify-time.ts",
     "verify:tz-sql": "tsx script/verify-tz-sql.ts",
+    "verify:discount-db": "tsx script/verify-discount-db.ts",
     "verify:stock": "tsx script/verify-stock.ts"
   },
   "dependencies": {
