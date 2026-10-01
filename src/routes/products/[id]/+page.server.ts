@@ -21,7 +21,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       productId: transactionItem.productId,
       quantity: transactionItem.quantity,
       priceAtSale: transactionItem.priceAtSale,
-      costAtSale: transactionItem.costAtSale
+      costAtSale: transactionItem.costAtSale,
+      discountAmount: transactionItem.discountAmount
     })
     .from(transactionItem)
     .innerJoin(transaction, eq(transaction.id, transactionItem.transactionId))
