@@ -5,10 +5,12 @@
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import * as schema from '../src/lib/server/db/schema';
 import { business, product, discount, transaction, transactionItem } from '../src/lib/server/db/schema';
+import { lineNet } from '../src/lib/server/sql';
+import { calculateRevenue } from '../src/lib/analytics';
 
 let passCount = 0;
 let failCount = 0;
@@ -163,6 +165,39 @@ async function main() {
         ok('hapus produk → diskon cascade hilang', left.length === 0);
       } catch (e) {
         ok('hapus produk → diskon cascade hilang', false, String(e).slice(0, 160));
+      }
+
+      // 12. Paritas: selama semua discount_amount = 0, sum(lineNet) harus
+      // sama dengan sum(qty×price) lama — di seluruh data (termasuk fixture
+      // di atas yang semuanya berdikon-nol).
+      {
+        const [par] = await tx
+          .select({
+            net: sql<string>`coalesce(sum(${lineNet}), 0)::text`,
+            gross: sql<string>`coalesce(sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale}), 0)::text`
+          })
+          .from(transactionItem);
+        ok('paritas sum(net) == sum(gross) saat diskon 0', par.net === par.gross, `net=${par.net} gross=${par.gross}`);
+      }
+
+      // 13. Kesesuaian SQL vs JS: 1 struk fixture (2 item, salah satunya
+      // discountedQty 3 + discountAmount 4500); sum(lineNet) == calculateRevenue.
+      {
+        const fxTx = randomUUID();
+        await tx.insert(transaction).values({ id: fxTx, businessId: biz });
+        await tx.insert(transactionItem).values([
+          { id: randomUUID(), transactionId: fxTx, productId: prod, quantity: 3, priceAtSale: 10000, costAtSale: 6000, discountedQty: 3, discountAmount: 4500 },
+          { id: randomUUID(), transactionId: fxTx, productId: prod, quantity: 1, priceAtSale: 20000, costAtSale: 12000, discountedQty: 0, discountAmount: 0 }
+        ]);
+        const [crow] = await tx
+          .select({ net: sql<string>`coalesce(sum(${lineNet}), 0)::text` })
+          .from(transactionItem)
+          .where(eq(transactionItem.transactionId, fxTx));
+        const js = calculateRevenue([
+          { productId: prod, quantity: 3, priceAtSale: 10000, costAtSale: 6000, discountAmount: 4500 },
+          { productId: prod, quantity: 1, priceAtSale: 20000, costAtSale: 12000 }
+        ]);
+        ok('kesesuaian SQL sum(lineNet) == JS calculateRevenue', Number(crow.net) === js, `sql=${crow.net} js=${js}`);
       }
 
       throw ROLLBACK;
