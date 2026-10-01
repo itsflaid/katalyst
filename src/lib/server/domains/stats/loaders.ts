@@ -436,11 +436,13 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
 
     // 10 item transaksi terbaru untuk card dashboard — leftJoin user biar
     // struk staff yang sudah dihapus tetap tampil via cashier_name.
+    // discountAmount ikut agar total tampil bersih (net).
     db
       .select({
         productName: product.name,
         quantity: transactionItem.quantity,
         priceAtSale: transactionItem.priceAtSale,
+        discountAmount: transactionItem.discountAmount,
         createdAt: transaction.createdAt,
         cashierName: transaction.cashierName,
         userName: user.name

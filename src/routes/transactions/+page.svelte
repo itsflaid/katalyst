@@ -69,8 +69,10 @@
 
   // Ringkasan kanan — mengikuti filter hari yang dipilih, biar kartu
   // di bawah form selalu relevan dan kolom kanan tidak kosong.
+  // visibleTotal = Σ total bersih (net); visibleDiscount = Σ diskon diberikan.
   $: visibleTotal = visibleGroups.reduce((s, g) => s + g.subtotal, 0);
   $: visibleCount = visibleGroups.reduce((s, g) => s + g.rows.length, 0);
+  $: visibleDiscount = visibleGroups.reduce((s, g) => s + g.rows.reduce((a, r) => a + (r.discountTotal ?? 0), 0), 0);
 
   // Panel "Transaksi Baru" — keranjang multi-produk di client, disimpan
   // sebagai 1 struk (1 transaction + N item) lewat actions.create.
@@ -224,8 +226,11 @@
                   <ul class="mt-1.5 ml-1 flex flex-col gap-0.5">
                     {#each r.items as it}
                       <li class="flex justify-between gap-4 text-body-sm">
-                        <span class="text-muted truncate">{it.quantity}× {it.productName}</span>
-                        <span class="tabular text-muted whitespace-nowrap">{idr(it.quantity * it.priceAtSale)}</span>
+                        <span class="text-muted truncate">
+                          {it.quantity}× {it.productName}
+                          {#if it.discountAmount > 0}<span class="text-status-positive"> · Diskon {it.discountName} −{idr(it.discountAmount)}</span>{/if}
+                        </span>
+                        <span class="tabular text-muted whitespace-nowrap">{idr(it.quantity * it.priceAtSale - it.discountAmount)}</span>
                       </li>
                     {/each}
                   </ul>
@@ -325,6 +330,12 @@
           <span class="text-muted">Pemasukan</span>
           <strong class="tabular text-ink">{idr(visibleTotal)}</strong>
         </div>
+        {#if visibleDiscount > 0}
+          <div class="flex justify-between items-center py-1.5 border-b border-table-divider text-body-md">
+            <span class="text-muted">Diskon diberikan</span>
+            <span class="tabular text-status-positive">−{idr(visibleDiscount)}</span>
+          </div>
+        {/if}
         <div class="flex justify-between items-center py-1.5 text-body-md">
           <span class="text-muted">Struk</span>
           <span class="tabular text-ink">{visibleCount}×</span>

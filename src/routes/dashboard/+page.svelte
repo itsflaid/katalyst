@@ -122,7 +122,7 @@
             <td class="px-3 py-2 text-ink">{t.productName}</td>
             <td class="px-3 py-2 tabular text-muted">{t.quantity}×</td>
             <td class="px-3 py-2 text-body-sm text-muted whitespace-nowrap">{fmtDate(t.createdAt)}</td>
-            <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(t.quantity * t.priceAtSale)}</td>
+            <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(t.quantity * t.priceAtSale - (t.discountAmount ?? 0))}</td>
           </tr>
         {/each}
       </Table>

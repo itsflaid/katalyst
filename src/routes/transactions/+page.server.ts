@@ -61,8 +61,18 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     txId: string;
     createdAt: Date;
     cashier: string;
+    subtotal: number;
+    discountTotal: number;
     total: number;
-    items: { productId: string; productName: string; quantity: number; priceAtSale: number }[];
+    items: {
+      productId: string;
+      productName: string;
+      quantity: number;
+      priceAtSale: number;
+      discountName: string | null;
+      discountedQty: number;
+      discountAmount: number;
+    }[];
   }[] = [];
   if (pageHeaders.length > 0) {
     const txIds = pageHeaders.map((h) => h.id);
@@ -72,7 +82,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         productId: transactionItem.productId,
         productName: product.name,
         quantity: transactionItem.quantity,
-        priceAtSale: transactionItem.priceAtSale
+        priceAtSale: transactionItem.priceAtSale,
+        discountName: transactionItem.discountName,
+        discountedQty: transactionItem.discountedQty,
+        discountAmount: transactionItem.discountAmount
       })
       .from(transactionItem)
       .innerJoin(product, eq(product.id, transactionItem.productId))
@@ -86,16 +99,24 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     }
     receipts = pageHeaders.map((h) => {
       const items = byTx.get(h.id) ?? [];
+      // Subtotal = Σ qty×harga normal; total = subtotal − Σ diskon baris.
+      const subtotal = items.reduce((s, i) => s + i.quantity * i.priceAtSale, 0);
+      const discountTotal = items.reduce((s, i) => s + i.discountAmount, 0);
       return {
         txId: h.id,
         createdAt: h.createdAt,
         cashier: h.cashierName ?? h.userName ?? '—',
-        total: items.reduce((s, i) => s + i.quantity * i.priceAtSale, 0),
+        subtotal,
+        discountTotal,
+        total: subtotal - discountTotal,
         items: items.map((i) => ({
           productId: i.productId,
           productName: i.productName,
           quantity: i.quantity,
-          priceAtSale: i.priceAtSale
+          priceAtSale: i.priceAtSale,
+          discountName: i.discountName,
+          discountedQty: i.discountedQty,
+          discountAmount: i.discountAmount
         }))
       };
     });
