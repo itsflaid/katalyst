@@ -3,8 +3,11 @@
   import Button from '$lib/components/ui/Button.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import { enhance } from '$app/forms';
-  import { goto } from '$app/navigation';
+  import { goto, invalidateAll } from '$app/navigation';
+  import { onMount } from 'svelte';
   import type { SubmitFunction } from '@sveltejs/kit';
+  import Badge from '$lib/components/ui/Badge.svelte';
+  import { calculateCart, getDiscountStatus, unitDiscount } from '$lib/discount';
   import { makeTime, DEFAULT_TZ, type BizTime } from '$lib/shared/time';
   export let data;
   export let form;
@@ -76,18 +79,109 @@
 
   // Panel "Transaksi Baru" — keranjang multi-produk di client, disimpan
   // sebagai 1 struk (1 transaction + N item) lewat actions.create.
+  // State keranjang HANYA { productId, qty }; nama & harga diturunkan
+  // reaktif dari data.products — bukan snapshot saat ditambahkan (snapshot
+  // bikin expectedTotal basi selamanya setelah harga berubah → 409 berulang).
   // Produk habis (stok 0) tidak bisa dipilih; tambah dibatasi sisa stok
   // (server memvalidasi ulang).
   let selectedProductId = data.products.find((p) => p.stock > 0)?.id ?? '';
   let qty = 1;
-  let cart: { productId: string; name: string; price: number; qty: number }[] = [];
-  $: selectedProduct = data.products.find((p) => p.id === selectedProductId);
-  $: cartTotal = cart.reduce((s, c) => s + c.price * c.qty, 0);
-  $: cartPayload = JSON.stringify(cart.map((c) => ({ productId: c.productId, qty: c.qty })));
+  let lines: { productId: string; qty: number }[] = [];
+  let selectedGlobalId = '';
+  let copyMsg = false;
+  let copyMsgTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Jam server: offset dihitung sekali saat load; semua perhitungan diskon
+  // client memakai now ini (diperbarui tiap 30 detik).
+  const clockOffset = (data.serverNow ?? Date.now()) - Date.now();
+  let tick = 0;
+  onMount(() => {
+    const iv = setInterval(() => (tick += 1), 30000);
+    return () => {
+      clearInterval(iv);
+      if (copyMsgTimer) clearTimeout(copyMsgTimer);
+    };
+  });
+  // `0 * tick` sengaja merujuk tick agar statement reaktif terpicu tiap
+  // interval, tapi nilainya tetap jam akurat (tanpa asumsi interval tepat).
+  $: now = new Date(Date.now() + clockOffset + 0 * tick);
+
+  $: prodMap = new Map(data.products.map((p) => [p.id, p]));
+  // Diskon server (ISO string → Date). Status dihitung dengan jam offset.
+  $: allDiscounts = (data.discounts ?? []).map((d) => ({
+    ...d,
+    startsAt: new Date(d.startsAt),
+    endsAt: d.endsAt ? new Date(d.endsAt) : null,
+    createdAt: new Date(d.createdAt)
+  }));
+  $: activeDiscounts = ((list, now) => list.filter((d) => getDiscountStatus(d, now) === 'ACTIVE'))(allDiscounts, now);
+  $: productDiscountPool = activeDiscounts.filter((d) => d.scope === 'PRODUCT');
+  $: globalList = activeDiscounts.filter((d) => d.scope === 'GLOBAL');
+  // Label picker: harga sudah termasuk diskon produk bila ada.
+  $: productOptions = ((list, by) =>
+    list.map((p) => {
+      const d = by.get(p.id);
+      const label = d
+        ? `${p.name} · ${idr(p.sellingPrice - unitDiscount(p.sellingPrice, d.percent))} (−${d.percent}%) · sisa ${p.stock}`
+        : `${p.name} · ${idr(p.sellingPrice)} · sisa ${p.stock}`;
+      return { ...p, label };
+    }))(data.products, activeByProduct);
+  $: activeByProduct = ((list) => {
+    const m = new Map<string, (typeof list)[number]>();
+    for (const d of list) {
+      if (d.scope !== 'PRODUCT' || !d.productId) continue;
+      const cur = m.get(d.productId);
+      if (!cur || d.createdAt > cur.createdAt || (d.createdAt.getTime() === cur.createdAt.getTime() && d.id < cur.id)) {
+        m.set(d.productId, d);
+      }
+    }
+    return m;
+  })(productDiscountPool);
+
+  // Global terpilih yang tak lagi ACTIVE tidak dipakai (efektif kosong) +
+  // notifikasi kecil. Murni turunan tanpa assign-diri (Svelte menolak
+  // statement $: yang membaca sekaligus menulis variabel yang sama).
+  $: effectiveGlobalId =
+    selectedGlobalId !== '' && !globalList.some((g) => g.id === selectedGlobalId) ? '' : selectedGlobalId;
+  $: globalExpired = selectedGlobalId !== '' && effectiveGlobalId === '';
+  $: selectedGlobal = effectiveGlobalId === '' ? null : (globalList.find((g) => g.id === effectiveGlobalId) ?? null);
+
+  // Produk yang hilang dari data.products (habis/nonaktif) dikeluarkan dari
+  // perhitungan + ditandai merah; tombol Catat mati sampai dihapus.
+  $: validLines = lines.filter((l) => prodMap.has(l.productId));
+  $: missingLines = lines.filter((l) => !prodMap.has(l.productId));
+  $: cartInputs = validLines.map((l) => ({ productId: l.productId, qty: l.qty, price: prodMap.get(l.productId)!.sellingPrice }));
+  $: cart = ((inputs, pd, g, now) => calculateCart(inputs, { productDiscounts: pd, global: g, now }))(cartInputs, productDiscountPool, selectedGlobal, now);
+  $: cartRows = cart.lines.map((l) => ({ ...l, name: prodMap.get(l.productId)?.name ?? '—' }));
+  $: discountRows = ((cart) => {
+    const m = new Map<string, { name: string; amount: number }>();
+    for (const l of cart.lines) {
+      if (!l.discountId) continue;
+      const e = m.get(l.discountId) ?? { name: l.discountName ?? '', amount: 0 };
+      e.amount += l.discountAmount;
+      m.set(l.discountId, e);
+    }
+    return Array.from(m.values());
+  })(cart);
+  $: cartPayload = JSON.stringify(validLines.map((l) => ({ productId: l.productId, qty: l.qty })));
+  $: hasMissing = missingLines.length > 0;
+
+  // Preview baris di bawah picker (aturan sama dengan keranjang).
+  $: selectedProduct = prodMap.get(selectedProductId);
+  $: previewLine = ((pid, q, price, pd, g, now) =>
+    pid && price !== null
+      ? calculateCart([{ productId: pid, qty: Math.max(1, Math.floor(Number(q) || 1)), price }], { productDiscounts: pd, global: g, now }).lines[0]
+      : null)(selectedProductId, qty, selectedProduct?.sellingPrice ?? null, productDiscountPool, selectedGlobal, now);
 
   const afterCreate: SubmitFunction = () => async ({ result, update }) => {
     await update();
-    if (result.type === 'success') cart = [];
+    if (result.type === 'success') {
+      lines = [];
+      copyMsg = false;
+    } else if (result.type === 'failure' && (result.status === 409 || result.status === 400)) {
+      // Muat ulang produk & diskon (harga/kuota berubah); keranjang dipertahankan.
+      await invalidateAll();
+    }
   };
 
   // Notifikasi "Transaksi tersimpan." muncul tiap struk tercatat lalu
@@ -109,39 +203,45 @@
     if (result.type === 'success') pendingVoid = null;
   };
 
-  // Duplikat struk sebagai koreksi: salin item ke keranjang biar owner
-  // tinggal sesuaikan qty lalu catat ulang.
+  // Duplikat struk sebagai koreksi: salin productId + qty saja, diskon
+  // dihitung ulang dengan aturan saat ini (bukan snapshot struk lama).
   function copyToCart(r: (typeof data.receipts)[number]) {
     for (const it of r.items) {
-      const prod = data.products.find((p) => p.id === it.productId);
-      const found = cart.find((c) => c.productId === it.productId);
-      const price = prod?.sellingPrice ?? it.priceAtSale;
-      const nm = prod?.name ?? it.productName;
-      cart = found
-        ? cart.map((c) => (c.productId === it.productId ? { ...c, qty: c.qty + it.quantity } : c))
-        : [...cart, { productId: it.productId, name: nm, price, qty: it.quantity }];
+      const found = lines.find((c) => c.productId === it.productId);
+      lines = found
+        ? lines.map((c) => (c.productId === it.productId ? { ...c, qty: c.qty + it.quantity } : c))
+        : [...lines, { productId: it.productId, qty: it.quantity }];
     }
+    copyMsg = true;
+    if (copyMsgTimer) clearTimeout(copyMsgTimer);
+    copyMsgTimer = setTimeout(() => (copyMsg = false), 8000);
   }
 
   function addToCart() {
-    if (!selectedProduct || selectedProduct.stock <= 0) return;
-    const found = cart.find((c) => c.productId === selectedProduct.id);
-    const inCart = found?.qty ?? 0;
-    const addable = Math.min(qty, selectedProduct.stock - inCart);
+    const p = prodMap.get(selectedProductId);
+    if (!p || p.stock <= 0) return;
+    const q = Math.max(1, Math.floor(Number(qty) || 1));
+    const inCart = lines.find((c) => c.productId === p.id)?.qty ?? 0;
+    const addable = Math.min(q, p.stock - inCart);
     if (addable <= 0) return;
-    cart = found
-      ? cart.map((c) => (c.productId === selectedProduct.id ? { ...c, qty: c.qty + addable } : c))
-      : [...cart, { productId: selectedProduct.id, name: selectedProduct.name, price: selectedProduct.sellingPrice, qty: addable }];
+    const found = lines.find((c) => c.productId === p.id);
+    lines = found
+      ? lines.map((c) => (c.productId === p.id ? { ...c, qty: c.qty + addable } : c))
+      : [...lines, { productId: p.id, qty: addable }];
     qty = 1;
   }
   function incLine(id: string) {
-    cart = cart.map((c) => (c.productId === id ? { ...c, qty: c.qty + 1 } : c));
+    // Dibatasi stok (server tetap memvalidasi ulang).
+    const max = prodMap.get(id)?.stock ?? Infinity;
+    const cur = lines.find((c) => c.productId === id)?.qty ?? 0;
+    if (cur + 1 > max) return;
+    lines = lines.map((c) => (c.productId === id ? { ...c, qty: c.qty + 1 } : c));
   }
   function decLine(id: string) {
-    cart = cart.map((c) => (c.productId === id ? { ...c, qty: Math.max(1, c.qty - 1) } : c));
+    lines = lines.map((c) => (c.productId === id ? { ...c, qty: Math.max(1, c.qty - 1) } : c));
   }
   function removeLine(id: string) {
-    cart = cart.filter((c) => c.productId !== id);
+    lines = lines.filter((c) => c.productId !== id);
   }
 </script>
 
@@ -260,7 +360,7 @@
     {/if}
   </div>
 
-  <div class="w-full lg:w-80 flex-shrink-0 order-1 lg:order-2 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
+  <div class="w-full lg:w-96 flex-shrink-0 order-1 lg:order-2 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
     <Card>
         <h2 class="text-headline-sm text-ink mb-3">Transaksi Baru</h2>
         {#if data.products.length === 0}
@@ -269,51 +369,120 @@
           <label for="t-product" class="flex flex-col gap-1 text-body-md text-ink mb-3">
             Produk
             <select id="t-product" bind:value={selectedProductId} class="h-9 w-full rounded border border-border-input bg-white px-3 text-body-md text-ink">
-              {#each data.products as p}
-                <option value={p.id} disabled={p.stock <= 0}>{p.name} (sisa {p.stock})</option>
+              {#each productOptions as p}
+                <option value={p.id} disabled={p.stock <= 0}>{p.label}</option>
               {/each}
             </select>
           </label>
           <label for="t-qty" class="flex flex-col gap-1 text-body-md text-ink mb-1">Jumlah</label>
-          <div class="flex items-center gap-3 mb-3">
-            <button type="button" class="h-8 w-8 rounded border border-border-input text-ink font-bold" on:click={() => (qty = Math.max(1, qty - 1))}>−</button>
-            <span class="tabular text-body-md w-6 text-center">{qty}</span>
-            <button type="button" class="h-8 w-8 rounded border border-border-input text-ink font-bold" on:click={() => (qty += 1)}>+</button>
+          <div class="flex items-center gap-3 mb-1">
+            <button type="button" class="h-8 w-8 rounded border border-border-input text-ink font-bold" on:click={() => (qty = Math.max(1, Math.floor(Number(qty) || 1) - 1))}>−</button>
+            <input
+              type="number"
+              id="t-qty"
+              bind:value={qty}
+              min="1"
+              max={selectedProduct ? Math.max(1, selectedProduct.stock - (lines.find((l) => l.productId === selectedProduct.id)?.qty ?? 0)) : 1}
+              class="h-8 w-16 rounded border border-border-input bg-white px-2 text-body-md tabular text-ink text-center"
+            />
+            <button type="button" class="h-8 w-8 rounded border border-border-input text-ink font-bold" on:click={() => (qty = Math.max(1, Math.floor(Number(qty) || 1) + 1))}>+</button>
           </div>
+          {#if previewLine}
+            <div class="text-body-sm text-muted mb-3">
+              {previewLine.qty} × {idr(previewLine.price)} =
+              {#if previewLine.discountAmount > 0}
+                <s>{idr(previewLine.gross)}</s>
+                <strong class="text-ink">{idr(previewLine.net)}</strong>
+                <span class="text-status-positive">hemat {idr(previewLine.discountAmount)}</span>
+                {#if previewLine.partial}
+                  <span> · {previewLine.discountedQty} dari {previewLine.qty} unit kena diskon (kuota habis)</span>
+                {/if}
+              {:else}
+                <strong class="text-ink">{idr(previewLine.gross)}</strong>
+              {/if}
+            </div>
+          {/if}
           <Button variant="secondary" class="w-full mb-4" on:click={addToCart} disabled={!selectedProduct}>
             + Tambah produk
           </Button>
-          {#if cart.length === 0}
+          {#if globalList.length > 0}
+            <label for="t-global" class="flex flex-col gap-1 text-body-md text-ink mb-1">
+              Gunakan diskon
+              <select id="t-global" bind:value={selectedGlobalId} class="h-9 w-full rounded border border-border-input bg-white px-3 text-body-md text-ink">
+                <option value="">Tanpa diskon global</option>
+                {#each globalList as g}
+                  <option value={g.id}>{g.name} — {g.percent}% · s.d. {g.endsAt ? T.fmt(g.endsAt, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'tanpa batas'}</option>
+                {/each}
+              </select>
+            </label>
+            <p class="text-body-sm text-muted mb-3">Tidak menimpa diskon produk.</p>
+          {/if}
+          {#if globalExpired}
+            <p role="status" class="rounded border border-status-warning-border bg-status-warning-bg px-3 py-2 text-body-sm text-status-warning mb-3">Diskon global yang dipilih sudah tidak berlaku.</p>
+          {/if}
+          {#if cartRows.length === 0 && missingLines.length === 0}
             <p class="text-body-sm text-muted mb-3">Keranjang masih kosong — tambah satu atau beberapa produk dulu.</p>
           {:else}
             <ul class="mb-3 divide-y divide-table-divider rounded border border-border-cool">
-              {#each cart as c}
+              {#each cartRows as c}
                 <li class="px-3 py-2">
                   <div class="flex justify-between items-center gap-2 text-body-md">
                     <p class="text-ink truncate">{c.name}</p>
                     <button type="button" class="text-body-sm text-status-negative hover:underline" on:click={() => removeLine(c.productId)}>Hapus</button>
                   </div>
+                  {#if c.discountAmount > 0}
+                    <div class="flex items-center gap-2 mt-0.5">
+                      <s class="text-body-sm text-muted tabular">{idr(c.gross)}</s>
+                      <Badge size="sm" tone="positive">Diskon {c.discountPercent}%</Badge>
+                    </div>
+                    {#if c.partial}
+                      <p class="text-body-sm text-status-warning mt-0.5">Sebagian: {c.discountedQty} dari {c.qty} unit kena diskon.</p>
+                    {/if}
+                  {/if}
                   <div class="flex justify-between items-center gap-2 mt-1">
                     <div class="flex items-center gap-2">
                       <button type="button" class="h-7 w-7 rounded border border-border-input text-ink font-bold" on:click={() => decLine(c.productId)}>−</button>
                       <span class="tabular text-body-md w-6 text-center">{c.qty}×</span>
                       <button type="button" class="h-7 w-7 rounded border border-border-input text-ink font-bold" on:click={() => incLine(c.productId)}>+</button>
                     </div>
-                    <span class="tabular text-body-md text-ink whitespace-nowrap">{idr(c.price * c.qty)}</span>
+                    <span class="tabular text-body-md text-ink whitespace-nowrap">{idr(c.net)}</span>
+                  </div>
+                </li>
+              {/each}
+              {#each missingLines as m}
+                <li class="px-3 py-2">
+                  <div class="flex justify-between items-center gap-2 text-body-md">
+                    <p class="text-status-negative">Produk tidak tersedia</p>
+                    <button type="button" class="text-body-sm text-status-negative hover:underline" on:click={() => removeLine(m.productId)}>Hapus</button>
                   </div>
                 </li>
               {/each}
             </ul>
           {/if}
-          <div class="flex justify-between items-center py-2 border-t border-dashed border-border-cool mb-3">
-            <span class="text-body-sm text-muted">Total</span>
-            <strong class="text-headline-sm text-ink tabular">{idr(cartTotal)}</strong>
+          <div class="flex flex-col gap-1 py-2 border-t border-dashed border-border-cool mb-3 text-body-md">
+            <div class="flex justify-between items-center">
+              <span class="text-body-sm text-muted">Subtotal</span>
+              <span class="tabular text-ink">{idr(cart.subtotal)}</span>
+            </div>
+            {#each discountRows as dr}
+              <div class="flex justify-between items-center">
+                <span class="text-body-sm text-muted">Diskon {dr.name}</span>
+                <span class="tabular text-status-positive">−{idr(dr.amount)}</span>
+              </div>
+            {/each}
+            <div class="flex justify-between items-center">
+              <span class="text-body-sm text-muted">Total</span>
+              <strong class="text-headline-sm text-ink tabular">{idr(cart.total)}</strong>
+            </div>
           </div>
           <form method="POST" action="?/create" use:enhance={afterCreate}>
             <input type="hidden" name="items" value={cartPayload} />
+            <input type="hidden" name="globalDiscountId" value={effectiveGlobalId} />
+            <input type="hidden" name="expectedTotal" value={cart.total} />
+            {#if copyMsg}<p role="status" class="rounded border border-border-cool bg-table-header px-3 py-2 text-body-sm text-muted mb-3">Diskon dihitung ulang dengan aturan saat ini.</p>{/if}
             {#if form?.message}<p role="alert" class="rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative mb-3">{form.message}</p>{/if}
             {#if showSavedMsg}<p role="status" class="rounded border border-status-positive-border bg-status-positive-bg px-3 py-2 text-body-sm text-status-positive mb-3">Transaksi tersimpan.</p>{/if}
-            <Button type="submit" class="w-full" disabled={cart.length === 0}>Catat Transaksi</Button>
+            <Button type="submit" class="w-full" disabled={validLines.length === 0 || hasMissing}>Catat Transaksi</Button>
           </form>
         {/if}
       </Card>
