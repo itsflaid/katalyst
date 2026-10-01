@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "24.x",
+    "npm": ">=11"
+  },
+  "packageManager": "npm@11.5.1",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
@@ -15,6 +20,8 @@
     "verify:tz-sql": "tsx script/verify-tz-sql.ts",
     "verify:discount-db": "tsx script/verify-discount-db.ts",
     "verify:discount": "tsx script/verify-discount.ts",
+    "verify:deps": "npm ls esbuild @esbuild/win32-x64 wrangler",
+    "verify:lock": "node scripts/lock-optionals.cjs",
     "verify:stock": "tsx script/verify-stock.ts"
   },
   "dependencies": {
