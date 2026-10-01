@@ -11,6 +11,7 @@
     FlaskConical,
     Package,
     Receipt,
+    Percent,
     Settings,
     CircleHelp,
     CircleUserRound,
@@ -30,6 +31,7 @@
     { href: '/simulator', label: 'Simulator', icon: FlaskConical, ownerOnly: true, group: 'Analisis' },
     { href: '/products', label: 'Produk', icon: Package, ownerOnly: false, group: 'Operasional' },
     { href: '/transactions', label: 'Transaksi', icon: Receipt, ownerOnly: false, group: 'Operasional' },
+    { href: '/diskon', label: 'Diskon', icon: Percent, ownerOnly: true, group: 'Operasional' },
     { href: '/settings', label: 'Pengaturan', icon: Settings, ownerOnly: true, group: 'Lainnya' },
     { href: '/bantuan', label: 'Bantuan', icon: CircleHelp, ownerOnly: false, group: 'Lainnya' },
     { href: '/akun', label: 'Akun', icon: CircleUserRound, ownerOnly: false, group: 'Lainnya' }
