@@ -5,6 +5,7 @@
 // yang sama untuk select dan groupBy.
 import { sql, type SQLWrapper } from 'drizzle-orm';
 import type { BizTz } from '../shared/time';
+import { transactionItem } from './db/schema';
 
 // Literal zona dari tabel tetap, BUKAN dari input mentah — anti SQL injection.
 const TZ_LITERAL: Record<BizTz, string> = {
@@ -29,3 +30,9 @@ export const localIsoDow = (col: SQLWrapper, tz: BizTz) =>
   sql`extract(isodow from ${localTs(col, tz)})::int`;
 export const localWeekStart = (col: SQLWrapper, tz: BizTz) =>
   sql`(date_trunc('week', ${localTs(col, tz)}))::date`;
+
+// Revenue bersih per baris = qty × harga − diskon. quantity di-cast bigint
+// (kebiasaan repo) agar tak overflow int4; discountAmount juga di-cast agar
+// operator tetap bigint. Selama belum ada diskon terpakai (= 0), hasilnya
+// identik dengan rumus lama.
+export const lineNet = sql`(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale} - ${transactionItem.discountAmount}::bigint)`;
