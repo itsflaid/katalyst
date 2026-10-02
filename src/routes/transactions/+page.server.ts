@@ -3,6 +3,7 @@ import { stockMovement, transaction, transactionItem, product, user, discount } 
 import { eq, desc, and, asc, inArray, gt, gte, or, sql } from 'drizzle-orm';
 import { DEFAULT_TZ } from '$lib/shared/time';
 import { calculateCart, getDiscountStatus, quotaDeltas } from '$lib/discount';
+import { receiptTotals } from '$lib/analytics';
 import { getActiveProductDiscounts, getGlobalDiscount } from '$lib/server/domains/discounts';
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
@@ -116,16 +117,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     }
     receipts = pageHeaders.map((h) => {
       const items = byTx.get(h.id) ?? [];
-      // Subtotal = Σ qty×harga normal; total = subtotal − Σ diskon baris.
-      const subtotal = items.reduce((s, i) => s + i.quantity * i.priceAtSale, 0);
-      const discountTotal = items.reduce((s, i) => s + i.discountAmount, 0);
+      // Total struk dari engine: subtotal = Σ qty×harga normal,
+      // total = subtotal − Σ diskon baris.
+      const totals = receiptTotals(items);
       return {
         txId: h.id,
         createdAt: h.createdAt,
         cashier: h.cashierName ?? h.userName ?? '—',
-        subtotal,
-        discountTotal,
-        total: subtotal - discountTotal,
+        ...totals,
         items: items.map((i) => ({
           productId: i.productId,
           productName: i.productName,

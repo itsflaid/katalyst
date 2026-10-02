@@ -1,0 +1,102 @@
+// Lapisan query Facts: SQL hanya menjumlahkan angka mentah; semua rumus
+// turunan ada di lib/analytics (metricsOf dkk).
+// db di-inject sebagai parameter: app memberi neon-http, script verifikasi
+// memberi postgres-js (atau handle transaksi yang di-rollback).
+// Import relatif + tanpa $lib/$env/$app (bisa diimpor script tsx).
+import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { transaction, transactionItem } from '../../db/schema';
+import type * as schema from '../../db/schema';
+import { localDate } from '../../sql';
+import type { BizTz } from '../../../shared/time';
+import type { Facts } from '../../../analytics/facts';
+
+// Handle DB yang diterima: database app (neon-http) atau database/handle
+// transaksi script verifikasi (postgres-js). Hanya .select yang dipakai.
+export type Db = NeonHttpDatabase<typeof schema> | PostgresJsDatabase<typeof schema>;
+
+export type Range = { from: Date | null; to: Date | null };
+
+// txCount = count(distinct transaction.id) DALAM grup itu — TIDAK boleh
+// dijumlahkan lintas grup (satu struk bisa memuat banyak produk).
+export type FactsRow = Facts & { txCount: number };
+
+// Fragmen select angka mentah. Fungsi (bukan konstanta) biar tiap query
+// dapat objek SQL baru. Pola repo: sum(...)::text lalu Number() di JS;
+// quantity di-cast bigint dulu agar tak overflow int4.
+export function factColumns() {
+  return {
+    qty: sql<string>`sum(${transactionItem.quantity})::text`,
+    gross: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale})::text`,
+    discount: sql<string>`sum(${transactionItem.discountAmount})::text`,
+    cost: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.costAtSale})::text`,
+    discountedQty: sql<string>`sum(${transactionItem.discountedQty})::text`
+  };
+}
+
+// Baris agregat SQL (::text) → Facts. Produk tanpa histori tidak muncul di
+// map; pemanggil mengisi ZERO_FACTS bila perlu. Menerima string|null agar
+// baris join (mis. label kasir nullable) bisa diteruskan langsung — kolom
+// agregat sendiri tak pernah null.
+export function toFacts(row: Record<string, string | null>): Facts {
+  return {
+    qty: Number(row.qty),
+    gross: Number(row.gross),
+    discount: Number(row.discount),
+    cost: Number(row.cost),
+    discountedQty: Number(row.discountedQty)
+  };
+}
+
+function rangeConds(businessId: string, range: Range) {
+  const conds = [eq(transaction.businessId, businessId)];
+  if (range.from) conds.push(gte(transaction.createdAt, range.from));
+  if (range.to) conds.push(lte(transaction.createdAt, range.to));
+  return conds;
+}
+
+export async function queryFactsByProduct(
+  db: Db,
+  businessId: string,
+  range: Range,
+  opts?: { productIds?: string[] }
+): Promise<Map<string, FactsRow>> {
+  if (opts?.productIds && opts.productIds.length === 0) return new Map();
+  const conds = rangeConds(businessId, range);
+  if (opts?.productIds) conds.push(inArray(transactionItem.productId, opts.productIds));
+  const facts = factColumns();
+  const rows = await db
+    .select({
+      productId: transactionItem.productId,
+      ...facts,
+      txCount: sql<string>`count(distinct ${transaction.id})::text`
+    })
+    .from(transactionItem)
+    .innerJoin(transaction, eq(transaction.id, transactionItem.transactionId))
+    .where(and(...conds))
+    .groupBy(transactionItem.productId);
+  return new Map(rows.map((r) => [r.productId, { ...toFacts(r), txCount: Number(r.txCount) }]));
+}
+
+export async function queryFactsByDay(
+  db: Db,
+  businessId: string,
+  range: Range,
+  tz: BizTz
+): Promise<Map<string, FactsRow>> {
+  // Objek ekspresi yang sama dipakai di select & groupBy (lihat sql.ts).
+  const dayExpr = localDate(transaction.createdAt, tz);
+  const facts = factColumns();
+  const rows = await db
+    .select({
+      day: sql<string>`(${dayExpr})::text`,
+      ...facts,
+      txCount: sql<string>`count(distinct ${transaction.id})::text`
+    })
+    .from(transaction)
+    .innerJoin(transactionItem, eq(transactionItem.transactionId, transaction.id))
+    .where(and(...rangeConds(businessId, range)))
+    .groupBy(dayExpr);
+  return new Map(rows.map((r) => [r.day, { ...toFacts(r), txCount: Number(r.txCount) }]));
+}

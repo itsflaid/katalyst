@@ -1,7 +1,8 @@
 import { db } from '$lib/server/db';
-import { product, stockMovement, transaction, transactionItem, user } from '$lib/server/db/schema';
+import { product, stockMovement, user } from '$lib/server/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
-import { getProductPerformance, type TransactionItemLike } from '$lib/analytics';
+import { metricsOf, ZERO_FACTS } from '$lib/analytics';
+import { queryFactsByProduct } from '$lib/server/domains/facts/queries';
 import { DEFAULT_TZ } from '$lib/shared/time';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
@@ -16,20 +17,19 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
   if (!p) throw error(404, 'Produk tidak ditemukan');
 
-  const txItems = await db
-    .select({
-      productId: transactionItem.productId,
-      quantity: transactionItem.quantity,
-      priceAtSale: transactionItem.priceAtSale,
-      costAtSale: transactionItem.costAtSale,
-      discountAmount: transactionItem.discountAmount
-    })
-    .from(transactionItem)
-    .innerJoin(transaction, eq(transaction.id, transactionItem.transactionId))
-    .where(and(eq(transaction.businessId, businessId), eq(transactionItem.productId, p.id)));
-
-  const items: TransactionItemLike[] = txItems;
-  const performance = getProductPerformance(p.id, p.name, items);
+  // Performa all-time dari lapisan Facts (dulu fetch semua item mentah).
+  // Bentuk `performance` (ProductSummary) tetap.
+  const factsMap = await queryFactsByProduct(db, businessId, { from: null, to: null }, { productIds: [p.id] });
+  const m = metricsOf(factsMap.get(p.id) ?? ZERO_FACTS);
+  const performance = {
+    productId: p.id,
+    name: p.name,
+    quantitySold: m.qty,
+    revenue: m.revenue,
+    cost: m.cost,
+    profit: m.profit,
+    margin: m.margin
+  };
 
   const movements = await db
     .select({
