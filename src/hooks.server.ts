@@ -7,15 +7,7 @@ import { redirect, type Handle } from '@sveltejs/kit';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
 
-// Padanan proxy.ts di versi Next: di sana Next.js 16 diam-diam mengabaikan
-// file bernama middleware.ts (harus proxy.ts), jadi proteksi Owner-only
-// bisa "hilang" tanpa error/warning kalau namanya salah.
-//
-// SvelteKit punya gotcha yang mirip: hook ini WAJIB ada di file bernama
-// persis `src/hooks.server.ts` — nama lain (mis. `src/hook.server.ts` atau
-// diletakkan di src/lib/) juga diam-diam diabaikan, tanpa build error.
-// Makanya proteksi route dipusatkan di sini, bukan dicek manual di tiap
-// +page.server.ts (rawan ke-skip kalau ada yang lupa nambahin check).
+
 const PROTECTED_PATHS = ['/dashboard', '/statistik', '/simulator', '/settings', '/transactions', '/products', '/diskon', '/bantuan', '/copilot', '/akun'];
 const OWNER_ONLY_PATHS = ['/dashboard', '/statistik', '/simulator', '/settings', '/copilot', '/diskon', '/products/stok'];
 
@@ -27,6 +19,14 @@ export const handle: Handle = async ({ event, resolve }) => {
   event.locals.business = null;
 
   const path = event.url.pathname;
+
+  // keduanya lewat auth.api.* di server, bukan HTTP. Admin API juga tak
+  // dipakai dari luar; tutup keduanya sebelum delegasi ke better-auth.
+  // Tanpa ini siapa pun bisa POST sign-up → role default OWNER (admin plugin).
+  if (path === '/api/auth/sign-up/email' || path.startsWith('/api/auth/admin/')) {
+    return new Response(null, { status: 404 });
+  }
+
   const isProtected = PROTECTED_PATHS.some((p) => path.startsWith(p));
 
   if (isProtected && !event.locals.user) {
