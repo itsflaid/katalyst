@@ -1,8 +1,5 @@
-// Lapisan query Facts: SQL hanya menjumlahkan angka mentah; semua rumus
-// turunan ada di lib/analytics (metricsOf dkk).
-// db di-inject sebagai parameter: app memberi neon-http, script verifikasi
-// memberi postgres-js (atau handle transaksi yang di-rollback).
-// Import relatif + tanpa $lib/$env/$app (bisa diimpor script tsx).
+// Lapisan query Facts: SQL hanya menjumlahkan angka mentah; rumus turunan
+// ada di lib/analytics. db di-inject: neon-http untuk app, postgres-js untuk script.
 import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
@@ -18,13 +15,11 @@ export type Db = NeonHttpDatabase<typeof schema> | PostgresJsDatabase<typeof sch
 
 export type Range = { from: Date | null; to: Date | null };
 
-// txCount = count(distinct transaction.id) DALAM grup itu — TIDAK boleh
-// dijumlahkan lintas grup (satu struk bisa memuat banyak produk).
+// txCount = count(distinct transaction.id) per grup; jangan dijumlahkan lintas grup.
 export type FactsRow = Facts & { txCount: number };
 
-// Fragmen select angka mentah. Fungsi (bukan konstanta) biar tiap query
-// dapat objek SQL baru. Pola repo: sum(...)::text lalu Number() di JS;
-// quantity di-cast bigint dulu agar tak overflow int4.
+// gross = Σ (quantity * priceAtSale)  (bigint cast menghindari overflow int4)
+// cost = Σ (quantity * costAtSale)
 export function factColumns() {
   return {
     qty: sql<string>`sum(${transactionItem.quantity})::text`,
@@ -36,9 +31,7 @@ export function factColumns() {
 }
 
 // Baris agregat SQL (::text) → Facts. Produk tanpa histori tidak muncul di
-// map; pemanggil mengisi ZERO_FACTS bila perlu. Menerima string|null agar
-// baris join (mis. label kasir nullable) bisa diteruskan langsung — kolom
-// agregat sendiri tak pernah null.
+// map; pemanggil mengisi ZERO_FACTS bila perlu.
 export function toFacts(row: Record<string, string | null>): Facts {
   return {
     qty: Number(row.qty),

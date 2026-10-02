@@ -19,10 +19,8 @@ export async function getOwnedProduct(id: string, businessId: string) {
   return row ?? null;
 }
 
-// Field produk yang boleh diubah lewat form tambah/edit. SENGAJA tanpa
-// `stock`: stok cuma berubah lewat penjualan, restock, atau koreksi
-// (semuanya tercatat di ledger). Dulu parser ini ikut membaca `stock`, dan
-// form edit tidak mengirimnya → tiap edit nama/harga stok kereset jadi 0.
+// Field form tambah/edit sengaja tanpa `stock`: stok hanya berubah lewat
+// ledger (penjualan, restock, koreksi).
 export function parseProductFields(form: FormData) {
   const name = String(form.get('name') ?? '').trim();
   const costPrice = Number(form.get('costPrice'));

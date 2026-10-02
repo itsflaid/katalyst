@@ -7,15 +7,8 @@ import { redirect, type Handle } from '@sveltejs/kit';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
 
-// Padanan proxy.ts di versi Next: di sana Next.js 16 diam-diam mengabaikan
-// file bernama middleware.ts (harus proxy.ts), jadi proteksi Owner-only
-// bisa "hilang" tanpa error/warning kalau namanya salah.
-//
-// SvelteKit punya gotcha yang mirip: hook ini WAJIB ada di file bernama
-// persis `src/hooks.server.ts` — nama lain (mis. `src/hook.server.ts` atau
-// diletakkan di src/lib/) juga diam-diam diabaikan, tanpa build error.
-// Makanya proteksi route dipusatkan di sini, bukan dicek manual di tiap
-// +page.server.ts (rawan ke-skip kalau ada yang lupa nambahin check).
+// Padanan proxy.ts di Next: hook ini harus ada di file bernama persis `src/hooks.server.ts` — nama lain diam-diam diabaikan tanpa build error.
+// Proteksi route dipusatkan di sini, bukan dicek manual di tiap +page.server.ts.
 const PROTECTED_PATHS = ['/dashboard', '/statistik', '/simulator', '/settings', '/transactions', '/products', '/diskon', '/bantuan', '/copilot', '/akun'];
 const OWNER_ONLY_PATHS = ['/dashboard', '/statistik', '/simulator', '/settings', '/copilot', '/diskon', '/products/stok'];
 

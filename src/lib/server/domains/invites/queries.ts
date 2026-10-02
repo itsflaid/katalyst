@@ -1,7 +1,6 @@
-// Helper undangan staff — dipakai POST /api/staff, /api/invites, dan
-// halaman /invite/[token]. Sengaja pakai Web Crypto (getRandomValues +
-// subtle.digest) biar jalan di Node lokal maupun Cloudflare Workers
-// (driver neon-http). Jangan pakai node:crypto biar gak jebol di deploy.
+// Helper undangan staff: POST /api/staff, /api/invites, halaman /invite/[token].
+// Web Crypto (getRandomValues + subtle.digest) agar jalan di Node lokal dan
+// Cloudflare Workers; jangan pakai node:crypto.
 export const INVITE_TTL_MS = 48 * 60 * 60 * 1000; // 48 jam
 
 /** Token mentah 64 hex chars (256 bit) — cuma tampil sekali ke owner. */
@@ -21,10 +20,8 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-// Username login staff: unik global (seperti email), 3–20 karakter,
-// huruf/angka/titik/underscore/strip. Selalu dinormalisasi lowercase+trim
-// sebelum disimpan/dibandingkan (aturan yang sama dipakai plugin username
-// better-auth di sisi server).
+// Username login staff: unik global, 3–20 karakter, huruf/angka/titik/underscore/strip.
+// Selalu dinormalisasi lowercase+trim (aturan sama dengan plugin username better-auth).
 export const USERNAME_RE = /^[a-z0-9._-]+$/;
 
 export function normalizeUsername(username: string): string {
@@ -36,13 +33,8 @@ export function isValidUsername(username: string): boolean {
   return u.length >= 3 && u.length <= 20 && USERNAME_RE.test(u);
 }
 
-// Email sintetis buat baris user mana pun (Owner maupun staff). Kolom
-// user.email NOT NULL + unique karena better-auth mewajibkannya secara
-// struktural (core field, tak bisa dihapus walau plugin username aktif),
-// tapi secara fungsional kolom ini mati: tidak pernah dipakai login,
-// tidak pernah ditampilkan. Domain `staff.internal` (reserved, tidak bisa
-// di-routing) biar jelas bukan email beneran. Tampilan/UI selalu pakai
-// name/username.
+// Email sintetis untuk kolom user.email (wajib NOT NULL+unique secara struktural
+// oleh better-auth, tidak dipakai login). Domain staff.internal reserved.
 export function placeholderEmail(username: string): string {
   return `${normalizeUsername(username)}@staff.internal`;
 }

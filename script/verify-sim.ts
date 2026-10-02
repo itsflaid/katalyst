@@ -1,7 +1,5 @@
-// Verifikasi simulator baru (src/lib/simulation.ts): identitas, kuota,
-// paritas kasir, validasi, breakeven, diskon maks, nol histori, monotonik.
-// Pola: ok() → PASS/FAIL, exit 1 bila ada FAIL. Acak pakai PRNG ber-seed,
-// 200 iterasi seperti verify-discount.ts.
+// Verifikasi simulator: identitas, kuota, paritas kasir, validasi, breakeven,
+// diskon maks, nol histori, monotonik. PRNG ber-seed, 200 iterasi; exit 1 bila FAIL.
 import {
   simulate,
   sanitizeLevers,
@@ -80,7 +78,7 @@ console.log('\n== S2: tanpa drift ==');
   ok('200 baseline satu harga/modal: statusQuo ≡ actual', good);
 }
 
-// S3: repro §1.1 — 100 unit (40 kena diskon 20%) @10.000/6.000.
+// S3: repro diskon kuota — 100 unit (40 kena diskon 20%) @10.000/6.000.
 console.log('\n== S3: repro diskon kuota ==');
 {
   const baseline: Facts = { qty: 100, gross: 1000000, discount: 80000, cost: 600000, discountedQty: 40 };
@@ -274,7 +272,7 @@ console.log('\n== S10: keep + volume ==');
   ok('200 kasus: definisi keep + flag konsisten', good);
 }
 
-// S11: adapter lama T1–T3 (cakupan verify-engine).
+// S11: adapter simulateScenario (cakupan verify-engine).
 console.log('\n== S11: adapter simulateScenario ==');
 {
   const kopiA = { id: 'kopi-a', name: 'Kopi A', costPrice: 6000, sellingPrice: 10000 };

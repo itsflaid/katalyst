@@ -1,6 +1,5 @@
-// Unit uang adaptif buat sumbu chart. Sumbu "jt Rp" yang dibulatkan 0,1 bikin
-// warung omzet ratusan ribu jadi patah-patah — makanya unit dipilih dari
-// nilai maksimum: jt (2 desimal) / rb (1 desimal) / Rp (0 desimal).
+// Unit uang adaptif buat sumbu chart. Unit dipilih dari nilai maksimum:
+// jt (2 desimal) / rb (1 desimal) / Rp (0 desimal).
 
 export type MoneyUnit = { key: 'jt' | 'rb' | 'rp'; divisor: number; decimals: number; label: string };
 

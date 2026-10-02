@@ -14,10 +14,8 @@ function requireOwner(locals: App.Locals) {
   }
 }
 
-// Buat undangan staff (bukan user langsung): owner input username+nama,
-// staff bikin password sendiri via link /invite/[token]. Role dikunci
-// STAFF di record invite. Token mentah dikembalikan SEKALI ke owner
-// untuk diteruskan via WA; di DB cuma hash-nya yang disimpan.
+// Buat undangan staff (bukan user langsung): owner input username+nama, staff bikin password sendiri via link /invite/[token].
+// Role dikunci STAFF di record invite. Token mentah dikembalikan sekali ke owner; di DB cuma hash-nya yang disimpan.
 export const POST: RequestHandler = async ({ request, locals }) => {
   requireOwner(locals);
   const businessId = locals.user!.businessId as string;
@@ -76,8 +74,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   return json({ id, username, name: name || null, token: rawToken, expiresAt: expiresAt.toISOString() }, { status: 201 });
 };
 
-// Atur/ubah username login staff yang sudah ada (mis. akun lama yang
-// dibuat sebelum fitur username). OWNER-only. Username unik global.
+// Atur/ubah username login staff yang sudah ada. OWNER-only. Username unik global.
 export const PATCH: RequestHandler = async ({ request, locals }) => {
   requireOwner(locals);
   const businessId = locals.user!.businessId as string;
@@ -115,10 +112,8 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
   return json({ id: target.id, username });
 };
 
-// Hapus staff dari bisnis. Baris user dihapus (termasuk sesi+kredensial via
-// cascade), tapi riwayat transaksi tetap menampilkan nama karena setiap
-// struk menyimpan snapshot cashier_name + FK transaction.user_id ON DELETE
-// SET NULL (bukan hard-block).
+// Hapus staff dari bisnis. Baris user dihapus (termasuk sesi+kredensial via cascade);
+// riwayat transaksi tetap tampil nama via snapshot cashier_name + FK ON DELETE SET NULL.
 export const DELETE: RequestHandler = async ({ request, locals }) => {
   requireOwner(locals);
   const businessId = locals.user!.businessId as string;

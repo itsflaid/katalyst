@@ -31,7 +31,7 @@
   const validPreset = (v: string | undefined): WindowPreset =>
     v === 'TODAY' || v === 'DAYS_2' || v === 'DAYS_7' || v === 'CUSTOM' || v === 'OPEN' ? v : 'TODAY';
 
-  // --- State create ---
+  // State create
   let cName = "";
   let cScope: 'PRODUCT' | 'GLOBAL' = "PRODUCT";
   let cProductId = initial?.productId ?? "";
@@ -42,7 +42,7 @@
   let cEndDay = "";
   let cConfirmLoss = false;
 
-  // --- State edit (disalin dari discount agar Batal tidak mengotori tabel) ---
+  // State edit (disalin dari discount agar Batal tidak mengotori tabel)
   const e = discount;
   let eName = e?.name ?? "";
   let ePercent = e ? String(e.percent) : "";
