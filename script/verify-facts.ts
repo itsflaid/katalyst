@@ -100,7 +100,7 @@ console.log('\n== F2: core mendelegasikan ke facts ==');
   ok('200 iterasi: calculateRevenue/Cost/Profit + getBusinessSummary ≡ metricsOf', good);
 }
 
-// F3: tanpa discountAmount → revenue = qty × harga (kontrak lama).
+// F3: tanpa discountAmount → revenue = qty × harga.
 console.log('\n== F3: kontrak lama tanpa diskon ==');
 {
   const item: TransactionItemLike = { productId: 'p1', quantity: 100, priceAtSale: 10000, costAtSale: 6000 };
@@ -190,7 +190,7 @@ console.log('\n== F7: fillDailySeries ==');
     if (series.filter((r) => r.key !== key).some((r) => r.revenue !== 0)) boundaryOk = false;
   }
   ok('batas hari benar untuk 3 zona', boundaryOk);
-  // summarizeFacts + totalsOf konsisten dengan agregat lama.
+  // summarizeFacts + totalsOf konsisten dengan agregat per produk.
   const byProduct = new Map<string, Facts>([
     ['a', { qty: 10, gross: 100000, discount: 10000, cost: 60000, discountedQty: 5 }],
     ['b', { qty: 5, gross: 100000, discount: 0, cost: 40000, discountedQty: 0 }]

@@ -4,11 +4,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Plus Jakarta Sans — satu-satunya typeface dipakai di seluruh app
-   (headline & body). Cuma bobot
-   yang dipakai spec yang di-load, biar gak nge-fetch weight yang gak
-   kepake. NOTE: @import ini WAJIB di baris paling atas file — spec CSS
-   (dan Vite) nolak @import yang muncul setelah statement lain. */
+/* Plus Jakarta Sans — satu-satunya typeface; hanya bobot yang dipakai yang di-load.
+   @import CSS harus di baris paling atas file — spec dan Vite nolak @import setelah statement lain. */
 
 body {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
@@ -16,8 +13,7 @@ body {
   color: #0F172A;
 }
 
-/* Angka finansial/tabel WAJIB tabular-nums biar kolom rata pas dibaca
-   vertikal (ledger, KPI, harga). */
+/* Angka finansial/tabel pakai tabular-nums biar kolom rata saat dibaca vertikal (ledger, KPI, harga). */
 .tabular {
   font-variant-numeric: tabular-nums;
 }
@@ -64,8 +60,7 @@ body {
 }
 
 /* Kilau CTA Copilot: strip putih miring menyapu kiri → kanan, infinite.
-   0%→55% gerak menyapu, 55%→100% jeda di luar card biar ada napas antar
-   sapuan, bukan gerak nonstop yang bikin capek dilihat. */
+   0%→55% gerak menyapu, 55%→100% jeda di luar card. */
 @keyframes copilot-sheen-move {
   0% { left: -45%; }
   55%, 100% { left: 135%; }

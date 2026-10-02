@@ -1,9 +1,6 @@
-// Verifikasi lapisan query Facts vs lipatan JS (D1-D6).
-// Semua di dalam SATU transaksi yang di-rollback — pola verify-discount-db.
-// Fixture: 1 bisnis + 3 produk + struk di beberapa hari (termasuk sekitar
-// tengah malam tiap zona), sebagian item berdiskon / diskon parsial
-// (kuota habis di tengah keranjang); bisnis kedua sebagai pengganggu.
-// Handle transaksi diteruskan sebagai `db` (gunanya dependency injection).
+// Verifikasi query Facts vs lipatan JS; semuanya di satu transaksi di-rollback.
+// Fixture struk di sekitar tengah malam tiap zona + bisnis pengganggu; handle
+// transaksi diteruskan sebagai `db` (dependency injection).
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';

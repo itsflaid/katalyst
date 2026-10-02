@@ -10,16 +10,8 @@ import { randomUUID } from 'crypto';
 import { placeholderEmail } from '../domains/invites';
 import { makeTime } from '../../shared/time';
 
-// -----------------------------------------------------------------------
-// Script ini di-run standalone lewat `tsx` (bukan lewat SvelteKit/Vite), jadi
-// TIDAK bisa import src/lib/server/db/index.ts atau src/lib/server/auth.ts
-// apa adanya — keduanya pakai `$env/dynamic/private`, virtual module yang
-// cuma ke-resolve di dalam Vite runtime (sudah kebukti langsung: `tsx` bakal
-// lempar ERR_MODULE_NOT_FOUND). Makanya di sini dibikin db client & instance
-// betterAuth sendiri dari process.env (pola sama kayak drizzle.config.ts).
-// Password hash (scrypt) yang dihasilkan tetap kompatibel dibaca app utama,
-// karena keduanya baca dari tabel `account` yang sama.
-// -----------------------------------------------------------------------
+// Script ini dijalankan standalone via tsx (bukan SvelteKit/Vite), jadi db
+// client dan betterAuth dibuat sendiri dari process.env.
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL belum di-set. Cek .env / .env.example.');
@@ -41,24 +33,9 @@ const auth = betterAuth({
   }
 });
 
-// -----------------------------------------------------------------------
-// Seed data: "Cindera Etam" — toko oleh-oleh khas Kalimantan Timur, dipakai
-// sebagai demo data portfolio. Semua yang dijual adalah BARANG berstok
-// (bukan masakan racik) — konsisten dengan invarian stok aplikasi.
-//
-// 10 produk ini SENGAJA dikasih variasi biar lib/analytics/ &
- // lib/simulation.ts ada "bahan" buat didemoin, bukan cuma nama doang:
-//  - margin spread 14%-50% (Kerupuk Ikan Curah sengaja tipis ~14% tapi laris
-//    → bahan insight "laris tapi margin tipis" + kuadran matriks)
-//  - 3 tingkat volatilitas harga beli dari supplier/pengrajin
-//    (rendah/sedang/tinggi) -> bahan simulasi "harga beli naik X%"
-//  - 1 produk musiman ekstrem (Kaos Pesut Mahakam, spike sekitar HUT RI
-//    17 Agustus, bukan Ramadan — Ramadan 2026 jatuh Feb-Mar, di luar
-//    window 90 hari data ini, jadi dipakai momentum lokal yang beneran
-//    match kalender)
-//  - 2 produk dibuat menipis (Madu Kelulut & Sarung Samarinda) → bahan kartu
-//    "Perlu restock" di dashboard
-// -----------------------------------------------------------------------
+// Seed data toko oleh-oleh khas Kalimantan Timur untuk demo portfolio.
+// Variasi margin, volatilitas, musiman, dan stok menipis disengaja untuk
+// memperlihatkan simulasi dan kartu restock.
 
 type Volatility = 'low' | 'medium' | 'high';
 
@@ -110,8 +87,7 @@ const SPIKE_MONTH = 7; // Agustus (0-indexed) — window HUT RI, dalam range 90 
 const SPIKE_DAY_START = 10;
 const SPIKE_DAY_END = 20;
 
-// Seeded PRNG (mulberry32) biar data reproducible tiap kali seed dijalankan
-// ulang — pola yang sama dipakai di layout seeded DevMap Skills component.
+// Seeded PRNG (mulberry32) supaya data reproducible tiap kali seed dijalankan ulang.
 function mulberry32(seed: number) {
   return function () {
     seed |= 0;
@@ -147,8 +123,7 @@ function applyVolatility(base: number, level: Volatility): number {
   return Math.max(1, Math.round(base * (1 + delta)));
 }
 
-// Jam 8-21 yang dimaksud adalah jam dinding zona bisnis demo (Kaltim = WITA,
-// sengaja memakai makeTime('Asia/Makassar')): dihitung dari 00:00 lokal.
+// Jam 8-21 dinding zona bisnis demo (WITA): dihitung dari 00:00 lokal.
 const _demoTime = makeTime('Asia/Makassar');
 function witaTime(base: Date, hourWita: number, minute: number): Date {
   return new Date(_demoTime.startOfDay(base).getTime() + hourWita * 3600_000 + minute * 60_000);
@@ -160,14 +135,8 @@ async function main() {
   const businessId = randomUUID();
   await db.insert(business).values({ id: businessId, name: 'Cindera Etam' });
 
-  // Bikin user lewat auth.api.signUpEmail (bukan db.insert manual) supaya
-  // password di-hash beneran sama better-auth (scrypt) dan row `account`
-  // (providerId "credential") ke-generate otomatis dengan bentuk yang benar.
-  // Baru abis itu businessId/role di-patch manual karena signUpEmail cuma
-  // tau field bawaan + additionalFields yang diizinkan diisi dari client.
-  // Email selalu sintetis via placeholderEmail (kolom user.email wajib
-  // struktural NOT NULL + unique di better-auth, tapi fungsional mati —
-  // login selalu via username).
+  // User dibuat via auth.api.signUpEmail agar password di-hash scrypt
+  // dan baris account ke-generate; role/bisnisId dipatch setelahnya.
   const ACCOUNTS = [
     { username: 'owner123', name: 'Owner', role: 'OWNER' as const },
     { username: 'prabowo02', name: 'Prabowo', role: 'STAFF' as const },
@@ -209,9 +178,7 @@ async function main() {
   const now = new Date();
   let totalTx = 0;
 
-  // Row-row di sini dikumpulin di memory dulu (bukan langsung di-insert),
-  // biar insert-nya bisa di-batch sekaligus di luar loop — lihat alasannya
-  // di komentar sebelum blok "Batch insert" di bawah.
+  // Row dikumpulkan di memory supaya insert batch tanpa loop query.
   const txRows: { id: string; businessId: string; userId: string; createdAt: Date }[] = [];
   const itemRows: {
     id: string;
@@ -298,15 +265,9 @@ async function main() {
     }
   }
 
-  // -----------------------------------------------------------------------
-  // Ledger konsisten: Σ qty_change per produk HARUS == product.stock.
-  //  - RESTOCK mingguan ≈ 0,9 × penjualan minggu sebelumnya per produk
-  //    ("Kirim dari supplier"), ditaruh Senin jam 09.00 WITA.
-  //  - 2-3 ADJUST negatif demo ("opname: rusak/kedaluwarsa").
-  //  - 1 RESTOCK awal ("Stok awal") di hari pertama: penyeimbang
-  //    (stok_akhir + terjual − restock_mingguan − adjust). Selalu ≥ 0 karena
-  //    restock mingguan cuma 0,9× penjualan.
-  // -----------------------------------------------------------------------
+  // ledger_konsisten: Σ qty_change per produk == product.stock
+  // restock_mingguan = round(0.9 * penjualan_minggu_sebelumnya) di Senin 09.00 WITA
+  // stok_awal = stok_akhir + terjual − restock_mingguan − adjust (>= 0)
   const otherLedger: {
     id: string;
     businessId: string;
@@ -394,15 +355,7 @@ async function main() {
     });
   }
 
-  // -----------------------------------------------------------------------
-  // Batch insert — SEBELUMNYA di sini ada `await db.insert(...)` per
-  // transaksi di dalam loop di atas (2 round-trip DB x ~11.000 transaksi =
-  // ~22.000 query sequential, ~15-20 menit di Neon/Supabase karena tiap
-  // query kena network latency). Sekarang loop di atas cuma numpuk row ke
-  // array di memory (murni JS, gak ada I/O), baru di-insert rame-rame di
-  // sini per batch 500 row -> total round-trip turun ke puluhan, bukan
-  // puluhan-ribu.
-  // -----------------------------------------------------------------------
+  // Insert per batch 500 row (bukan per transaksi) agar round-trip DB sedikit.
   function chunk<T>(arr: T[], size: number): T[][] {
     const out: T[][] = [];
     for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));

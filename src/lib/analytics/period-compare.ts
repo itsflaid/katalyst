@@ -24,19 +24,13 @@ export interface ProductPeriodComparison {
     };
 }
 
-// ---------------------------------------------------------------------------
-// Perbandingan periode (buat Copilot jawab "kenapa berubah", bukan cuma
-// "kondisi sekarang"). Dipakai bareng getBusinessSummary/summarizeByProduct:
-// caller yang tanggung jawab misahin currentItems vs previousItems by tanggal.
-// ---------------------------------------------------------------------------
-
-/** Persen perubahan (pecahan) via deltaRatio; "dari nol" (null) dipetakan ke 0
- *  agar kontrak lama (number, produk baru = 0) tetap utuh. Penyebut |prev|:
- *  basis negatif kini benar tandanya (−100 → −50 = +0.5, dulu −0.5). */
 function percentChange(current: number, previous: number): number {
     return deltaRatio(current, previous) ?? 0;
 }
 
+// revenueChangePercent = (cur.revenue − prev.revenue) / |prev.revenue|   (0 bila prev = 0)
+// profitChangePercent  = (cur.profit − prev.profit) / |prev.profit|
+// marginChangePoints   = cur.margin − prev.margin
 export function compareBusinessPeriods(
     currentItems: TransactionItemLike[],
     previousItems: TransactionItemLike[]
@@ -55,12 +49,6 @@ export function compareBusinessPeriods(
     };
 }
 
-/**
- * Bandingin performa per produk antar dua periode. Produk yang cuma muncul
- * di currentSummaries (baru laku periode ini) tetap masuk hasil dengan
- * previous = null dan change = 0 di semua field, supaya caller nggak perlu
- * null-check manual buat setiap field angka.
- */
 export function compareProductPeriods(
     currentSummaries: ProductSummary[],
     previousSummaries: ProductSummary[]

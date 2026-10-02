@@ -17,7 +17,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
   if (!p) throw error(404, 'Produk tidak ditemukan');
 
-  // Performa all-time dari lapisan Facts (dulu fetch semua item mentah).
+  // Performa all-time dari lapisan Facts.
   // Bentuk `performance` (ProductSummary) tetap.
   const factsMap = await queryFactsByProduct(db, businessId, { from: null, to: null }, { productIds: [p.id] });
   const m = metricsOf(factsMap.get(p.id) ?? ZERO_FACTS);

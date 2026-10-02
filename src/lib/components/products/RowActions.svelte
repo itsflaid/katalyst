@@ -1,6 +1,5 @@
 <script lang="ts">
-  // Aksi per baris. ≥sm: link inline seperti sebelumnya. <sm: satu tombol
-  // "⋯" membuka menu kecil (tutup saat klik di luar / Escape).
+  // Aksi per baris. ≥sm: link inline. <sm: tombol "⋯" buka menu (tutup saat klik di luar / Escape).
   export let product: { id: string; name: string; stock: number };
   export let isOwner: boolean;
   export let onStock: (p: { id: string; name: string; stock: number }, mode: 'restock' | 'adjust') => void;
@@ -24,7 +23,7 @@
 
 <svelte:window on:click={onWindowClick} on:keydown={onKey} />
 
-<!-- Desktop: inline seperti sebelumnya -->
+<!-- Desktop: link inline -->
 <div class="hidden sm:flex items-center gap-3">
   <a href={`/products/${product.id}`} class="text-body-sm font-semibold text-ink-navy hover:underline">
     Detail

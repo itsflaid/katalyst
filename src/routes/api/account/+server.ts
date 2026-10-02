@@ -4,9 +4,8 @@ import { user } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
-// Self-service: user login (role apa pun) boleh ganti NAMANYA SENDIRI.
-// Email sengaja tidak bisa diganti di sini (identitas login better-auth,
-// terikat tabel `account` — ganti email = alur invite ulang via owner).
+// Self-service: user login (role apa pun) boleh ganti namanya sendiri.
+// Email sengaja tidak bisa diganti di sini (identitas login better-auth, terikat tabel `account`).
 export const PATCH: RequestHandler = async ({ request, locals }) => {
   if (!locals.user) {
     throw error(401, 'Harus login dulu.');

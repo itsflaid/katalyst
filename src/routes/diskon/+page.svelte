@@ -15,8 +15,7 @@
 
   $: T = makeTime(data.timezone ?? DEFAULT_TZ);
 
-  // Tampilkan T.short di judul biar zona laporan eksplisit.
-  // Daftar sesuai tab server (?tab=), difilter client untuk jaga-jaga.
+  // Tampilkan T.short di judul biar zona laporan eksplisit; daftar difilter client mengikuti tab server (?tab=).
   $: visible =
     data.tab === 'terjadwal'
       ? data.discounts.filter((d) => d.status === 'SCHEDULED')

@@ -1,17 +1,13 @@
-// Kamus tunggal angka (§3). Murni + isomorfik: jalan di server maupun
-// browser, jadi tanpa drizzle-orm/$env/$app dan tanpa jam sistem
-// (waktu selalu masuk lewat parameter).
-// Semua uang = integer Rupiah; semua rasio = pecahan (0.25 = 25%).
-// Pembulatan/format hanya di UI.
+// Kamus tunggal angka, isomorfik server/browser: tanpa drizzle-orm/$env/$app
+// dan tanpa jam sistem. Uang = integer Rupiah; rasio = pecahan (0.25 = 25%).
 import type { TransactionItemLike } from './core';
 
-// Hanya field yang BISA DIJUMLAHKAN lintas baris/periode.
 export interface Facts {
-  qty: number; // Σ quantity
-  gross: number; // Σ qty × priceAtSale
-  discount: number; // Σ discountAmount (snapshot, tak pernah dihitung ulang)
-  cost: number; // Σ qty × costAtSale
-  discountedQty: number; // Σ discountedQty
+  qty: number;
+  gross: number;
+  discount: number;
+  cost: number;
+  discountedQty: number;
 }
 
 export const ZERO_FACTS: Facts = { qty: 0, gross: 0, discount: 0, cost: 0, discountedQty: 0 };
@@ -30,7 +26,6 @@ export function sumFacts(list: Facts[]): Facts {
   return list.reduce(addFacts, { ...ZERO_FACTS });
 }
 
-// Jalur row-level (tes, data kecil). Lawannya: agregat SQL factColumns().
 export function factsOfItem(i: TransactionItemLike): Facts {
   return {
     qty: i.quantity,
@@ -55,8 +50,13 @@ export interface Metrics {
   avgCost: number;
 }
 
-// SATU-SATUNYA tempat rumus turunan §3. Semua caller (loader, simulasi,
-// ringkasan) wajib lewat sini, bukan menghitung manual.
+// revenue        = gross − discount
+// profit         = revenue − cost
+// margin         = profit / revenue   (0 bila revenue = 0)
+// discountRate   = discount / gross   (0 bila gross = 0)
+// avgGrossPrice  = gross / qty        (0 bila qty = 0)
+// avgNetPrice    = revenue / qty      (0 bila qty = 0)
+// avgCost        = cost / qty         (0 bila qty = 0)
 export function metricsOf(f: Facts): Metrics {
   const revenue = f.gross - f.discount;
   const profit = revenue - f.cost;
@@ -75,8 +75,7 @@ export function metricsOf(f: Facts): Metrics {
   };
 }
 
-// Revenue bersih satu baris = qty × harga − diskon (0 bila tanpa diskon).
-// discountAmount null (baris lama) diperlakukan sama dengan undefined.
+// lineNet = qty × price − discount   (0 bila discount null/undefined)
 export function lineNetOf(i: {
   quantity: number;
   priceAtSale: number;
@@ -85,7 +84,9 @@ export function lineNetOf(i: {
   return i.quantity * i.priceAtSale - (i.discountAmount ?? 0);
 }
 
-// Total struk: subtotal = Σ qty×harga normal; total = subtotal − Σ diskon.
+// subtotal      = Σ qty × price
+// discountTotal = Σ discountAmount
+// total         = subtotal − discountTotal
 export function receiptTotals(
   items: { quantity: number; priceAtSale: number; discountAmount: number }[]
 ): { subtotal: number; discountTotal: number; total: number } {
@@ -94,9 +95,7 @@ export function receiptTotals(
   return { subtotal, discountTotal, total: subtotal - discountTotal };
 }
 
-// Delta TUNGGAL (pecahan; null = "dari nol").
-// prev = 0 → cur = 0 ? 0 : null. Penyebut |prev| biar basis negatif benar
-// tandanya: −100 → −50 = +0.5 (membaik), bukan −0.5.
+// delta = (cur − prev) / |prev|   (null bila prev = 0 dan cur ≠ 0)
 export function deltaRatio(cur: number, prev: number): number | null {
   if (prev === 0) return cur === 0 ? 0 : null;
   return (cur - prev) / Math.abs(prev);

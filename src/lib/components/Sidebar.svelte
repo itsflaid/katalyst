@@ -23,8 +23,7 @@
   export let role: 'OWNER' | 'STAFF';
   export let businessName: string;
 
-  // Flat list + field `group` — dipisah jadi kelompok visual (Analisis /
-  // Operasional / Lainnya) alih-alih list rata kayak sebelumnya.
+  // Flat list + field `group` → kelompok visual (Analisis / Operasional / Lainnya).
   const links = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, ownerOnly: true, group: 'Analisis' },
     { href: '/statistik', label: 'Statistik', icon: TrendingUp, ownerOnly: true, group: 'Analisis' },
@@ -81,10 +80,8 @@
     try {
       await signOut();
     } finally {
-      // finally: walau request sign-out gagal (mis. network), user tetap
-      // dikeluarkan dari app shell ke /login — kalau sesi ternyata masih
-      // hidup, hooks proteksi route akan menolak akses halaman lama.
-      // await: pastikan pindah ke /login sebelum handler kelar.
+      // finally: sesi gagal sign-out pun tetap keluar ke /login.
+      // await: pindah ke /login sebelum handler kelar.
       await goto('/login', { invalidateAll: true });
     }
   }

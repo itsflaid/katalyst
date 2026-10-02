@@ -1,6 +1,6 @@
 // Verifikasi invarian ledger: untuk tiap produk yang punya ledger,
-// Σ qty_change HARUS == product.stock. Produk lama tanpa ledger dilaporkan
-// sebagai "tanpa ledger" (bukan gagal). Exit 1 bila ada selisih.
+// Σ qty_change == product.stock. Produk tanpa ledger dilaporkan sebagai
+// "tanpa ledger" (bukan gagal). Exit 1 bila ada selisih.
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
