@@ -1,4 +1,5 @@
-import { calculateMargin } from './margin';
+import { addFacts, factsOfItem, metricsOf, sumFacts } from './facts';
+import type { Facts } from './facts';
 export interface TransactionItemLike {
     productId: string;
     quantity: number;
@@ -7,6 +8,10 @@ export interface TransactionItemLike {
     // Total Rp diskon pada baris ini (0 = tanpa diskon). Opsional agar data
     // lama tanpa kolom diskon tetap valid dan revenue-nya tak berubah.
     discountAmount?: number;
+    // Unit terdiskon pada baris ini. Opsional (kompatibel: tanpa field ini
+    // factsOfItem mengisi 0); dibawa agar baris DB yang punya kolomnya
+    // tidak kehilangan informasi saat difold ke Facts.
+    discountedQty?: number;
 }
 
 export interface ProductSummary {
@@ -39,53 +44,31 @@ export interface BusinessInsight {
     message: string;
 }
 
-interface ItemMetrics {
-    revenue: number;
-    cost: number;
-    profit: number;
-}
-
-// Hitung revenue/cost/profit satu item (private, fondasi semua agregat).
-// Revenue bersih = qty × harga − diskon baris (0 bila tanpa diskon).
-function calculateItemMetrics(item: TransactionItemLike): ItemMetrics {
-    const quantity = item.quantity;
-    const priceAtSale = item.priceAtSale;
-    const costAtSale = item.costAtSale;
-
-    const revenue = quantity * priceAtSale - (item.discountAmount ?? 0);
-    const cost = quantity * costAtSale;
-    const profit = revenue - cost;
-
-    return { revenue, cost, profit };
+// Lipat item ke satu Facts (fondasi semua agregat di file ini).
+function foldItems(items: TransactionItemLike[]): Facts {
+    return sumFacts(items.map(factsOfItem));
 }
 
 // Total revenue semua item (jumlahkan revenue per-item).
 export function calculateRevenue(items: TransactionItemLike[]): number {
-    return items.reduce((sum, item) => sum + calculateItemMetrics(item).revenue, 0);
+    return metricsOf(foldItems(items)).revenue;
 }
 
 // Total cost semua item (jumlahkan cost per-item).
 export function calculateCost(items: TransactionItemLike[]): number {
-    return items.reduce((sum, item) => sum + calculateItemMetrics(item).cost, 0);
+    return metricsOf(foldItems(items)).cost;
 }
 
 // Total profit = total revenue - total cost.
 export function calculateProfit(items: TransactionItemLike[]): number {
-    const revenue = calculateRevenue(items);
-    const cost = calculateCost(items);
-    const profit = revenue - cost;
-
-    return profit;
+    return metricsOf(foldItems(items)).profit;
 }
 
 // Ringkasan bisnis: revenue + cost + profit + margin sekaligus.
 export function getBusinessSummary(items: TransactionItemLike[]): BusinessSummary {
-    const revenue = calculateRevenue(items);
-    const cost = calculateCost(items);
-    const profit = revenue - cost;
-    const margin = calculateMargin(revenue, profit);
+    const m = metricsOf(foldItems(items));
 
-    return { revenue, cost, profit, margin };
+    return { revenue: m.revenue, cost: m.cost, profit: m.profit, margin: m.margin };
 }
 
 // Kelompokkan item per productId via Map, lalu hitung qty/revenue/cost/profit/margin tiap produk.
@@ -93,32 +76,24 @@ export function summarizeByProduct(
     items: TransactionItemLike[],
     productNames: Record<string, string>
 ): ProductSummary[] {
-    const agg = new Map<string, { quantitySold: number; revenue: number; cost: number }>();
+    const agg = new Map<string, Facts>();
 
     for (const item of items) {
-        const quantity = item.quantity;
-        const { revenue, cost } = calculateItemMetrics(item);
-
-        const current = agg.get(item.productId) ?? { quantitySold: 0, revenue: 0, cost: 0 };
-        current.quantitySold += quantity;
-        current.revenue += revenue;
-        current.cost += cost;
-        agg.set(item.productId, current);
+        const cur = agg.get(item.productId);
+        agg.set(item.productId, cur ? addFacts(cur, factsOfItem(item)) : factsOfItem(item));
     }
 
-    return Array.from(agg.entries()).map(([productId, a]) => {
-        const revenue = a.revenue;
-        const cost = a.cost;
-        const profit = revenue - cost;
+    return Array.from(agg.entries()).map(([productId, f]) => {
+        const m = metricsOf(f);
 
         return {
             productId,
             name: productNames[productId] ?? "Produk tidak dikenal",
-            quantitySold: a.quantitySold,
-            revenue,
-            cost,
-            profit,
-            margin: calculateMargin(revenue, profit),
+            quantitySold: m.qty,
+            revenue: m.revenue,
+            cost: m.cost,
+            profit: m.profit,
+            margin: m.margin,
         };
     });
 }
@@ -130,20 +105,17 @@ export function getProductPerformance(
     items: TransactionItemLike[]
 ): ProductSummary {
     const filtered = items.filter((i) => i.productId === productId);
-
-    const revenue = calculateRevenue(filtered);
-    const cost = calculateCost(filtered);
-    const profit = revenue - cost;
+    const m = metricsOf(foldItems(filtered));
     const quantitySold = filtered.reduce((sum, i) => sum + i.quantity, 0);
 
     return {
         productId,
         name: productName,
         quantitySold,
-        revenue,
-        cost,
-        profit,
-        margin: calculateMargin(revenue, profit),
+        revenue: m.revenue,
+        cost: m.cost,
+        profit: m.profit,
+        margin: m.margin,
     };
 }
 

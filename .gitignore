@@ -7,3 +7,4 @@ build
 !.env.example
 *.db
 .DS_Store
+.golden/
