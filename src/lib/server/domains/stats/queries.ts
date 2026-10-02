@@ -1,7 +1,9 @@
 import { db } from '$lib/server/db';
 import { product, stockMovement, transaction, transactionItem, user } from '$lib/server/db/schema';
 import { and, count, eq, gte, lte, sql } from 'drizzle-orm';
-import { localHour, localWeekStart, lineNet } from '$lib/server/sql';
+import { localHour, localWeekStart } from '$lib/server/sql';
+import { factColumns, toFacts } from '../facts/queries';
+import { metricsOf } from '$lib/analytics';
 import { makeTime, type BizTz } from '$lib/shared/time';
 
 // Jendela inventori tetap 14 hari (tidak ikut filter rentang halaman).
@@ -24,6 +26,7 @@ export async function queryHourly(businessId: string, from: Date, to: Date, tz: 
 
 // Penjualan per kasir: kelompok per userId (stabil walau staff ganti nama),
 // label = nama user terkini, fallback snapshot cashier_name.
+// Revenue dari factColumns + metricsOf (dulu agregat SQL inline di sini).
 export async function queryCashiers(businessId: string, from: Date, to: Date) {
   // Literal coalesce — tanpa parameter, jadi aman dipakai ulang di groupBy.
   const keyExpr = sql<string>`coalesce(${transaction.userId}, ${transaction.cashierName}, '-')`;
@@ -33,21 +36,25 @@ export async function queryCashiers(businessId: string, from: Date, to: Date) {
       userId: sql<string | null>`max(${transaction.userId})`,
       label: sql<string>`coalesce(max(${user.name}), max(${transaction.cashierName}), 'Tanpa nama')`,
       tx: sql<string>`count(distinct ${transaction.id})::text`,
-      revenue: sql<string>`coalesce(sum(${lineNet}), 0)::text`
+      ...factColumns()
     })
     .from(transaction)
     .leftJoin(user, eq(user.id, transaction.userId))
     .innerJoin(transactionItem, eq(transactionItem.transactionId, transaction.id))
     .where(and(eq(transaction.businessId, businessId), gte(transaction.createdAt, from), lte(transaction.createdAt, to)))
     .groupBy(keyExpr);
-  return rows.map((r) => ({
-    key: r.key,
-    userId: r.userId,
-    label: r.label,
-    tx: Number(r.tx),
-    revenue: Number(r.revenue),
-    avg: Number(r.tx) === 0 ? 0 : Number(r.revenue) / Number(r.tx)
-  }));
+  return rows.map((r) => {
+    const revenue = metricsOf(toFacts(r)).revenue;
+    const tx = Number(r.tx);
+    return {
+      key: r.key,
+      userId: r.userId,
+      label: r.label,
+      tx,
+      revenue,
+      avg: tx === 0 ? 0 : revenue / tx
+    };
+  });
 }
 
 // Pergerakan stok per minggu kalender zona bisnis (Senin) × alasan.

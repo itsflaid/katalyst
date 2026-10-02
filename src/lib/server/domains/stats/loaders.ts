@@ -4,107 +4,36 @@ import { and, asc, count, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import {
   calculateMargin,
   compareProductPeriods,
+  deltaRatio,
   estimateDaysCover,
+  fillDailySeries,
   getBusinessInsights,
   getLowMarginProducts,
   getTopProducts,
+  summarizeFacts,
+  totalsOf,
   type ProductSummary
 } from '$lib/analytics';
 import { makeTime, type BizTz } from '$lib/shared/time';
-import { localDate, lineNet } from '$lib/server/sql';
+import { previousWindow, resolvePeriod } from '$lib/shared/period';
+import { queryFactsByDay, queryFactsByProduct } from '$lib/server/domains/facts/queries';
+import { metricsOf, ZERO_FACTS } from '$lib/analytics';
 import { queryCashiers, queryHourly, queryInventory, queryMovementWeekly, querySusut, INVENTORY_WINDOW_DAYS } from './queries';
 import { pickMoneyUnit, scaleMoney } from '$lib/shared/format';
 
-type StatistikRangeKey = 'today' | 'week' | '30d' | 'month' | 'custom';
-
-function resolveStatistikRange(url: URL, tz: BizTz): { key: StatistikRangeKey; from: Date; to: Date; label: string; fromISO: string; toISO: string } {
-  const T = makeTime(tz);
-  const raw = (url.searchParams.get('range') ?? '30d').toLowerCase();
-  const now = new Date();
-  const iso = (d: Date) => T.dayKey(d);
-  if (raw === 'today') {
-    const from = T.startOfDay(now);
-    return { key: 'today', from, to: now, label: 'Hari ini', fromISO: '', toISO: '' };
-  }
-  if (raw === 'week') {
-    // Senin 00:00 zona bisnis → sekarang (konvensi Indonesia).
-    const dow = T.toLocal(now).getUTCDay();
-    const offset = (dow + 6) % 7;
-    const from = T.startOfDay(T.addDays(now, -offset));
-    return { key: 'week', from, to: now, label: 'Minggu ini (Senin–sekarang)', fromISO: '', toISO: '' };
-  }
-  if (raw === 'month') {
-    const w = T.toLocal(now);
-    const firstLocal = new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), 1) - T.offsetMs);
-    return { key: 'month', from: firstLocal, to: now, label: 'Bulan ini', fromISO: '', toISO: '' };
-  }
-  if (raw === 'custom') {
-    const f = T.parseDay(url.searchParams.get('from') ?? '');
-    const tRaw = T.parseDay(url.searchParams.get('to') ?? '');
-    if (f || tRaw) {
-      const from = f ?? T.addDays(T.startOfDay(now), -29);
-      const to = tRaw ? T.endOfDay(tRaw) : now;
-      const [a, b] = from <= to ? [from, to] : [to, from];
-      const fmt = (d: Date) => T.fmt(d, { day: 'numeric', month: 'short', year: 'numeric' });
-      return { key: 'custom', from: a, to: b, label: `Custom: ${fmt(a)} – ${fmt(b)}`, fromISO: iso(a), toISO: iso(b) };
-    }
-  }
-  const from = T.startOfDay(T.addDays(now, -29));
-  return { key: '30d', from, to: now, label: '30 hari terakhir', fromISO: '', toISO: '' };
-}
-
-function toSummaries(
-  rows: { productId: string; qty: string; revenue: string; cost: string }[],
-  names: Record<string, string>
-): ProductSummary[] {
-  return rows.map((g) => {
-    const quantitySold = Number(g.qty);
-    const revenue = Number(g.revenue);
-    const cost = Number(g.cost);
-    const profit = revenue - cost;
-    return {
-      productId: g.productId,
-      name: names[g.productId] ?? 'Produk tidak dikenal',
-      quantitySold,
-      revenue,
-      cost,
-      profit,
-      margin: calculateMargin(revenue, profit)
-    };
-  });
-}
-
 export async function getStatistikPageData(businessId: string, url: URL, tz: BizTz) {
   const T = makeTime(tz);
-  const range = resolveStatistikRange(url, tz);
+  const period = resolvePeriod(url, tz, new Date(), { default: '30d', allow: ['today', 'week', 'month', '30d', 'custom'] });
+  // Statistik tak memakai 'all': from/to selalu terisi (dijamin resolver).
+  if (!period.from || !period.to) throw new Error('Rentang statistik harus berawal dan berakhir.');
+  const range = { key: period.key, from: period.from, to: period.to, label: period.label, fromISO: period.fromISO, toISO: period.toISO };
 
   // Periode pembanding: durasi sama panjang, tepat sebelum periode aktif.
-  const dur = range.to.getTime() - range.from.getTime();
-  const prevTo = range.from;
-  const prevFrom = new Date(range.from.getTime() - Math.max(dur, 1));
+  const prevWin = previousWindow(range);
+  const prevTo = prevWin.to;
+  const prevFrom = prevWin.from;
 
-  const perProduct = (from: Date, to: Date) =>
-    db
-      .select({
-        productId: transactionItem.productId,
-        qty: sql<string>`sum(${transactionItem.quantity})::text`,
-        revenue: sql<string>`sum(${lineNet})::text`,
-        cost: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.costAtSale})::text`
-      })
-      .from(transactionItem)
-      .innerJoin(transaction, eq(transaction.id, transactionItem.transactionId))
-      .where(
-        and(
-          eq(transaction.businessId, businessId),
-          gte(transaction.createdAt, from),
-          lte(transaction.createdAt, to)
-        )
-      )
-      .groupBy(transactionItem.productId);
-
-  // Objek ekspresi yang sama dipakai di select & groupBy (lihat sql.ts).
-  const dayExprLocal = localDate(transaction.createdAt, tz);
-  const dayTextLocal = sql<string>`(${dayExprLocal})::text`;
+  const perProduct = (from: Date, to: Date) => queryFactsByProduct(db, businessId, { from, to });
 
   const [products, curRows, prevRows, dailyRows, prevTxRows, hourlyRows, cashierRows, moveRows, invData, susut] = await Promise.all([
     db
@@ -113,25 +42,8 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
       .where(eq(product.businessId, businessId)),
     perProduct(range.from, range.to),
     perProduct(prevFrom, prevTo),
-    db
-      .select({
-        day: dayTextLocal,
-        revenue: sql<string>`sum(${lineNet})::text`,
-        cost: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.costAtSale})::text`,
-        txCount: sql<string>`count(distinct ${transaction.id})::text`
-      })
-      .from(transaction)
-      .innerJoin(transactionItem, eq(transactionItem.transactionId, transaction.id))
-      .where(
-        and(
-          eq(transaction.businessId, businessId),
-          gte(transaction.createdAt, range.from),
-          lte(transaction.createdAt, range.to)
-        )
-      )
-      // Objek dayExpr dipakai ulang di select & groupBy — jangan inline dua
-      // kali (nomor parameter berbeda → Postgres error GROUP BY).
-      .groupBy(dayExprLocal),
+    // Agregat harian dari lapisan Facts (dulu GROUP BY inline).
+    queryFactsByDay(db, businessId, { from: range.from, to: range.to }, tz),
     db
       .select({ value: count() })
       .from(transaction)
@@ -150,9 +62,9 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
   ]);
 
   const names = Object.fromEntries(products.map((p) => [p.id, p.name]));
-  const cur = toSummaries(curRows, names);
-  const prev = toSummaries(prevRows, names);
-  // Rumus Tabel Performa + Δ: qty/rev/profit/margin kini; Δ=(kini−lalu)÷|lalu|×100% vs periode sama panjang.
+  const cur = summarizeFacts(curRows, names);
+  const prev = summarizeFacts(prevRows, names);
+  // Tabel Performa + Δ: qty/rev/profit/margin kini vs periode sama panjang.
   const rows = compareProductPeriods(cur, prev).sort((a, b) => b.current.revenue - a.current.revenue);
 
   const sum = (arr: ProductSummary[], f: (p: ProductSummary) => number) => arr.reduce((s, p) => s + f(p), 0);
@@ -160,45 +72,31 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
   const prevRev = sum(prev, (p) => p.revenue);
   const curProfit = sum(cur, (p) => p.profit);
   const prevProfit = sum(prev, (p) => p.profit);
+  // Delta persen tunggal (pecahan → ×100); null tetap null ("baru").
   const pct = (c: number, p: number): number | null => {
-    if (p === 0) return c === 0 ? 0 : null;
-    return ((c - p) / Math.abs(p)) * 100;
+    const r = deltaRatio(c, p);
+    return r === null ? null : r * 100;
   };
-  const tx = dailyRows.reduce((s, r) => s + Number(r.txCount), 0);
+  const tx = [...dailyRows.values()].reduce((s, r) => s + r.txCount, 0);
   const prevTx = prevTxRows[0]?.value ?? 0;
 
-  // Rumus Tren Revenue/Profit/Margin/Struk: revenue=Σ(qty×jual), profit=rev−Σ(qty×modal),
-  // margin=profit/rev×100% per hari zona bisnis (hari kosong=0, best day=rev max).
-  const byDay = new Map(dailyRows.map((r) => [r.day, r]));
-  const labels: string[] = [];
-  const revenueRaw: number[] = [];
-  const profitRaw: number[] = [];
-  const txRaw: number[] = [];
-  const dowRaw: number[] = [];
-  const marginTrend: number[] = [];
+  // Tren Revenue/Profit/Margin/Struk per hari zona bisnis dari engine
+  // (hari kosong=0, best day=rev max, margin dibulatkan 1 desimal % di sini).
+  const series = fillDailySeries(dailyRows, { from: range.from, to: range.to, T });
+  const labels = series.map((s) => s.label);
+  const revenueRaw = series.map((s) => s.revenue);
+  const profitRaw = series.map((s) => s.profit);
+  const txRaw = series.map((s) => s.tx);
+  const dowRaw = series.map((s) => s.isoDow);
+  const marginTrend = series.map((s) => (s.revenue === 0 ? 0 : Math.round((s.profit / s.revenue) * 1000) / 10));
   let bestDayLabel = '—';
   let bestDayRevenue = 0;
-  let cursor = T.startOfDay(range.from);
-  const end = range.to;
-  while (cursor <= end) {
-    const key = T.dayKey(cursor);
-    const v = byDay.get(key);
-    const rev = v ? Number(v.revenue) : 0;
-    const cost = v ? Number(v.cost) : 0;
-    const txd = v ? Number(v.txCount) : 0;
-    const w = T.toLocal(cursor);
-    const label = `${w.getUTCDate()}/${w.getUTCMonth() + 1}`;
-    labels.push(label);
-    revenueRaw.push(rev);
-    profitRaw.push(rev - cost);
-    txRaw.push(txd);
-    dowRaw.push(T.isoDow(cursor));
-    marginTrend.push(rev === 0 ? 0 : Math.round(((rev - cost) / rev) * 1000) / 10);
-    if (rev > bestDayRevenue) {
-      bestDayRevenue = rev;
-      bestDayLabel = T.fmt(cursor, { weekday: 'long', day: 'numeric', month: 'short' });
+  for (const s of series) {
+    if (s.revenue > bestDayRevenue) {
+      bestDayRevenue = s.revenue;
+      const d = T.parseDay(s.key);
+      if (d) bestDayLabel = T.fmt(d, { weekday: 'long', day: 'numeric', month: 'short' });
     }
-    cursor = T.addDays(cursor, 1);
   }
   const moneyUnit = pickMoneyUnit(Math.max(Math.abs(curRev), Math.abs(curProfit), 0));
   const revenue = scaleMoney(revenueRaw, moneyUnit);
@@ -403,28 +301,14 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
   // (30 hari terakhir) + delta (30 hari ini vs 30 hari sebelumnya).
   // Semua batas hari & bucket memakai zona bisnis (bukan UTC / lokal server).
   const sixtyDaysAgo = T.startOfDay(T.addDays(new Date(), -59));
-  // Objek ekspresi yang sama dipakai di select & groupBy (lihat sql.ts).
-  const dayExpr = localDate(transaction.createdAt, tz);
   const [products, grouped, countRows, recentTransactions, dailyRows, restockList, restockCounts] = await Promise.all([
     db
       .select({ id: product.id, name: product.name })
       .from(product)
       .where(eq(product.businessId, businessId)),
 
-    db
-      .select({
-        productId: transactionItem.productId,
-        // SUM numeric PG balik sebagai string via driver — di-Number() di bawah.
-        // quantity*price di-cast ke bigint dulu biar baris ekstrem gak
-        // overflow int4 di sisi database.
-        quantitySold: sql<string>`sum(${transactionItem.quantity})::text`,
-        revenue: sql<string>`sum(${lineNet})::text`,
-        cost: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.costAtSale})::text`
-      })
-      .from(transactionItem)
-      .innerJoin(transaction, eq(transaction.id, transactionItem.transactionId))
-      .where(eq(transaction.businessId, businessId))
-      .groupBy(transactionItem.productId),
+    // Agregat all-time per produk dari lapisan Facts (dulu GROUP BY inline).
+    queryFactsByProduct(db, businessId, { from: null, to: null }),
 
     // Jumlah transaksi real (bukan jumlah baris item) — dipakai gantiin
     // card "Cost" di KPI row biar gak overlap sama chart revenue-per-produk,
@@ -455,17 +339,8 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
       .orderBy(desc(transaction.createdAt))
       .limit(10),
 
-    db
-      .select({
-        day: sql<string>`(${dayExpr})::text`,
-        revenue: sql<string>`sum(${lineNet})::text`,
-        cost: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.costAtSale})::text`,
-        txCount: sql<string>`count(distinct ${transaction.id})::text`
-      })
-      .from(transaction)
-      .innerJoin(transactionItem, eq(transactionItem.transactionId, transaction.id))
-      .where(and(eq(transaction.businessId, businessId), gte(transaction.createdAt, sixtyDaysAgo)))
-      .groupBy(dayExpr),
+    // Agregat harian 60 hari dari lapisan Facts (dulu GROUP BY inline).
+    queryFactsByDay(db, businessId, { from: sixtyDaysAgo, to: null }, tz),
 
     // Kartu "Perlu restock": produk aktif dengan stok <= ambang, 5 paling
     // kritis + hitungan habis & menipis.
@@ -493,60 +368,22 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
 
   const productNames = Object.fromEntries(products.map((p) => [p.id, p.name]));
 
-  // Bentuk ProductSummary persis kayak summarizeByProduct lama (termasuk
-  // fallback nama & aturan margin revenue-0), cuma sumber angkanya dari SQL.
-  const perProduct: ProductSummary[] = grouped.map((g) => {
-    const quantitySold = Number(g.quantitySold);
-    const revenue = Number(g.revenue);
-    const cost = Number(g.cost);
-    const profit = revenue - cost;
-    return {
-      productId: g.productId,
-      name: productNames[g.productId] ?? 'Produk tidak dikenal',
-      quantitySold,
-      revenue,
-      cost,
-      profit,
-      margin: calculateMargin(revenue, profit)
-    };
-  });
+  // Ringkasan per produk + total bisnis dari engine (dulu mapping inline).
+  const perProduct: ProductSummary[] = summarizeFacts(grouped, productNames);
 
   // Total bisnis = jumlahkan total per produk — sama persis dengan menjumlah
   // semua item dulu baru ditotal (asosiatif), jadi KPI tidak berubah.
-  const revenue = perProduct.reduce((s, p) => s + p.revenue, 0);
-  const cost = perProduct.reduce((s, p) => s + p.cost, 0);
-  const profit = revenue - cost;
-  const summary = { revenue, cost, profit, margin: calculateMargin(revenue, profit) };
+  const summary = totalsOf(perProduct);
 
   const topByRevenue = getTopProducts(perProduct, 'revenue', 5);
   const insights = getBusinessInsights(perProduct).slice(0, 3);
 
   const [{ value: transactionCount }] = countRows;
 
-  // Bangun deret harian 60 hari (isi 0 untuk hari tanpa transaksi) dari
-  // hasil GROUP BY di atas. 30 hari terakhir → tren chart (dalam jt Rp
-  // biar sumbu terbaca), 30 vs 30 sebelumnya → delta KPI.
-  const byDay = new Map(
-    dailyRows.map((r) => [
-      r.day,
-      { revenue: Number(r.revenue), cost: Number(r.cost), tx: Number(r.txCount) }
-    ])
-  );
-  const days: { key: string; label: string; revenue: number; profit: number; tx: number }[] = [];
-  const todayStart = T.startOfDay(new Date());
-  for (let i = 59; i >= 0; i--) {
-    const d = T.addDays(todayStart, -i);
-    const key = T.dayKey(d);
-    const w = T.toLocal(d);
-    const v = byDay.get(key) ?? { revenue: 0, cost: 0, tx: 0 };
-    days.push({
-      key,
-      label: `${w.getUTCDate()}/${w.getUTCMonth() + 1}`,
-      revenue: v.revenue,
-      profit: v.revenue - v.cost,
-      tx: v.tx
-    });
-  }
+  // Deret harian 60 hari dari engine (isi 0 untuk hari tanpa transaksi).
+  // 30 hari terakhir → tren chart, 30 vs 30 sebelumnya → delta KPI.
+  const series60 = fillDailySeries(dailyRows, { from: sixtyDaysAgo, to: new Date(), T });
+  const days = series60.map((d) => ({ key: d.key, label: d.label, revenue: d.revenue, profit: d.profit, tx: d.tx }));
   const prev = days.slice(0, 30);
   const cur = days.slice(30);
   const sum = (arr: typeof days, f: (d: (typeof days)[number]) => number) =>
@@ -557,9 +394,10 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
   const prevProfit = sum(prev, (d) => d.profit);
   const curTx = sum(cur, (d) => d.tx);
   const prevTx = sum(prev, (d) => d.tx);
+  // Delta persen tunggal (pecahan → ×100); null tetap null ("baru").
   const pct = (c: number, p: number): number | null => {
-    if (p === 0) return c === 0 ? 0 : null;
-    return ((c - p) / Math.abs(p)) * 100;
+    const r = deltaRatio(c, p);
+    return r === null ? null : r * 100;
   };
   const curMargin = calculateMargin(curRev, curProfit);
   const prevMargin = calculateMargin(prevRev, prevProfit);
@@ -595,95 +433,34 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
   return { summary, topByRevenue, recentTransactions, transactionCount, trend, deltas, insights, restock };
 }
 
-type SimulatorRangeKey = 'today' | 'week' | 'month' | 'all' | 'custom';
-
-function resolveSimulatorRange(url: URL, tz: BizTz): { key: SimulatorRangeKey; from: Date | null; to: Date | null; label: string; fromISO: string; toISO: string } {
-  const T = makeTime(tz);
-  const raw = (url.searchParams.get('range') ?? 'month').toLowerCase();
-  const now = new Date();
-  if (raw === 'today') {
-    const from = T.startOfDay(now);
-    return { key: 'today', from, to: now, label: 'Hari ini', fromISO: '', toISO: '' };
-  }
-  if (raw === 'week') {
-    // Minggu ini: Senin 00:00 zona bisnis → sekarang (konvensi Indonesia).
-    const dow = T.toLocal(now).getUTCDay();
-    const offset = (dow + 6) % 7;
-    const from = T.startOfDay(T.addDays(now, -offset));
-    return { key: 'week', from, to: now, label: 'Minggu ini (Senin–sekarang)', fromISO: '', toISO: '' };
-  }
-  if (raw === 'month') {
-    const w = T.toLocal(now);
-    const from = new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), 1) - T.offsetMs);
-    return { key: 'month', from, to: now, label: 'Bulan ini', fromISO: '', toISO: '' };
-  }
-  if (raw === 'custom') {
-    const f = T.parseDay(url.searchParams.get('from') ?? '');
-    const tRaw = T.parseDay(url.searchParams.get('to') ?? '');
-    if (!f && !tRaw) return { key: 'all', from: null, to: null, label: 'Semua waktu', fromISO: '', toISO: '' };
-    const from = f ?? null;
-    const to = tRaw ? T.endOfDay(tRaw) : now;
-    const fmt = (d: Date) => T.fmt(d, { day: 'numeric', month: 'short', year: 'numeric' });
-    const label = from && tRaw ? `${fmt(from)} – ${fmt(T.endOfDay(tRaw))}` : from ? `Sejak ${fmt(from)}` : `Sampai ${fmt(to!)}`;
-    // iso buat <input type="date"> memakai hari zona bisnis.
-    const localIso = (d: Date) => T.dayKey(d);
-    return { key: 'custom', from, to, label: `Custom: ${label}`, fromISO: from ? localIso(from) : '', toISO: tRaw ? localIso(T.endOfDay(tRaw)) : '' };
-  }
-  return { key: 'all', from: null, to: null, label: 'Semua waktu', fromISO: '', toISO: '' };
-}
-
 export async function getSimulatorPageData(businessId: string, url: URL, tz: BizTz) {
-  const range = resolveSimulatorRange(url, tz);
+  const range = resolvePeriod(url, tz, new Date(), { default: 'month', allow: ['today', 'week', 'month', 'all', 'custom'] });
 
-  // Baseline per produk dihitung di SQL (GROUP BY) — yang ditransfer cuma
-  // 1 baris per produk, bukan 1 baris per item transaksi. Sebelumnya load
-  // mengembalikan semua item mentah (±13rb rows di seed 90 hari) sehingga
-  // tiap buka simulator terasa delay; sekarang jauh lebih ringan.
+  // Baseline per produk dari lapisan Facts (GROUP BY di SQL — yang
+  // ditransfer cuma 1 baris per produk). Field lama (qty/revenue/cost/
+  // profit/margin/txCount) dipertahankan untuk kompatibilitas; `facts`
+  // dipakai simulator baru (diskon kuota + drift).
   // Produk tanpa histori tetap masuk dengan angka nol + txCount 0.
-  const conds = [eq(transaction.businessId, businessId)];
-  if (range.from) conds.push(gte(transaction.createdAt, range.from));
-  if (range.to) conds.push(lte(transaction.createdAt, range.to));
-  const [products, aggRows] = await Promise.all([
+  const [products, agg] = await Promise.all([
     db.select().from(product).where(eq(product.businessId, businessId)),
-    db
-      .select({
-        productId: transactionItem.productId,
-        qty: sql<string>`sum(${transactionItem.quantity})::text`,
-        revenue: sql<string>`sum(${lineNet})::text`,
-        cost: sql<string>`sum(${transactionItem.quantity}::bigint * ${transactionItem.costAtSale})::text`,
-        txCount: sql<string>`count(distinct ${transaction.id})::text`
-      })
-      .from(transactionItem)
-      .innerJoin(transaction, eq(transaction.id, transactionItem.transactionId))
-      .where(and(...conds))
-      .groupBy(transactionItem.productId)
+    queryFactsByProduct(db, businessId, { from: range.from, to: range.to })
   ]);
-
-  const agg = new Map(
-    aggRows.map((r) => [
-      r.productId,
-      {
-        qty: Number(r.qty),
-        revenue: Number(r.revenue),
-        cost: Number(r.cost),
-        txCount: Number(r.txCount)
-      }
-    ])
-  );
 
   const baselines = products.map((p) => {
     const a = agg.get(p.id);
-    const revenue = a?.revenue ?? 0;
-    const cost = a?.cost ?? 0;
-    const profit = revenue - cost;
+    const facts = a
+      ? { qty: a.qty, gross: a.gross, discount: a.discount, cost: a.cost, discountedQty: a.discountedQty }
+      : { ...ZERO_FACTS };
+    const m = metricsOf(facts);
     return {
       productId: p.id,
-      qty: a?.qty ?? 0,
-      revenue,
-      cost,
-      profit,
-      margin: calculateMargin(revenue, profit),
-      txCount: a?.txCount ?? 0
+      qty: m.qty,
+      revenue: m.revenue,
+      cost: m.cost,
+      profit: m.profit,
+      margin: m.margin,
+      txCount: a?.txCount ?? 0,
+      facts
     };
   });
 

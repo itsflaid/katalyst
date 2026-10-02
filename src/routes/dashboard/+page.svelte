@@ -8,6 +8,7 @@
   import StockBadge from '$lib/components/products/StockBadge.svelte';
   import { page } from '$app/stores';
   import { makeTime, DEFAULT_TZ } from '$lib/shared/time';
+  import { lineNetOf } from '$lib/analytics';
   export let data;
   const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
   const num = (n: number) => new Intl.NumberFormat('id-ID').format(n);
@@ -122,7 +123,7 @@
             <td class="px-3 py-2 text-ink">{t.productName}</td>
             <td class="px-3 py-2 tabular text-muted">{t.quantity}×</td>
             <td class="px-3 py-2 text-body-sm text-muted whitespace-nowrap">{fmtDate(t.createdAt)}</td>
-            <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(t.quantity * t.priceAtSale - (t.discountAmount ?? 0))}</td>
+            <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(lineNetOf(t))}</td>
           </tr>
         {/each}
       </Table>
