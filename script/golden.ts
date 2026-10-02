@@ -1,10 +1,6 @@
 // Golden snapshot halaman (butuh dev server + DB demo ter-seed).
-// Pola dari script/e2e-discount.ts: login username lalu GET __data.json + cookie.
 // Rekam: `tsx script/golden.ts record` · Banding: `tsx script/golden.ts check`.
-// Snapshot di .golden/ (tidak di-commit). Rekam & banding di sesi yang sama;
-// jangan jalan bersamaan dengan verify:e2e-discount (yang menulis data).
-// Normalisasi: JSON.parse lalu devalue.unflatten(nodes[].data); bila format
-// beda dari dugaan, fallback ke teks mentah + laporkan (tidak diam-diam lolos).
+// Rekam & banding di sesi yang sama; jangan bersamaan dengan e2e-discount (menulis data).
 import 'dotenv/config';
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -89,10 +85,8 @@ async function fetchRoute(cookie: string, route: string): Promise<{ normalized: 
 }
 
 // Urutan matrix.points mengikuti GROUP BY SQL tanpa ORDER BY sehingga tak
-// stabil antar-query (nilai sama, urutan beda — terbukti di PR5: 2 DIFF
-// dengan panjang identik, hanya urutan points berbeda). Scatter chart tak
-// peduli urutan → bandingkan sebagai himpunan (urut by href). Diterapkan
-// ke data baru maupun snapshot lama saat check.
+// stabil antar-query (nilai sama, urutan beda). Scatter chart tak peduli
+// urutan → bandingkan sebagai himpunan (urut by href).
 function stabilizePoints(data: unknown): unknown {
   if (Array.isArray(data)) return data.map(stabilizePoints);
   if (data && typeof data === 'object' && !(data instanceof Date)) {
@@ -156,10 +150,9 @@ async function collect(cookie: string): Promise<{ route: string; data: unknown }
   return out;
 }
 
-// Setelah PR3 shape baselines simulator bertambah (`facts`), jadi untuk
-// rute /simulator hanya subset field lama per produk yang dibandingkan
-// (productId, qty, revenue, cost, profit, margin, txCount) + label rentang.
-// Berfungsi atas snapshot lama (tanpa facts) maupun baru.
+// Baselines simulator memuat `facts`; rute /simulator dibandingkan hanya
+// subset field per produk (productId, qty, revenue, cost, profit, margin,
+// txCount) + label rentang. Snapshot tanpa facts tetap cocok.
 function simulatorSubset(data: unknown, route: string): unknown {
   const pick = (b: Record<string, unknown>) => ({
     productId: b.productId,
@@ -208,7 +201,7 @@ async function main() {
     console.log(`record: ${rows.length} rute → .golden/`);
     return;
   }
-  // check
+  // Mode check
   let diff = 0;
   const names = existsSync(DIR) ? readdirSync(DIR) : [];
   if (names.length === 0) throw new Error('.golden/ kosong — jalankan golden:record dulu.');

@@ -1,5 +1,3 @@
-// Palet chart — selaras token tema "Executive Precision", bukan warna
-// Tailwind default. Dipakai semua chart baru (Fase 5).
 export const C = {
   navy: '#172554',
   green: '#16A34A',

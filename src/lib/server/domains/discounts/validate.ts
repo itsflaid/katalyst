@@ -37,9 +37,9 @@ export type DiscountFormResult =
 
 const PRESETS: WindowPreset[] = ['TODAY', 'DAYS_2', 'DAYS_7', 'CUSTOM', 'OPEN'];
 
-// Validasi form tambah/edit diskon. Aturan lengkap di SPEC Fase 4.1:
-// nama 1–60, persen 1–100, scope tetap saat update, GLOBAL wajib endsAt +
-// tanpa kuota, kuota 1–1jt & ≥ terpakai, overlap PRODUCT, guard rugi.
+// Validasi form tambah/edit diskon: nama 1–60, persen 1–100, scope tetap
+// saat update, GLOBAL wajib endsAt + tanpa kuota, kuota 1–1jt & ≥ terpakai,
+// overlap PRODUCT, guard rugi.
 export async function parseDiscountForm(form: FormData, ctx: DiscountFormCtx): Promise<DiscountFormResult> {
   const { businessId, now, T, existing } = ctx;
 

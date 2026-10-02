@@ -17,7 +17,7 @@
   export let statusFilter: StatusFilter;
   export let isOwner: boolean;
   export let onAdd: () => void;
-  // Filter stok (Fase 4): "restock" = stock <= minStock (termasuk habis).
+  // Filter stok: "restock" = stock <= minStock (termasuk habis).
   export let stockFilter: StockFilter = "all";
   export let restockCount = 0;
   export let outCount = 0;

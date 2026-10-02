@@ -1,10 +1,5 @@
-// E2E diskon Fase 5: menyerang dev server yang sedang jalan (BASE_URL,
-// default http://localhost:5173) + asersi DB langsung (postgres-js).
-// Login via better-auth username; form action via POST urlencoded +
-// header Origin (CSRF) + x-sveltekit-invalid-data (balasan JSON).
-// Fixture berawalan E2E-; dibersihkan di finally (urutan FK). Exit 1 bila FAIL.
-// CATATAN: skrip ini MENULIS data (struk, diskon, produk fixture) —
-// jalankan hanya di DB dev.
+// E2E diskon: menyerang dev server (BASE_URL, default localhost:5173) + asersi DB langsung.
+// Skrip MENULIS data fixture (berawalan E2E-) — jalankan hanya di DB dev; exit 1 bila FAIL.
 import 'dotenv/config';
 import postgres from 'postgres';
 import { randomUUID } from 'crypto';

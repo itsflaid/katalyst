@@ -8,6 +8,7 @@ import { join, relative } from 'node:path';
 
 const ROOT = process.cwd();
 const SRC = join(ROOT, 'src');
+const SCRIPT = join(ROOT, 'script');
 const ENFORCE = process.argv.includes('--enforce');
 
 interface Violation {
@@ -18,6 +19,7 @@ interface Violation {
 }
 
 const violations: Violation[] = [];
+const r5Warnings: Violation[] = [];
 
 // Kumpulkan file sumber (ts/svelte/js), lewati copilot.
 function collect(dir: string, out: string[] = []): string[] {
@@ -103,6 +105,82 @@ function r4Scope(file: string): boolean {
 // sah di shared/period.ts untuk tgl 1 dan previousWindow).
 const R4_RES = [/\bnew\s+Date\s*\(\s*\)/, /\bDate\s*\.\s*now\s*\(/];
 
+// ---------- R5 ----------
+const R5_BANNER_RE = /^[-=─━*#~_+]{4,}\s*$|^[-=─━*#~_+]{2,}\s*\S.*\S\s*[-=─━*#~_+]{2,}$/;
+const R5_DOC_REF_RE = /§\s*\d|\bSPEC\b|\bFase\s*\d|\bPR\s?-?[A-Z]?\d|\bTahap\s*\d/;
+const R5_HISTORY_RE = /\b(dulu|dahulu|kini|pengganti|menggantikan|hasil refactor|tidak lagi|sudah tidak|semula|awalnya|versi lama|legacy)\b/;
+const R5_RUMUS_LABEL_RE = /^Rumus\s+/i;
+const R5_TODO_NAKED_RE = /\b(TODO|FIXME|XXX|HACK)\b/;
+const R5_EMOJI_RE = /\p{Extended_Pictographic}/u;
+const R5_FORMULA_LINE_RE = /^\s*[^=]+?\s*=\s*.+/;
+
+function extractCommentText(line: string): string | null {
+  const t = line.trim();
+  if (t.startsWith('//')) return t.slice(2).trim();
+  if (t.startsWith('/*') || t.startsWith('*')) return t.replace(/^\/?\*+\/?|\*+\/$/g, '').trim();
+  if (t.startsWith('<!--')) return t.replace(/^<!--\s*|\s*-->$/g, '').trim();
+  return null;
+}
+
+function isDirective(text: string): boolean {
+  return /@ts-(?:expect-error|ignore|nocheck|check)|eslint-(?:disable|enable)|svelte-ignore|prettier-ignore|\/\/\/\s*<reference|@vite-ignore/.test(text);
+}
+
+function r5Check(file: string, lines: string[]) {
+  const isToolFile = file === 'script/verify-arch.ts' || file === 'script/comments.ts';
+  
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const lineNo = i + 1;
+    if (hasAllow(raw)) continue;
+
+    const commentText = extractCommentText(raw);
+    if (!commentText) continue;
+    if (isDirective(commentText)) continue;
+
+    if (R5_BANNER_RE.test(commentText) && !isToolFile) {
+      r5Warnings.push({ file, line: lineNo, rule: 'R5a:banner', snippet: raw.trim().slice(0, 80) });
+    }
+    if (R5_DOC_REF_RE.test(commentText) && !isToolFile) {
+      r5Warnings.push({ file, line: lineNo, rule: 'R5b:docref', snippet: raw.trim().slice(0, 80) });
+    }
+    if (R5_HISTORY_RE.test(commentText)) {
+      r5Warnings.push({ file, line: lineNo, rule: 'R5c:history', snippet: raw.trim().slice(0, 80) });
+    }
+    if (R5_RUMUS_LABEL_RE.test(commentText)) {
+      r5Warnings.push({ file, line: lineNo, rule: 'R5d:rumus-label', snippet: raw.trim().slice(0, 80) });
+    }
+    if (R5_TODO_NAKED_RE.test(commentText) && !/TODO\([^)]+\):/.test(commentText)) {
+      r5Warnings.push({ file, line: lineNo, rule: 'R5f:todo-naked', snippet: raw.trim().slice(0, 80) });
+    }
+    if (R5_EMOJI_RE.test(commentText)) {
+      r5Warnings.push({ file, line: lineNo, rule: 'R5g:emoji', snippet: raw.trim().slice(0, 80) });
+    }
+  }
+
+  let currentBlock: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const commentText = extractCommentText(lines[i]);
+    if (commentText && !isDirective(commentText)) {
+      currentBlock.push(commentText);
+    } else {
+      if (currentBlock.length > 3) {
+        const allFormula = currentBlock.every(c => R5_FORMULA_LINE_RE.test(c));
+        if (!allFormula) {
+          r5Warnings.push({ file, line: i - currentBlock.length + 1, rule: 'R5e:long-block', snippet: `${currentBlock.length} baris` });
+        }
+      }
+      currentBlock = [];
+    }
+  }
+  if (currentBlock.length > 3) {
+    const allFormula = currentBlock.every(c => R5_FORMULA_LINE_RE.test(c));
+    if (!allFormula) {
+      r5Warnings.push({ file, line: lines.length - currentBlock.length + 1, rule: 'R5e:long-block', snippet: `${currentBlock.length} baris` });
+    }
+  }
+}
+
 function main() {
   const files = collect(SRC);
   for (const abs of files) {
@@ -145,6 +223,9 @@ function main() {
         }
       }
     });
+    
+    // R5
+    r5Check(file, lines);
   }
 
   for (const v of violations) {
@@ -153,6 +234,15 @@ function main() {
   const byRule = new Map<string, number>();
   for (const v of violations) byRule.set(v.rule, (byRule.get(v.rule) ?? 0) + 1);
   console.log(`\n${violations.length} pelanggaran (${[...byRule.entries()].map(([k, n]) => `${k}=${n}`).join(', ') || 'bersih'})`);
+  
+  console.log('\n--- R5 Peringatan (belum ditegakkan) ---');
+  for (const w of r5Warnings) {
+    console.log(`${w.file}:${w.line} [${w.rule}] ${w.snippet}`);
+  }
+  const byR5 = new Map<string, number>();
+  for (const w of r5Warnings) byR5.set(w.rule, (byR5.get(w.rule) ?? 0) + 1);
+  console.log(`${r5Warnings.length} temuan R5 (${[...byR5.entries()].map(([k, n]) => `${k}=${n}`).join(', ') || 'bersih'})`);
+  
   if (ENFORCE && violations.length > 0) process.exit(1);
 }
 

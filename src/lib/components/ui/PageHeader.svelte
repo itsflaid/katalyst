@@ -1,8 +1,6 @@
 <script lang="ts">
-  // Heading standar tiap halaman: h1 headline-lg + subteks opsional.
-  // Satu komponen biar ritme vertikal konsisten (mb-6) dan tidak ada
-  // duplikasi class di tiap +page.svelte. Slot "badge" buat aksen
-  // inline di samping judul (mis. status Aktif di detail produk).
+// Heading standar tiap halaman: h1 headline-lg + subteks opsional.
+// Ritme vertikal konsisten (mb-6); slot "badge" untuk aksen di samping judul.
   export let title = '';
   export let subtitle = '';
   let className = '';

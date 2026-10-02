@@ -7,7 +7,7 @@ const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
 const pk = lock.packages;
 const ALLOWED = /^(@esbuild\/|@cloudflare\/workerd-|@rollup\/rollup-)/;
 
-// lokasi kandidat entri `dep` untuk paket di P: nested dulu, lalu naik (sibling, dst.)
+// lokasi kandidat entri `dep` untuk paket di P: nested diutamakan, lalu naik (sibling, dst.)
 function candidates(P, dep) {
   const out = [`${P}/node_modules/${dep}`];
   let p = P;

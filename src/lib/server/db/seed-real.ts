@@ -9,20 +9,8 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { placeholderEmail, normalizeUsername, isValidUsername } from '../domains/invites';
 
-// -----------------------------------------------------------------------
-// Bootstrap script buat deployment beneran — BUKAN demo. Bikin 1 business
-// + 1 Owner dari environment variable, tanpa data dummy apa pun. Beda dari
-// seed-demo.ts yang tujuannya portfolio/demo (data lengkap 90 hari + 4 staff
-// dummy). Jalanin ini SEKALI aja pas pertama kali app di-deploy ke klien
-// beneran. Kalau mau ganti username/password/nama owner ke depannya, cukup
-// ubah .env — file ini sendiri gak perlu disentuh lagi.
-//
-// Kenapa standalone (bukan reuse src/lib/server/db/index.ts + auth.ts):
-// keduanya pakai `$env/dynamic/private`, virtual module yang cuma
-// ke-resolve di dalam Vite runtime — script ini dijalankan lewat `tsx`
-// langsung (di luar Vite), jadi bikin db client & instance betterAuth
-// sendiri dari process.env, pola yang sama seperti seed-demo.ts.
-// -----------------------------------------------------------------------
+// Bootstrap deployment (bukan demo): 1 business + 1 owner dari environment variable.
+// Jalan sekali saat deploy; ganti kredensial lewat .env tanpa ubah file ini.
 
 const required = ['DATABASE_URL', 'ADMIN_USERNAME', 'ADMIN_PASSWORD', 'BUSINESS_NAME'] as const;
 for (const key of required) {

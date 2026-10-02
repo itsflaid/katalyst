@@ -37,7 +37,7 @@
         (stockFilter === "restock" ? p.stock <= minOf(p) : p.stock <= 0);
       return matchQuery && matchStatus && matchStock;
     })
-    // Saat filter stok aktif, urutkan stok naik (yang paling kritis dulu).
+    // Saat filter stok aktif, urutkan stok naik (yang paling kritis di atas).
     .sort((a, b) => (stockFilter === "all" ? 0 : a.stock - b.stock));
   $: activeCount = data.products.filter((p) => p.isActive).length;
   // STAFF boleh lihat daftar & stok, tapi semua aksi ubah data ditolak server

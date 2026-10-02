@@ -17,9 +17,7 @@
     desc: string;
   }
 
-  // Formatter dibuat sekali di level modul — sebelumnya new
-  // Intl.NumberFormat tiap pemanggilan idr()/num(), padahal dipanggil
-  // puluhan kali tiap render + tiap geser slider.
+  // Formatter dibuat sekali di level modul — Intl.NumberFormat dipanggil puluhan kali tiap render + tiap geser slider.
   const idrFmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
   const numFmt = new Intl.NumberFormat('id-ID');
   const idr = (n: number) => idrFmt.format(n);
@@ -41,12 +39,9 @@
   let volPct = 0;
   let qtyOverride = '';
 
-  // Rentang baseline: hari ini / minggu ini / bulan ini / semua / custom.
-  // Default bulan ini (dari server) biar load awal ringan — 'Semua'
-  // tetap tersedia sebagai opt-in. Ganti rentang = reload server (goto)
-  // biar agregat dihitung ulang dari transaction.created_at.
-  // Hitungan live di bawah sengaja di client (responsif tiap geser tuas);
-  // rumusnya SAMA dengan lib/simulation.ts (satu fungsi simulate).
+  // Rentang baseline: hari ini / minggu ini / bulan ini / semua / custom. Default bulan ini (dari server) biar load awal ringan.
+  // Ganti rentang = reload server (goto) biar agregat dihitung ulang dari transaction.created_at.
+  // Hitungan live di client (responsif tiap geser tuas); rumusnya sama dengan lib/simulation.ts (satu fungsi simulate).
   let activeRange: string = data.range ?? 'month';
   let fromInput: string = data.rangeFrom ?? '';
   let toInput: string = data.rangeTo ?? '';
@@ -108,7 +103,7 @@
   $: overrideQty =
     qtyOverride.trim() === '' ? null : Math.max(0, Math.floor(Number(qtyOverride) || 0));
 
-  // SATU-SATUNYA hitungan simulasi — tak ada rumus lokal lagi.
+  // Satu-satunya hitungan simulasi — tak ada rumus lokal lagi.
   $: result = simulate({
     baseline: base.facts,
     product: { sellingPrice: sellBase, costPrice: costBase },
@@ -124,7 +119,7 @@
   $: effPrice = result.simulated.avgNetPrice;
   $: unitProfit = result.unit.unitProfit;
 
-  // Delta utama & verdict = dibanding KONDISI SEKARANG (bukan aktual).
+  // Delta utama & verdict = dibanding kondisi sekarang (bukan aktual).
   $: revDelta = result.impact.vsStatusQuo.revenue;
   $: profitDelta = result.impact.vsStatusQuo.profit;
   $: volDelta = result.impact.vsStatusQuo.qty;
@@ -141,6 +136,8 @@
   $: breakEvenQty = result.breakEvenQty;
   $: maxDiscount = result.maxDiscountPct;
 
+  // ambang positif = profitDelta >= 0.05 && marginPts >= -0.02
+  // ambang negatif = profitDelta <= -0.05 || margin simulasi < 0
   $: verdict =
     simQty === 0
       ? { tone: 'neutral', title: 'Belum ada volume', desc: 'Isi override quantity atau pastikan produk punya histori penjualan.' }
@@ -177,7 +174,7 @@
       : null;
 
   // Lebar bar perbandingan (relatif ke nilai terbesar, min 2% biar kelihatan).
-  // Basis bar = kondisi SEKARANG (bukan aktual).
+  // Basis bar = kondisi sekarang (bukan aktual).
   $: sqRev = result.statusQuo.revenue;
   $: sqProfit = result.statusQuo.profit;
   $: sqMargin = result.statusQuo.margin;
@@ -186,10 +183,8 @@
   $: maxQty = Math.max(histQty, simQty, 1);
   const w = (v: number, max: number) => `${Math.max(2, (v / max) * 100).toFixed(1)}%`;
 
-  // Jembatan ke /diskon: persen simulasi dijadikan draf diskon produk yang
-  // dihitung dari harga jual SAAT INI — makanya tombol aktif hanya bila tuas
-  // harga jual tidak diubah. Baseline week/month parsial (Senin–sekarang /
-  // tgl 1–sekarang), jadi kuota dari simQty hanyalah saran awal.
+  // Jembatan ke /diskon: persen simulasi dijadikan draf diskon produk yang dihitung dari harga jual saat ini — tombol aktif hanya bila tuas harga jual tidak diubah.
+  // Baseline week/month parsial (Senin–sekarang / tgl 1–sekarang), jadi kuota dari simQty hanyalah saran awal.
   function goToDiscount() {
     if (!prod || discountMode !== 'percent' || discountPct <= 0 || priceValue !== sellBase) return;
     const params = new URLSearchParams({

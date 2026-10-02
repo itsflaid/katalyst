@@ -1,10 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-// User yang masih punya sesi gak boleh lihat form login — mis. via tombol
-// Back browser setelah login, atau sesi yang ternyata masih hidup saat
-// logout. Langsung lempar ke halaman awal biar gak ada state aneh kayak
-// "form login tampil di dalam app shell" atau alur balik-ke-halaman-lama.
+// User yang masih punya sesi tidak boleh lihat form login (mis. via tombol Back setelah login).
+// Langsung lempar ke halaman awal — mencegah state aneh seperti form login di dalam app shell.
 export const load: PageServerLoad = async ({ locals }) => {
   if (!locals.user) return {};
   throw redirect(303, locals.user.role === 'OWNER' ? '/dashboard' : '/transactions');
