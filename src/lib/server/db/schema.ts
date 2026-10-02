@@ -1,11 +1,7 @@
 import { pgTable, text, timestamp, boolean, integer, pgEnum, index, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-// -----------------------------------------------------------------------
-// Auth tables — bentuk kolomnya ngikutin konvensi default better-auth's
-// drizzle adapter (user/session/account/verification). Field custom
-// (role, businessId) ditambah di `user` lewat additionalFields.
-// -----------------------------------------------------------------------
+// Tabel autentikasi better-auth (user, session, account, verification).
 
 export const roleEnum = pgEnum('role', ['OWNER', 'STAFF']);
 
@@ -14,8 +10,7 @@ export const business = pgTable(
   {
     id: text('id').primaryKey(),
     name: text('name').notNull(),
-    // Zona waktu operasional bisnis (bukan zona perangkat). Dipakai semua
-    // bucket waktu & tampilan; default WITA agar perilaku lama tidak berubah.
+    // Zona waktu operasional bisnis untuk bucket waktu dan tampilan; default WITA.
     timezone: text('timezone').notNull().default('Asia/Makassar'),
     createdAt: timestamp('created_at').notNull().defaultNow()
   },
@@ -28,19 +23,14 @@ export const user = pgTable('user', {
   id: text('id').primaryKey(),
   name: text('name'),
   email: text('email').notNull().unique(),
-  // Username login staff (unik global, seperti email). Owner yang dibuat
-  // via seed/demo atau sebelum fitur ini boleh NULL (login pakai email).
-  // Staff selalu punya username — dibuat saat terima undangan.
+  // Username login staff (unik global). Owner tanpa username boleh NULL.
   username: text('username').unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
   image: text('image'),
-  // Custom fields (bukan bawaan better-auth) — dipetakan via
-  // `user.additionalFields` di src/lib/server/auth.ts.
+  // Kolom tambahan yang dipetakan via user.additionalFields di auth.ts.
   role: roleEnum('role').notNull().default('OWNER'),
   businessId: text('business_id').references(() => business.id),
-  // Kolom wajib better-auth admin plugin (dipakai setUserPassword path) —
-  // fitur ban tidak dipakai, tapi schema harus ada biar tidak 500
-  // "Drizzle schema mismatch" saat runtime.
+  // Dipakai plugin admin better-auth agar schema cocok di runtime.
   banned: boolean('banned').notNull().default(false),
   banReason: text('ban_reason'),
   banExpires: timestamp('ban_expires'),
@@ -57,15 +47,13 @@ export const session = pgTable('session', {
   expiresAt: timestamp('expires_at').notNull(),
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
-  // Kolom wajib better-auth admin plugin (impersonate) — tidak dipakai,
-  // tapi harus ada biar tidak schema mismatch.
+  // Dipakai plugin admin better-auth agar schema cocok di runtime.
   impersonatedBy: text('impersonated_by'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 
-// Kredensial email/password better-auth disimpan di `account` dengan
-// providerId = "credential", bukan tabel User terpisah kayak di Prisma/NextAuth.
+// Kredensial email/password disimpan di account dengan providerId = "credential".
 export const account = pgTable('account', {
   id: text('id').primaryKey(),
   userId: text('user_id')
@@ -93,13 +81,8 @@ export const verification = pgTable('verification', {
   updatedAt: timestamp('updated_at').defaultNow()
 });
 
-// Undangan staff ala SaaS/POS (Square/Moka/Majoo): owner input username+nama,
-// staff bikin password sendiri via link /invite/[token]. Role dikunci STAFF
-// di record invite (bukan pilihan user). Token mentah cuma tampil sekali ke
-// owner; di DB yang disimpan hash SHA-256-nya. Expiry default 48 jam,
-// resend = revoke token lama + terbitkan token baru (bukan kirim ulang
-// token yang sama). Username (bukan email) karena staff operasional tidak
-// wajib punya email.
+// Undangan staff: owner input username dan nama, staff buat password via /invite/[token].
+// Token disimpan sebagai hash SHA-256. Masa berlaku 48 jam.
 export const staffInvitation = pgTable(
   'staff_invitation',
   {
@@ -107,9 +90,7 @@ export const staffInvitation = pgTable(
     businessId: text('business_id')
       .notNull()
       .references(() => business.id),
-    // Username login staff (pengganti email — staff operasional tidak wajib
-    // punya email). Kolom email lama dihapus di migrasi 0010; baris lama
-    // di-backfill dari prefix email sebelum SET NOT NULL.
+    // Username login staff (staff operasional tidak wajib punya email).
     username: text('username').notNull(),
     name: text('name'),
     tokenHash: text('token_hash').notNull().unique(),
@@ -125,10 +106,7 @@ export const staffInvitation = pgTable(
   ]
 );
 
-// -----------------------------------------------------------------------
-// Domain tables — 1:1 struktur sama kayak schema.prisma versi Next,
-// cuma sintaks Drizzle. Ini yang dipakai lib/analytics.ts & lib/simulation.ts.
-// -----------------------------------------------------------------------
+// Tabel domain utama untuk produk, diskon, transaksi, dan stok.
 
 export const product = pgTable(
   'product',
@@ -140,11 +118,9 @@ export const product = pgTable(
     name: text('name').notNull(),
     costPrice: integer('cost_price').notNull(),
     sellingPrice: integer('selling_price').notNull(),
-    // Sisa stok. Berkurang tiap struk tersimpan, bertambah saat restock.
-    // Stok 0 = "Habis" (turunan, tidak tampil di kasir) — TIDAK mengubah
-    // isActive. isActive murni pilihan owner (mis. produk dihentikan/musiman).
+    // Sisa stok. Stok 0 berarti habis (tidak mengubah isActive pilihan owner).
     stock: integer('stock').notNull().default(0),
-    // Ambang "menipis" per produk — bisa diatur owner (default 5).
+    // Ambang menipis per produk (default 5).
     minStock: integer('min_stock').notNull().default(5),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -152,9 +128,6 @@ export const product = pgTable(
   },
   (t) => [
     index('product_business_id_idx').on(t.businessId),
-    // Pengaman terakhir di level DB: kalau dua kasir jual barang terakhir
-    // bersamaan, statement kedua gagal (dan batch-nya rollback) — bukan
-    // stok jadi minus diam-diam.
     check('product_stock_nonneg', sql`${t.stock} >= 0`),
     check('product_min_stock_nonneg', sql`${t.minStock} >= 0`)
   ]
@@ -162,11 +135,8 @@ export const product = pgTable(
 
 export const discountScopeEnum = pgEnum('discount_scope', ['PRODUCT', 'GLOBAL']);
 
-// Diskon persen per bisnis: PRODUCT (satu produk, auto-apply) atau GLOBAL
-// (semua produk, dipilih manual di kasir). Status diturunkan saat dibaca
-// (tidak disimpan): INACTIVE > SCHEDULED > EXPIRED > SOLD_OUT > ACTIVE.
-// quota dalam unit sepanjang umur diskon; quotaUsed selalu dihitung (juga
-// saat quota null) sebagai data "unit terjual dengan diskon ini".
+// Diskon persen per bisnis: PRODUCT (satu produk) atau GLOBAL (semua produk).
+// Status diturunkan saat dibaca: INACTIVE > SCHEDULED > EXPIRED > SOLD_OUT > ACTIVE.
 export const discount = pgTable(
   'discount',
   {
@@ -177,10 +147,8 @@ export const discount = pgTable(
     name: text('name').notNull(),
     scope: discountScopeEnum('scope').notNull(),
     percent: integer('percent').notNull(),
-    // PRODUCT wajib menunjuk satu produk; GLOBAL wajib null.
+    // PRODUCT wajib menunjuk produk; GLOBAL wajib null.
     productId: text('product_id').references(() => product.id, { onDelete: 'cascade' }),
-    // Saklar owner. Produk yang pernah dipakai berarti produknya sudah punya
-    // riwayat → delete produk sudah diblok, jadi cascade di sini aman.
     isActive: boolean('is_active').notNull().default(true),
     startsAt: timestamp('starts_at').notNull().defaultNow(),
     endsAt: timestamp('ends_at'),
@@ -197,7 +165,6 @@ export const discount = pgTable(
     check('discount_quota_valid', sql`${t.quota} is null or ${t.quota} > 0`),
     check('discount_quota_used_nonneg', sql`${t.quotaUsed} >= 0`),
     check('discount_quota_not_exceeded', sql`${t.quota} is null or ${t.quotaUsed} <= ${t.quota}`),
-    // GLOBAL wajib berbatas waktu dan tanpa kuota unit (kuota global ambigu).
     check('discount_global_time_only', sql`${t.scope} = 'PRODUCT' or (${t.endsAt} is not null and ${t.quota} is null)`)
   ]
 );
@@ -210,17 +177,10 @@ export const transaction = pgTable(
       .notNull()
       .references(() => business.id),
     userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
-    // Snapshot nama kasir saat struk dicatat — dipakai biar riwayat tetap
-    // menampilkan nama walau user staff-nya sudah dihapus dari DB.
-    // Diisi di actions.create dari locals.user.name, fallback tampilan:
-    // cashierName ?? user.name ?? '—'.
+    // Snapshot nama kasir saat transaksi dicatat agar riwayat aman jika user dihapus.
     cashierName: text('cashier_name'),
     createdAt: timestamp('created_at').notNull().defaultNow()
   },
-  // Composite (business_id, created_at): sekali jalan melayani
-  // WHERE business_id = ?  (pakai prefix kiri index) maupun
-  // WHERE business_id = ? ORDER BY created_at DESC LIMIT n
-  // (backward scan, tanpa sort) di dashboard & /transactions.
   (t) => [index('transaction_business_created_idx').on(t.businessId, t.createdAt)]
 );
 
@@ -237,8 +197,7 @@ export const transactionItem = pgTable(
     quantity: integer('quantity').notNull(),
     priceAtSale: integer('price_at_sale').notNull(),
     costAtSale: integer('cost_at_sale').notNull(),
-    // Snapshot diskon yang kepakai di baris ini (null = tanpa diskon).
-    // discountedQty dalam unit; discountAmount dalam Rp total baris.
+    // Snapshot diskon pada baris transaksi (discountedQty dalam unit, discountAmount dalam Rp).
     discountId: text('discount_id').references(() => discount.id, { onDelete: 'set null' }),
     discountName: text('discount_name'),
     discountedQty: integer('discounted_qty').notNull().default(0),
@@ -246,7 +205,6 @@ export const transactionItem = pgTable(
   },
   (t) => [
     index('transaction_item_transaction_id_idx').on(t.transactionId),
-    // quantity di-cast bigint agar quantity × price tidak overflow int4.
     check(
       'transaction_item_discount_valid',
       sql`${t.discountedQty} between 0 and ${t.quantity} and ${t.discountAmount} >= 0 and ${t.discountAmount} <= ${t.quantity}::bigint * ${t.priceAtSale}`
@@ -256,9 +214,7 @@ export const transactionItem = pgTable(
 
 export const stockReasonEnum = pgEnum('stock_reason', ['SALE', 'VOID_RESTORE', 'RESTOCK', 'ADJUST']);
 
-// Riwayat pergerakan stok per produk — audit ala realworld: setiap
-// perubahan stok (jual, batal, restock, koreksi opname) tercatat siapa,
-// kapan, berapa, dan struk acuannya.
+// Audit pergerakan stok per produk untuk penjualan, pembatalan, restock, atau penyesuaian.
 export const stockMovement = pgTable(
   'stock_movement',
   {

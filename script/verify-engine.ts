@@ -87,9 +87,7 @@ if (hasHighMarginLowDemand) {
     failCount++;
 }
 
-// ============================================================
-// 3. Simulation — 3 acceptance test case dari spec
-// ============================================================
+// Simulation: acceptance test case
 console.log("\n== Simulation: acceptance test cases ==");
 
 // Baseline: Kopi A, costPrice=6000, sellingPrice=10000, total qty historis 500
@@ -116,9 +114,7 @@ check("T3 simulated.revenue", t3.simulated.revenue, 5_000_000);
 check("T3 simulated.profit", t3.simulated.profit, 1_700_000);
 check("T3 profitChangePercent (%)", t3.impact.profitChangePercent * 100, -15, 0.1);
 
-// ============================================================
-// 4. Analytics — period comparison (compareBusinessPeriods / compareProductPeriods)
-// ============================================================
+// Analytics: period comparison (compareBusinessPeriods / compareProductPeriods)
 console.log("\n== Analytics: period comparison ==");
 
 // Business-level: qty sama (100), tapi cost naik dari 6000 -> 7000/unit
@@ -166,9 +162,7 @@ if (cmpB && cmpB.previous === null && cmpB.change.revenueChangePercent === 0) {
     failCount++;
 }
 
-// ============================================================
-// 5. Analytics — matriks volume vs margin + estimasi hari stok
-// ============================================================
+// Analytics: matriks volume vs margin + estimasi hari stok
 console.log("\n== Analytics: quadrant & days cover ==");
 
 if (quadrantOf(100, 0.5, 50, 0.3) === "bintang") {
@@ -209,8 +203,8 @@ if (!isFinite(estimateDaysCover(10, 0, 14))) {
     failCount++;
 }
 
-// Bagian baru Fase 3 (bagian lama di atas tidak diubah): revenue bersih
-// memakai discountAmount per baris; tanpa discountAmount hasil lama tetap.
+// Revenue bersih memakai discountAmount per baris; tanpa discountAmount
+// hasilnya sama dengan qty × harga.
 console.log("\n== Analytics: revenue bersih (discountAmount) ==");
 const discItem: TransactionItemLike = { productId: "p1", quantity: 100, priceAtSale: 10000, costAtSale: 6000, discountAmount: 150000 };
 check("revenue bersih 100×10000−150000", calculateRevenue([discItem]), 850000, 0.5);
@@ -220,6 +214,6 @@ const plainItem: TransactionItemLike = { productId: "p1", quantity: 100, priceAt
 check("tanpa discountAmount revenue tetap 1000000", calculateRevenue([plainItem]), 1000000, 0.5);
 check("tanpa discountAmount profit tetap 400000", calculateProfit([plainItem]), 400000, 0.5);
 
-// ============================================================
+// Ringkasan
 console.log(`\n${passCount} passed, ${failCount} failed\n`);
 if (failCount > 0) process.exit(1);

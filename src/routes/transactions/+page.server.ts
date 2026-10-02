@@ -15,12 +15,8 @@ const PAGE_SIZE = 20;
 const idr = (n: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
 
-// CHECK ..._nonneg / ..._not_exceeded (SQLSTATE 23514) meledak kalau stok
-// terpotong jadi minus atau kuota diskon terlampaui — artinya ada kasir lain
-// yang menghabiskan stok/kuota di sela validasi dan penyimpanan. Bentuk
-// error beda antar driver/versi (kode di error langsung atau di `cause`),
-// jadi nama constraint dicari di keduanya. Bentuk pasti dari neon-http
-// dikonfirmasi saat e2e (lihat laporan Fase 5).
+// CHECK ..._nonneg / ..._not_exceeded (SQLSTATE 23514) meledak kalau stok terpotong minus atau kuota diskon terlampaui — ada kasir lain yang menghabiskan stok/kuota di sela validasi dan penyimpanan.
+// Bentuk error beda antar driver/versi (kode di error langsung atau di `cause`), jadi nama constraint dicari di keduanya.
 function checkViolationName(e: unknown): string | null {
   const err = e as {
     code?: unknown;
@@ -41,7 +37,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const offset = (page - 1) * PAGE_SIZE;
 
   // Opsi filter kasir: semua user aktif bisnis ini (Owner paling atas).
-  // Value = userId (stabil walau staff ganti nama), label = nama TERKINI.
+  // Value = userId (stabil walau staff ganti nama), label = nama terkini.
   const staffRows = await db
     .select({ id: user.id, name: user.name, username: user.username })
     .from(user)
@@ -55,8 +51,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const kasirParam = url.searchParams.get('kasir') ?? '';
   const kasir = staffRows.some((s) => s.id === kasirParam) ? kasirParam : null;
 
-  // Header struk dulu (paginasi per struk, bukan per item) — leftJoin user
-  // biar struk staff yang sudah dihapus tetap tampil via cashier_name.
+  // Header struk diproses lebih awal (paginasi per struk, bukan per item) — leftJoin user biar struk staff yang sudah dihapus tetap tampil via cashier_name.
   const conditions = [eq(transaction.businessId, businessId)];
   if (kasir) conditions.push(eq(transaction.userId, kasir));
   const headers = await db
@@ -138,10 +133,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     });
   }
 
-  // Buat dropdown produk di panel "Transaksi Baru" — hanya produk aktif yang
-  // stoknya masih ada. Habis = tersembunyi dari kasir (turunan dari stok,
-  // isActive sendiri tidak disentuh). costPrice SENGAJA tidak dipilih —
-  // halaman ini bisa dibuka STAFF.
+  // Buat dropdown produk di panel "Transaksi Baru" — hanya produk aktif yang stoknya masih ada.
+  // Habis = tersembunyi dari kasir (turunan dari stok, isActive sendiri tidak disentuh). costPrice sengaja tidak dipilih — halaman ini bisa dibuka STAFF.
   const products = await db
     .select({ id: product.id, name: product.name, sellingPrice: product.sellingPrice, stock: product.stock })
     .from(product)
@@ -243,8 +236,7 @@ export const actions: Actions = {
     }
     const inactive = dbProducts.find((p) => !p.isActive);
     if (inactive) return fail(400, { message: 'Ada produk nonaktif di keranjang.' });
-    // Tolak seluruh struk kalau satu item pun stoknya kurang — jangan
-    // simpan sebagian biar kasir betulkan dulu.
+    // Tolak seluruh struk kalau satu item pun stoknya kurang — jangan simpan sebagian sebelum kasir betulkan.
     const short = dbProducts.find((p) => merged.get(p.id)! > p.stock);
     if (short) return fail(400, { message: `Stok ${short.name} kurang (sisa ${short.stock}).` });
 
@@ -254,9 +246,7 @@ export const actions: Actions = {
       ((locals.user as { username?: string | null } | null | undefined)?.username) ??
       null;
 
-    // neon-http tidak punya db.transaction interaktif, tapi db.batch([...])
-    // menjalankan semua statement dalam SATU transaksi: struk, item, stok,
-    // ledger, dan quota diskon masuk semua atau tidak sama sekali.
+    // neon-http tidak punya db.transaction interaktif; db.batch([...]) menjalankan semua statement dalam satu transaksi: struk, item, stok, ledger, dan quota diskon masuk semua atau tidak sama sekali.
     // now dipakai sebagai createdAt struk sekaligus jam cek diskon.
     const now = new Date();
 
@@ -306,7 +296,7 @@ export const actions: Actions = {
             transactionId: txId,
             productId: pid,
             quantity: merged.get(pid)!,
-            // priceAtSale = harga NORMAL (snapshot); diskon di kolom sendiri.
+            // priceAtSale = harga normal (snapshot); diskon di kolom sendiri.
             priceAtSale: p.sellingPrice,
             costAtSale: p.costPrice,
             discountId: line.discountedQty > 0 ? line.discountId : null,
@@ -316,10 +306,8 @@ export const actions: Actions = {
           };
         })
       ),
-      // Stok dipotong di SQL (stock = stock - qty), bukan dari angka yang
-      // dibaca tadi: dua kasir yang jualan bersamaan sama-sama terpotong
-      // dengan benar. Kalau stok tak cukup, CHECK product_stock_nonneg
-      // menggagalkan batch → seluruh struk rollback.
+      // Stok dipotong di SQL (stock = stock - qty), bukan dari angka yang dibaca tadi: dua kasir yang jualan bersamaan sama-sama terpotong dengan benar.
+      // Kalau stok tak cukup, CHECK product_stock_nonneg menggagalkan batch → seluruh struk rollback.
       ...productIds.map((pid) =>
         db
           .update(product)
@@ -337,9 +325,8 @@ export const actions: Actions = {
           createdBy: userId
         }))
       ),
-      // quotaUsed naik per unit terdiskon — JUGA saat quota null (K9: jadi
-      // data "unit terjual dengan diskon ini"). CHECK quota_not_exceeded
-      // yang menjaga race: batch kedua yang kelebihan kuota gagal total.
+      // quotaUsed naik per unit terdiskon — juga saat quota null (jadi data "unit terjual dengan diskon ini").
+      // CHECK quota_not_exceeded yang menjaga race: batch kedua yang kelebihan kuota gagal total.
       ...deltas.map((d) =>
         db
           .update(discount)
@@ -385,12 +372,9 @@ export const actions: Actions = {
       .where(and(eq(transaction.id, txId), eq(transaction.businessId, businessId)));
     if (!existing) return fail(404, { message: 'Struk tidak ditemukan.' });
 
-    // Satu statement (CTE) = atomik dan idempoten: item struk dihapus dan
-    // langsung dipakai sebagai sumber pengembalian stok + kuota diskon +
-    // ledger, lalu header struk dihapus. Kalau owner klik dua kali / dua tab
-    // membatalkan struk yang sama, yang kedua menemukan item sudah tidak ada
-    // → stok & kuota tidak dikembalikan dua kali. isActive tidak disentuh.
-    // CHECK quota_used >= 0 jadi jaring pengaman.
+    // Satu statement (CTE) = atomik dan idempoten: item struk dihapus dan dipakai sebagai sumber pengembalian stok + kuota diskon + ledger, lalu header dihapus.
+    // Klik dua kali / dua tab membatalkan struk yang sama: yang kedua tidak menemukan item → stok & kuota tidak dikembalikan dua kali.
+    // isActive tidak disentuh. CHECK quota_used >= 0 jadi jaring pengaman.
     await db.execute(sql`
       with removed as (
         delete from transaction_item ti

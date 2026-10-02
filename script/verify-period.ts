@@ -1,8 +1,6 @@
-// Verifikasi resolver periode bersama vs ORACLE BEKU (salinan verbatim dua
-// resolver lama dari loaders.ts sebelum dimigrasi — jangan diubah).
-// Jam oracle (new Date() internal) dibekukan via patch Date agar
-// deterministik; resolvePeriod menerima `now` eksplisit.
-// Pola: ok() → PASS/FAIL, exit 1 bila ada FAIL. Kombinasi acak ber-seed.
+// Verifikasi resolver periode vs oracle beku (salinan verbatim dari loaders.ts).
+// Jam oracle dibekukan via patch Date; resolvePeriod menerima `now` eksplisit.
+// Fuzzing acak ber-seed; exit 1 bila ada FAIL.
 import { makeTime, type BizTz } from '../src/lib/shared/time';
 import { previousWindow, resolvePeriod, type PeriodKey } from '../src/lib/shared/period';
 
@@ -30,10 +28,9 @@ function mulberry32(seed: number) {
 const rand = mulberry32(20261004);
 const ri = (min: number, max: number) => Math.floor(rand() * (max - min + 1)) + min;
 
-// ---------------------------------------------------------------------------
 // ORACLE BEKU — salinan verbatim resolveStatistikRange / resolveSimulatorRange
-// dari src/lib/server/domains/stats/loaders.ts (sebelum PR4). JANGAN DIUBAH.
-// ---------------------------------------------------------------------------
+// dari src/lib/server/domains/stats/loaders.ts. Jangan diubah: dipakai sebagai
+// patokan stabil.
 
 type StatistikRangeKey = 'today' | 'week' | '30d' | 'month' | 'custom';
 
@@ -110,7 +107,7 @@ function oracleSimulatorRange(url: URL, tz: BizTz): { key: SimulatorRangeKey; fr
   return { key: 'all', from: null, to: null, label: 'Semua waktu', fromISO: '', toISO: '' };
 }
 
-// ---------------------------------------------------------------------------
+// Fuzzing jam
 
 const RealDate = globalThis.Date;
 

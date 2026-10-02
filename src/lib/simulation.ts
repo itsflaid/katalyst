@@ -1,8 +1,6 @@
-// Simulator "what-if" satu produk (§6). Satu-satunya fungsi hitung:
-// Svelte, tes, dan (nanti) copilot memanggil fungsi yang sama.
-// Murni + isomorfik (server & browser): tanpa drizzle-orm/$env/$app,
-// tanpa jam sistem. Diskon hipotetis memakai unitDiscount (bulat per unit,
-// sama seperti kasir) dan boleh dibatasi kuota unit.
+// Simulator "what-if" satu produk. Murni + isomorfik (server & browser):
+// tanpa drizzle-orm/$env/$app, tanpa jam sistem. Diskon hipotetis memakai
+// unitDiscount (bulat per unit, sama seperti kasir) dan boleh dibatasi kuota unit.
 import {
   deltaRatio,
   factsOfItem,
@@ -15,16 +13,16 @@ import type { TransactionItemLike } from './analytics/core';
 import { isBelowCost, unitDiscount } from './discount';
 
 export type DiscountLever =
-  | { kind: 'keep' } // pertahankan pola promo histori (default)
-  | { kind: 'percent'; pct: number; units?: number }; // diskon pct% pada `units` unit (kosong = semua)
+  | { kind: 'keep' }
+  | { kind: 'percent'; pct: number; units?: number };
 
 export type VolumeLever =
-  | { kind: 'pct'; pct: number } // qty histori × (1 + pct/100), dibulatkan
+  | { kind: 'pct'; pct: number }
   | { kind: 'override'; qty: number };
 
 export interface SimInput {
-  baseline: Facts; // histori produk pada rentang terpilih (net, snapshot)
-  product: { sellingPrice: number; costPrice: number }; // harga/modal SEKARANG
+  baseline: Facts;
+  product: { sellingPrice: number; costPrice: number };
   levers?: {
     price?: number;
     cost?: number;
@@ -37,32 +35,31 @@ export interface Impact {
   revenue: number | null;
   profit: number | null;
   qty: number | null;
-  marginPoints: number; // pecahan poin (0.02 = +2 pp)
+  marginPoints: number;
 }
 
 export type SimFlag =
   | 'NO_HISTORY'
   | 'BELOW_COST'
-  | 'LOW_MARGIN' // margin simulasi < 0.15 dan simQty > 0
-  | 'DISCOUNT_ON_CHANGED_PRICE' // diskon dihitung di atas harga skenario
-  | 'PROMO_SCALED_WITH_VOLUME' // mode keep + volume berubah
+  | 'LOW_MARGIN'
+  | 'DISCOUNT_ON_CHANGED_PRICE'
+  | 'PROMO_SCALED_WITH_VOLUME'
   | 'DRIFT_PRICE'
-  | 'DRIFT_COST'; // |drift| >= 1 rupiah
+  | 'DRIFT_COST';
 
 export interface SimResult {
-  actual: Metrics; // dari baseline apa adanya
-  statusQuo: Metrics; // tuas default di atas harga/modal SEKARANG
+  actual: Metrics;
+  statusQuo: Metrics;
   simulated: Metrics;
   qty: { baseline: number; simulated: number };
   unit: { listPrice: number; cost: number; unitProfit: number };
   impact: { vsStatusQuo: Impact; vsActual: Impact };
-  drift: { price: number; cost: number }; // P − avgGrossPrice, c − avgCost (0 bila qty 0)
-  breakEvenQty: number | null; // qty min agar profit ≥ profit statusQuo
-  maxDiscountPct: number | null; // integer terbesar 0..100 yang tak di bawah modal
+  drift: { price: number; cost: number };
+  breakEvenQty: number | null;
+  maxDiscountPct: number | null;
   flags: SimFlag[];
 }
 
-// Validasi integer dalam rentang; NaN/Infinity/non-integer/di luar → RangeError.
 function reqInt(name: string, v: number, min: number, max?: number): number {
   if (!Number.isInteger(v) || v < min || (max !== undefined && v > max)) {
     throw new RangeError(`${name} harus integer ${min}..${max ?? '∞'} (dapat: ${v})`);
@@ -70,8 +67,9 @@ function reqInt(name: string, v: number, min: number, max?: number): number {
   return v;
 }
 
-// Proyeksi Facts pada qty & harga/modal skenario dengan tuas diskon yang sama
-// untuk statusQuo maupun simulasi (jaminan identitas: tuas default ⇒ sama).
+// simQty      = qty × (P − unitDisc) − qty × c
+// revenue     = gross − discount
+// discountRate = discount / gross   (dari baseline)
 function projectQty(
   qty: number,
   price: number,
@@ -95,6 +93,10 @@ function projectQty(
   return { qty, gross, discount, cost: qty * cost, discountedQty };
 }
 
+// revenue = (simRevenue − baseRevenue) / |baseRevenue|   (null bila base = 0)
+// profit  = (simProfit − baseProfit) / |baseProfit|
+// qty     = (simQty − baseQty) / |baseQty|
+// marginPoints = simMargin − baseMargin
 function impactOf(sim: Metrics, base: Metrics): Impact {
   return {
     revenue: deltaRatio(sim.revenue, base.revenue),
@@ -136,6 +138,8 @@ export function simulate(input: SimInput): SimResult {
   const simulated = metricsOf(projectQty(simQty, P2, c2, B.discountRate, discountLever, baseline.discountedQty, baseline.qty));
 
   const unitProfit = simulated.avgNetPrice - c2;
+  // drift.price = P − avgGrossPrice   (0 bila qty baseline = 0)
+  // drift.cost  = c − avgCost
   const drift = {
     price: baseline.qty === 0 ? 0 : P - B.avgGrossPrice,
     cost: baseline.qty === 0 ? 0 : c - B.avgCost
@@ -152,8 +156,6 @@ export function simulate(input: SimInput): SimResult {
   if (Math.abs(drift.price) >= 1) flags.push('DRIFT_PRICE');
   if (Math.abs(drift.cost) >= 1) flags.push('DRIFT_COST');
 
-  // Qty impas: 0 bila statusQuo.profit <= 0; null bila mustahil
-  // (unitProfit <= 0 atau target tak tercapai di batas atas).
   let breakEvenQty: number | null;
   if (statusQuo.profit <= 0) {
     breakEvenQty = 0;
@@ -174,14 +176,12 @@ export function simulate(input: SimInput): SimResult {
         if (profitAt(mid) >= target) hi = mid;
         else lo = mid + 1;
       }
-      // Rapikan noise pembulatan ±1 Rp biar minimal sejati.
       while (lo > 0 && profitAt(lo - 1) >= target) lo--;
       while (profitAt(lo) < target) lo++;
       breakEvenQty = lo;
     }
   }
 
-  // Diskon maks: integer terbesar yang tak di bawah modal.
   let maxDiscountPct: number | null;
   if (P2 <= 0) {
     maxDiscountPct = null;
@@ -209,7 +209,6 @@ export function simulate(input: SimInput): SimResult {
   };
 }
 
-// Bulatkan + clamp tuas dari UI bebas (slider/input) supaya simulate tak melempar.
 export function sanitizeLevers(levers: NonNullable<SimInput['levers']>): NonNullable<SimInput['levers']> {
   const nonNeg = (v: number): number => {
     const r = Math.round(v);
@@ -245,9 +244,7 @@ export function sanitizeLevers(levers: NonNullable<SimInput['levers']>): NonNull
   return out;
 }
 
-// ---------------------------------------------------------------------------
-// Kontrak lama (dipakai verify-engine T1–T3).
-// ---------------------------------------------------------------------------
+
 
 export interface ProductLike {
   id: string;
@@ -257,13 +254,9 @@ export interface ProductLike {
 }
 
 export interface ScenarioInput {
-  /** Harga jual baru. Kalau tidak diisi, pakai product.sellingPrice. */
   newSellingPrice?: number;
-  /** Diskon 0-1 (0.1 = 10%), diterapkan di atas newSellingPrice/sellingPrice. */
   discountPercent?: number;
-  /** Harga modal baru. Kalau tidak diisi, pakai product.costPrice. */
   newCostPrice?: number;
-  /** Override manual quantity baseline. Kalau tidak diisi, pakai total qty historis. */
   quantityOverride?: number;
 }
 
@@ -285,11 +278,7 @@ export interface ScenarioResult {
   assumptions: string[];
 }
 
-/**
- * @deprecated Pakai simulate(). Adapter tipis: discountPercent × 100,
- * impact = vs aktual. Pembulatan diskon kini per unit (unitDiscount, sama
- * seperti kasir), bukan di harga akhir.
- */
+
 export function simulateScenario(
   product: ProductLike,
   historicalItems: TransactionItemLike[],

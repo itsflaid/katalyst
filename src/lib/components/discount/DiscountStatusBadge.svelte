@@ -2,7 +2,7 @@
   import Badge from "$lib/components/ui/Badge.svelte";
   export let status: 'ACTIVE' | 'SCHEDULED' | 'EXPIRED' | 'SOLD_OUT' | 'INACTIVE';
 
-  // Label + tone per status turunan (lihat SPEC Fase 4.3).
+  // Label dan tone per status.
   const meta: Record<typeof status, { label: string; tone: 'positive' | 'warning' | 'neutral' }> = {
     ACTIVE: { label: 'Aktif', tone: 'positive' },
     SCHEDULED: { label: 'Terjadwal', tone: 'neutral' },

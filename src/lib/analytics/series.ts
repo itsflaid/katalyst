@@ -1,13 +1,9 @@
-// Agregasi tingkat produk/bisnis/harian di atas Facts.
-// Murni + isomorfik: tanpa drizzle-orm/$env/$app, tanpa jam sistem
-// (iterasi hari memakai T.addDays/startOfDay yang murni).
+// Murni + isomorfik: tanpa drizzle-orm/$env/$app, tanpa jam sistem (iterasi
+// hari memakai T.addDays/startOfDay yang murni).
 import { metricsOf, type Facts } from './facts';
 import type { BusinessSummary, ProductSummary } from './core';
 import type { BizTime } from '../shared/time';
 
-// Kelompokkan Facts per produk menjadi ProductSummary (pengganti
-// toSummaries/mapping inline/summarizeByProduct yang tersebar).
-// ReadonlyMap biar Map<string, FactsRow> (ada txCount) ikut masuk.
 export function summarizeFacts(
   byProduct: ReadonlyMap<string, Facts>,
   names: Record<string, string>
@@ -26,8 +22,10 @@ export function summarizeFacts(
   });
 }
 
-// Total bisnis = jumlahkan ringkasan per produk (asosiatif: sama persis
-// dengan menjumlah semua item dulu baru ditotal).
+// revenue = Σ summary.revenue
+// cost    = Σ summary.cost
+// profit  = revenue − cost
+// margin  = profit / revenue   (0 bila revenue = 0)
 export function totalsOf(summaries: ProductSummary[]): BusinessSummary {
   const revenue = summaries.reduce((s, p) => s + p.revenue, 0);
   const cost = summaries.reduce((s, p) => s + p.cost, 0);
@@ -46,7 +44,6 @@ export interface DailyPoint {
   tx: number;
 }
 
-// Deret harian inklusif from..to zona bisnis; hari kosong = 0 (margin 0).
 export function fillDailySeries(
   byDay: ReadonlyMap<string, Facts & { txCount: number }>,
   opts: { from: Date; to: Date; T: BizTime }

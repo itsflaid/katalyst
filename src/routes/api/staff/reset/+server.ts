@@ -6,14 +6,9 @@ import { generateTempPassword } from '$lib/server/domains/invites';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
-// Reset password staff aktif yang lupa password: owner klik di kolom Aksi,
-// server set password sementara (hash scrypt via admin plugin) + cabut semua
-// sesi staff itu, lalu password sementara ditampilkan SEKALI ke owner untuk
-// diteruskan (mis. via WA). Staff login pakai itu lalu wajib ganti sendiri
-// di halaman Akun — owner tidak pernah tahu password final.
-//
-// Beda dengan "Kirim ulang" di tabel Undangan Pending (itu untuk akun yang
-// BELUM jadi — link invite baru, bukan password).
+// Reset password staff aktif yang lupa password: server set password sementara + cabut semua sesi staff.
+// Password sementara ditampilkan sekali ke owner; staff login pakai itu lalu wajib ganti sendiri di halaman Akun.
+// Beda dengan "Kirim ulang" di Undangan Pending (untuk akun belum jadi — link invite baru, bukan password).
 export const POST: RequestHandler = async ({ request, locals }) => {
   if (!locals.user || locals.user.role !== 'OWNER') {
     throw error(403, 'Cuma Owner yang bisa me-reset password staff.');
@@ -42,8 +37,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     body: { userId: id, newPassword: tempPassword },
     headers: request.headers
   });
-  // Sesi lama (mis. di HP staff yang hilang) langsung mati — cuma login baru
-  // pakai password sementara yang bisa masuk.
+  // Sesi lama langsung mati — cuma login baru pakai password sementara yang bisa masuk.
   await auth.api.revokeUserSessions({ body: { userId: id }, headers: request.headers });
 
   return json({ tempPassword });

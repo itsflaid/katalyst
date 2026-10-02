@@ -5,8 +5,7 @@ import { eq } from 'drizzle-orm';
 import { isBizTz, DEFAULT_TZ, type BizTz } from '$lib/shared/time';
 import type { RequestHandler } from './$types';
 
-// Setara app/api/business/route.ts — cuma Owner yang boleh ubah profil bisnis.
-// Mendukung update parsial nama dan/atau zona waktu.
+// Cuma Owner yang boleh ubah profil bisnis; mendukung update parsial nama dan/atau zona waktu.
 export const PATCH: RequestHandler = async ({ request, locals }) => {
   if (!locals.user || locals.user.role !== 'OWNER' || !locals.user.businessId) {
     throw error(403, 'Cuma Owner yang bisa mengubah profil bisnis.');

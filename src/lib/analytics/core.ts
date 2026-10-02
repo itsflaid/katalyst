@@ -5,12 +5,7 @@ export interface TransactionItemLike {
     quantity: number;
     priceAtSale: number;
     costAtSale: number;
-    // Total Rp diskon pada baris ini (0 = tanpa diskon). Opsional agar data
-    // lama tanpa kolom diskon tetap valid dan revenue-nya tak berubah.
     discountAmount?: number;
-    // Unit terdiskon pada baris ini. Opsional (kompatibel: tanpa field ini
-    // factsOfItem mengisi 0); dibawa agar baris DB yang punya kolomnya
-    // tidak kehilangan informasi saat difold ke Facts.
     discountedQty?: number;
 }
 
@@ -31,7 +26,6 @@ export interface BusinessSummary {
     margin: number;
 }
 
-// 3 jenis insight otomatis + bentuk pesannya ke UI.
 export type InsightType =
     | "high_revenue_low_profit"
     | "popular_low_margin"
@@ -44,34 +38,28 @@ export interface BusinessInsight {
     message: string;
 }
 
-// Lipat item ke satu Facts (fondasi semua agregat di file ini).
 function foldItems(items: TransactionItemLike[]): Facts {
     return sumFacts(items.map(factsOfItem));
 }
 
-// Total revenue semua item (jumlahkan revenue per-item).
 export function calculateRevenue(items: TransactionItemLike[]): number {
     return metricsOf(foldItems(items)).revenue;
 }
 
-// Total cost semua item (jumlahkan cost per-item).
 export function calculateCost(items: TransactionItemLike[]): number {
     return metricsOf(foldItems(items)).cost;
 }
 
-// Total profit = total revenue - total cost.
 export function calculateProfit(items: TransactionItemLike[]): number {
     return metricsOf(foldItems(items)).profit;
 }
 
-// Ringkasan bisnis: revenue + cost + profit + margin sekaligus.
 export function getBusinessSummary(items: TransactionItemLike[]): BusinessSummary {
     const m = metricsOf(foldItems(items));
 
     return { revenue: m.revenue, cost: m.cost, profit: m.profit, margin: m.margin };
 }
 
-// Kelompokkan item per productId via Map, lalu hitung qty/revenue/cost/profit/margin tiap produk.
 export function summarizeByProduct(
     items: TransactionItemLike[],
     productNames: Record<string, string>
@@ -98,7 +86,6 @@ export function summarizeByProduct(
     });
 }
 
-// Performa satu produk: filter item produk itu saja lalu agregat seperti ringkasan bisnis.
 export function getProductPerformance(
     productId: string,
     productName: string,
@@ -119,7 +106,6 @@ export function getProductPerformance(
     };
 }
 
-// Top-N produk teratas by revenue/profit/qty (copy dulu biar input tidak termutasi).
 export function getTopProducts(
     summaries: ProductSummary[],
     by: "revenue" | "profit" | "quantitySold" = "revenue",
@@ -128,13 +114,8 @@ export function getTopProducts(
     return [...summaries].sort((a, b) => b[by] - a[by]).slice(0, limit);
 }
 
-// Matriks Volume vs Margin: petakan produk ke 4 kuadran by ambang qty & margin.
-// bintang = laku+margin oke, laris-tipis = laku tapi tipis,
-// margin-kurang-laku = margin oke tapi sepi, evaluasi = dua-duanya rendah.
-
 export type Quadrant = "bintang" | "laris-tipis" | "margin-kurang-laku" | "evaluasi";
 
-// Tentukan kuadran satu produk dari qty & margin vs ambang x/y.
 export function quadrantOf(qty: number, margin: number, xThreshold: number, yThreshold: number): Quadrant {
     if (qty >= xThreshold && margin >= yThreshold) return "bintang";
     if (qty >= xThreshold) return "laris-tipis";
@@ -142,14 +123,15 @@ export function quadrantOf(qty: number, margin: number, xThreshold: number, yThr
     return "evaluasi";
 }
 
-// Ambang 3 rule insight otomatis (share omzet/profit, top-N laris, rasio margin).
 const INSIGHT_RULES = {
     highRevenueLowProfit: { revenueShareMin: 0.2, profitShareMax: 0.1 },
     popularLowMargin: { topNByQuantity: 3, marginRatioMax: 0.7 },
     highMarginLowDemand: { marginRatioMin: 1.3 },
 };
 
-// Generate insight bisnis: cek tiap produk terhadap 3 rule, kembalikan pesan siap tampil.
+// revenueShare = revenue / totalRevenue
+// profitShare  = profit / totalProfit
+// avgMargin    = totalProfit / totalRevenue   (0 bila totalRevenue = 0)
 export function getBusinessInsights(summaries: ProductSummary[]): BusinessInsight[] {
     if (summaries.length === 0) return [];
 
@@ -165,7 +147,7 @@ export function getBusinessInsights(summaries: ProductSummary[]): BusinessInsigh
         const profitShare = totalProfit === 0 ? 0 : p.profit / totalProfit;
         const qtyRank = byQuantityDesc.findIndex((x) => x.productId === p.productId);
 
-        // Rule 1: omzet >20% tapi profit <10% → harga/modal perlu dievaluasi.
+        // Insight 1: Omzet tinggi (>20%) tetapi kontribusi profit rendah (<10%).
         if (
             revenueShare > INSIGHT_RULES.highRevenueLowProfit.revenueShareMin &&
             profitShare < INSIGHT_RULES.highRevenueLowProfit.profitShareMax
@@ -178,7 +160,7 @@ export function getBusinessInsights(summaries: ProductSummary[]): BusinessInsigh
             });
         }
 
-        // Rule 2: top-3 laris tapi margin <70% rata-rata → kandidat naik harga.
+        // Insight 2: Produk top 3 laris tetapi margin di bawah 70% rata-rata bisnis.
         const isTopByQuantity = qtyRank < INSIGHT_RULES.popularLowMargin.topNByQuantity;
         if (
             isTopByQuantity &&
@@ -193,7 +175,7 @@ export function getBusinessInsights(summaries: ProductSummary[]): BusinessInsigh
             });
         }
 
-        // Rule 3: margin >130% rata-rata tapi qty bottom-half → butuh promosi.
+        // Insight 3: Margin tinggi (>130% rata-rata) tetapi volume penjualan rendah.
         const isBottomHalfByQuantity = qtyRank >= Math.ceil(summaries.length / 2);
         if (
             isBottomHalfByQuantity &&

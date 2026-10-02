@@ -55,12 +55,8 @@
     selectedDayKey = 'all';
   }
 
-  // Filter kasir — server-side via ?kasir=<userId> (bukan nama) biar
-  // pagination tetap benar. Value userId stabil: staff ganti nama pun
-  // struk lamanya tetap keikut, label dropdown selalu nama terkini.
-  // Satu sumber kebenaran = URL/server (data.kasir). Select pakai
-  // value satu arah (BUKAN bind) biar tidak berantem dengan statement
-  // reaktif di bawah — nilai dibaca dari event lalu navigasi.
+  // Filter kasir — server-side via ?kasir=<userId> (bukan nama) biar pagination tetap benar. Value userId stabil: staff ganti nama pun struk lamanya tetap keikut.
+  // Satu sumber kebenaran = URL/server (data.kasir). Select pakai value satu arah (bukan bind) biar tidak berantem dengan statement reaktif di bawah.
   $: selectedKasir = data.kasir ?? 'all';
   function goKasir(e: Event) {
     const value = (e.currentTarget as HTMLSelectElement).value;
@@ -71,20 +67,15 @@
   }
   $: moreHref = `/transactions?page=${data.page + 1}${data.kasir ? `&kasir=${data.kasir}` : ''}`;
 
-  // Ringkasan kanan — mengikuti filter hari yang dipilih, biar kartu
-  // di bawah form selalu relevan dan kolom kanan tidak kosong.
-  // visibleTotal = Σ total bersih (net); visibleDiscount = Σ diskon diberikan.
+  // visibleTotal    = Σ total bersih (net)
+  // visibleDiscount = Σ diskon diberikan
   $: visibleTotal = visibleGroups.reduce((s, g) => s + g.subtotal, 0);
   $: visibleCount = visibleGroups.reduce((s, g) => s + g.rows.length, 0);
   $: visibleDiscount = visibleGroups.reduce((s, g) => s + g.rows.reduce((a, r) => a + (r.discountTotal ?? 0), 0), 0);
 
-  // Panel "Transaksi Baru" — keranjang multi-produk di client, disimpan
-  // sebagai 1 struk (1 transaction + N item) lewat actions.create.
-  // State keranjang HANYA { productId, qty }; nama & harga diturunkan
-  // reaktif dari data.products — bukan snapshot saat ditambahkan (snapshot
-  // bikin expectedTotal basi selamanya setelah harga berubah → 409 berulang).
-  // Produk habis (stok 0) tidak bisa dipilih; tambah dibatasi sisa stok
-  // (server memvalidasi ulang).
+  // Panel "Transaksi Baru" — keranjang multi-produk di client, disimpan sebagai 1 struk (1 transaction + N item) lewat actions.create.
+  // State keranjang hanya { productId, qty }; nama & harga diturunkan reaktif dari data.products — bukan snapshot saat ditambahkan (snapshot bikin expectedTotal basi setelah harga berubah → 409 berulang).
+  // Produk habis (stok 0) tidak bisa dipilih; tambah dibatasi sisa stok (server memvalidasi ulang).
   let selectedProductId = data.products.find((p) => p.stock > 0)?.id ?? '';
   let qty = 1;
   let lines: { productId: string; qty: number }[] = [];
@@ -306,9 +297,7 @@
     {:else}
       <Card class="!p-0 overflow-hidden !rounded-t-none !border-t-0">
         {#each visibleGroups as group}
-          <!-- Tiap hari dibungkus blok sendiri: header band gelap di atas,
-               subtotal di bawah, dan divider 2px antar hari biar batasnya
-               tegas (sebelumnya subtotal #F8FAFC nempel label berikutnya). -->
+          <!-- Tiap hari dibungkus blok sendiri: header band gelap di atas, subtotal di bawah, dan divider 2px antar hari biar batasnya tegas. -->
           <div class="border-b-2 border-border-cool last:border-b-0">
             <div class="flex items-center justify-between gap-3 border-b border-border-cool bg-status-neutral-bg px-5 py-2.5">
               <p class="text-label-md font-semibold uppercase text-ink">{group.label}</p>

@@ -42,7 +42,7 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
       .where(eq(product.businessId, businessId)),
     perProduct(range.from, range.to),
     perProduct(prevFrom, prevTo),
-    // Agregat harian dari lapisan Facts (dulu GROUP BY inline).
+    // Agregat harian dari lapisan Facts.
     queryFactsByDay(db, businessId, { from: range.from, to: range.to }, tz),
     db
       .select({ value: count() })
@@ -64,7 +64,7 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
   const names = Object.fromEntries(products.map((p) => [p.id, p.name]));
   const cur = summarizeFacts(curRows, names);
   const prev = summarizeFacts(prevRows, names);
-  // Tabel Performa + Δ: qty/rev/profit/margin kini vs periode sama panjang.
+  // Tabel Performa + Δ: qty/rev/profit/margin periode ini vs periode sama panjang.
   const rows = compareProductPeriods(cur, prev).sort((a, b) => b.current.revenue - a.current.revenue);
 
   const sum = (arr: ProductSummary[], f: (p: ProductSummary) => number) => arr.reduce((s, p) => s + f(p), 0);
@@ -102,13 +102,14 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
   const revenue = scaleMoney(revenueRaw, moneyUnit);
   const profit = scaleMoney(profitRaw, moneyUnit);
 
-  // Rumus Performa per Produk: top 30 by revenue; klien toggle revenue/profit/margin (margin=profit/revenue).
+  // productPerf = top 30 produk by revenue
+  // margin = profit / revenue
   const productPerf = [...cur]
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 30)
     .map((p) => ({ id: p.productId, name: p.name, qty: p.quantitySold, revenue: p.revenue, profit: p.profit, margin: p.margin }));
 
-  // Rumus Komposisi Profit: 8 profit>0 terbesar + "Lainnya"=sisa profit; negatif dibuang.
+  // pieRest = curProfit − Σ pieTop.profit (Rupiah)
   const profitable = [...cur].filter((p) => p.profit > 0).sort((a, b) => b.profit - a.profit);
   const pieTop = profitable.slice(0, 8);
   const pieRest = curProfit - pieTop.reduce((s, p) => s + p.profit, 0);
@@ -119,12 +120,13 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
     pieData.push(pieRest);
   }
   const withSales = cur.filter((p) => p.revenue > 0);
-  // Rumus highlight: rata2 struk=rev÷struk; margin max/min=sort margin desc.
+  // avgTicket = curRev / tx   (0 bila tx = 0)
+  // prevAvg = prevRev / prevTx   (0 bila prevTx = 0)
   const byMargin = [...withSales].sort((a, b) => b.margin - a.margin);
   const avgTicket = tx === 0 ? 0 : curRev / tx;
   const prevAvg = prevTx === 0 ? 0 : prevRev / prevTx;
 
-  // Rumus Rata-rata Struk/hari: rev hari÷struk hari; null kalau struk=0 (garis putus).
+  // avgRaw = rev hari / struk hari; null bila struk hari = 0 (garis putus).
   const avgRaw: (number | null)[] = revenueRaw.map((rev, i) => (txRaw[i] === 0 ? null : rev / txRaw[i]));
   const avgMax = avgRaw.reduce<number>((s, v) => Math.max(s, v ?? 0), 0);
   const avgUnit = pickMoneyUnit(avgMax);
@@ -133,7 +135,7 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
     v === null ? null : Math.round((v / avgUnit.divisor) * avgF) / avgF
   );
 
-  // Rumus Jam Tersibuk: count struk per jam zona bisnis (kosong=0); puncak=jam max.
+  // hourly = count struk per jam zona bisnis (kosong = 0); peak = jam max.
   const byHour = new Map(hourlyRows.map((h) => [h.hour, h.tx]));
   const activeHours = [...byHour.entries()].filter(([, t]) => t > 0).map(([h]) => h);
   let hourStart = 0;
@@ -169,7 +171,7 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
     total: hourlyTotal
   };
 
-  // Rumus Hari Seminggu: rata2 revenue=Σ rev÷kemunculan hari itu; tampil kalau ≥14 hari.
+  // weekdayAvg[d] = dowSums[d] / dowCounts[d]; tampil kalau ≥14 hari.
   const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
   const dowSums = [0, 0, 0, 0, 0, 0, 0, 0];
   const dowCounts = [0, 0, 0, 0, 0, 0, 0, 0];
@@ -180,11 +182,13 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
   const weekdayAvg = [1, 2, 3, 4, 5, 6, 7].map((d) => (dowCounts[d] === 0 ? 0 : Math.round(dowSums[d] / dowCounts[d])));
   const weekday = { labels: dayNames, data: weekdayAvg, show: labels.length >= 14 };
 
-  // Rumus per Kasir: revenue=Σ(qty×jual), rata2=rev÷struk; tampil kalau ≥2 kasir.
+  // cashierStats.show = kasir >= 2; revenue/rata2 dihitung di queryCashiers.
   const cashiers = [...cashierRows].sort((a, b) => b.revenue - a.revenue);
   const cashierStats = { list: cashiers, show: cashiers.length >= 2 };
 
-  // Rumus Inventori (14 hari tetap): nilai=Σ(stok×modal); mati=stok>0 & sold14=0; hari=stok÷(sold14/14).
+  // stockValue = Σ (stok × modal)  (Rupiah)
+  // dead = stok > 0 & sold14 = 0
+  // daysCover = stok / (sold14 / 14) hari
   const invProducts = invData.products;
   const stockValue = invProducts.reduce((s, p) => s + p.stock * p.costPrice, 0);
   const invOut = invProducts.filter((p) => p.stock <= 0).length;
@@ -210,7 +214,8 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
     deadList: deadFull.slice(0, 5)
   };
 
-  // Rumus Gerak Stok/minggu: Σ qtyChange per Senin zona bisnis×alasan; Terjual=-(SALE); susut=koreksi negatif×modal.
+  // movement.sold = −(Σ qtyChange SALE per minggu)
+  // movement.adjust = Σ qtyChange ADJUST per minggu
   const weeks = [...new Set(moveRows.map((r) => r.week))].sort();
   const moveBy = new Map(moveRows.map((r) => [`${r.week}|${r.reason}`, r.qty]));
   const moveLabels = weeks.map((wk) => {
@@ -226,7 +231,8 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
     susut: susut
   };
 
-  // Rumus Matriks: x=qty, y=margin%, ukuran=√(rev/maxRev); garis=median qty & margin bisnis.
+  // matrix.x = qty; y = margin% (1 desimal)
+  // matrix.r = 5 + √(rev/maxRev) × 13
   const quantities = withSales.map((p) => p.quantitySold).sort((a, b) => a - b);
   const medianQty = quantities.length === 0 ? 0 : quantities[Math.floor(quantities.length / 2)];
   const overallMargin = calculateMargin(curRev, curProfit);
@@ -284,22 +290,16 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
       totalQty: sum(cur, (p) => p.quantitySold)
     },
     rows,
-    // Rumus Margin tipis: margin=profit/revenue <15%.
+    // lowMargin = getLowMarginProducts(cur, 0.15); margin = profit/revenue < 15%.
     lowMargin: getLowMarginProducts(cur, 0.15).map((p) => ({ name: p.name, margin: p.margin }))
   };
 }
 
 export async function getDashboardPageData(businessId: string, tz: BizTz) {
   const T = makeTime(tz);
-  // 4 query independen — jalan PARALEL dalam satu round-trip, bukan serial.
-  // Agregasi KPI dihitung di SQL (GROUP BY + SUM) sehingga yang ditransfer
-  // cuma 1 baris per produk, bukan 1 baris per item transaksi (yang tumbuh
-  // tanpa batas: 12rb+ baris saat ini). Hasil angkanya identik dengan
-  // agregasi JS sebelumnya (penjumlahan integer bersifat asosiatif), cuma
-  // lokasi hitungnya pindah ke database.
-  // Query ke-5: agregat harian 60 hari terakhir — 1 query melayani tren
-  // (30 hari terakhir) + delta (30 hari ini vs 30 hari sebelumnya).
-  // Semua batas hari & bucket memakai zona bisnis (bukan UTC / lokal server).
+  // 4 query independen jalan paralel dalam satu Promise.all; agregasi KPI
+  // dihitung di SQL (GROUP BY + SUM) sehingga transfer hanya 1 baris per produk.
+  // Query ke-5: agregat harian 60 hari; semua batas hari pakai zona bisnis.
   const sixtyDaysAgo = T.startOfDay(T.addDays(new Date(), -59));
   const [products, grouped, countRows, recentTransactions, dailyRows, restockList, restockCounts] = await Promise.all([
     db
@@ -307,20 +307,17 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
       .from(product)
       .where(eq(product.businessId, businessId)),
 
-    // Agregat all-time per produk dari lapisan Facts (dulu GROUP BY inline).
+    // Agregat all-time per produk dari lapisan Facts.
     queryFactsByProduct(db, businessId, { from: null, to: null }),
 
-    // Jumlah transaksi real (bukan jumlah baris item) — dipakai gantiin
-    // card "Cost" di KPI row biar gak overlap sama chart revenue-per-produk,
-    // dan lebih deket ke "Transaction Volume" di referensi desain.
+    // Jumlah transaksi (bukan baris item) untuk KPI row, bukan card Cost.
     db
       .select({ value: count() })
       .from(transaction)
       .where(eq(transaction.businessId, businessId)),
 
-    // 10 item transaksi terbaru untuk card dashboard — leftJoin user biar
-    // struk staff yang sudah dihapus tetap tampil via cashier_name.
-    // discountAmount ikut agar total tampil bersih (net).
+    // 10 transaksi terbaru; leftJoin user agar struk staff terhapus tetap tampil
+    // via cashier_name. discountAmount ikut agar total bersih (net).
     db
       .select({
         productName: product.name,
@@ -339,7 +336,7 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
       .orderBy(desc(transaction.createdAt))
       .limit(10),
 
-    // Agregat harian 60 hari dari lapisan Facts (dulu GROUP BY inline).
+    // Agregat harian 60 hari dari lapisan Facts.
     queryFactsByDay(db, businessId, { from: sixtyDaysAgo, to: null }, tz),
 
     // Kartu "Perlu restock": produk aktif dengan stok <= ambang, 5 paling
@@ -368,11 +365,10 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
 
   const productNames = Object.fromEntries(products.map((p) => [p.id, p.name]));
 
-  // Ringkasan per produk + total bisnis dari engine (dulu mapping inline).
+  // Ringkasan per produk + total bisnis dari engine.
   const perProduct: ProductSummary[] = summarizeFacts(grouped, productNames);
 
-  // Total bisnis = jumlahkan total per produk — sama persis dengan menjumlah
-  // semua item dulu baru ditotal (asosiatif), jadi KPI tidak berubah.
+  // total = Σ total per produk (asosiatif, sama dengan jumlah semua item).
   const summary = totalsOf(perProduct);
 
   const topByRevenue = getTopProducts(perProduct, 'revenue', 5);
@@ -436,11 +432,8 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
 export async function getSimulatorPageData(businessId: string, url: URL, tz: BizTz) {
   const range = resolvePeriod(url, tz, new Date(), { default: 'month', allow: ['today', 'week', 'month', 'all', 'custom'] });
 
-  // Baseline per produk dari lapisan Facts (GROUP BY di SQL — yang
-  // ditransfer cuma 1 baris per produk). Field lama (qty/revenue/cost/
-  // profit/margin/txCount) dipertahankan untuk kompatibilitas; `facts`
-  // dipakai simulator baru (diskon kuota + drift).
-  // Produk tanpa histori tetap masuk dengan angka nol + txCount 0.
+  // Baseline per produk dari lapisan Facts: qty/revenue/cost/profit/margin/
+  // txCount + facts (diskon kuota + drift). Produk tanpa histori = angka nol.
   const [products, agg] = await Promise.all([
     db.select().from(product).where(eq(product.businessId, businessId)),
     queryFactsByProduct(db, businessId, { from: range.from, to: range.to })

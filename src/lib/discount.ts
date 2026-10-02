@@ -1,6 +1,5 @@
 import { type BizTime, makeTime } from './shared/time';
 
-// Tipe-tipe diskon
 export type DiscountScope = 'PRODUCT' | 'GLOBAL';
 export type DiscountStatus = 'INACTIVE' | 'SCHEDULED' | 'EXPIRED' | 'SOLD_OUT' | 'ACTIVE';
 
@@ -18,12 +17,11 @@ export interface DiscountLike {
   createdAt: Date;
 }
 
-// unitDiscount: per UNIT, dibulatkan dulu
+// unitDiscount = round(price × percent / 100)
 export function unitDiscount(price: number, percent: number): number {
   return Math.round((price * percent) / 100);
 }
 
-// getDiscountStatus: status diturunkan, tidak disimpan
 export function getDiscountStatus(d: DiscountLike, now: Date): DiscountStatus {
   if (!d.isActive) return 'INACTIVE';
   if (now < d.startsAt) return 'SCHEDULED';
@@ -32,19 +30,16 @@ export function getDiscountStatus(d: DiscountLike, now: Date): DiscountStatus {
   return 'ACTIVE';
 }
 
-// remainingQuota: sisa kuota (null = tanpa batas)
 export function remainingQuota(d: DiscountLike): number | null {
   if (d.quota === null) return null;
   return Math.max(0, d.quota - d.quotaUsed);
 }
 
-// isBelowCost: guard rugi
 export function isBelowCost(price: number, cost: number, percent: number): boolean {
   const unitDisc = unitDiscount(price, percent);
   return price - unitDisc < cost;
 }
 
-// Input keranjang
 export interface CartLineIn {
   productId: string;
   qty: number;
@@ -52,7 +47,6 @@ export interface CartLineIn {
   cost?: number;
 }
 
-// Output baris setelah diproses diskon
 export interface CartLineOut extends CartLineIn {
   gross: number;
   net: number;
@@ -66,7 +60,6 @@ export interface CartLineOut extends CartLineIn {
   belowCost: boolean;
 }
 
-// Output keranjang
 export interface CartOut {
   lines: CartLineOut[];
   subtotal: number;
@@ -74,8 +67,6 @@ export interface CartOut {
   total: number;
 }
 
-// Pilih diskon PRODUCT berstatus ACTIVE untuk satu produk.
-// Jika >1: createdAt terbaru menang, lalu id terkecil.
 function selectProductDiscount(
   discounts: DiscountLike[],
   productId: string,
@@ -92,7 +83,12 @@ function selectProductDiscount(
   return active[0];
 }
 
-// Hitung keranjang
+// gross          = Σ qty × price
+// discount       = Σ discountedQty × unitDiscount(price, percent)
+// net            = gross − discount
+// subtotal       = Σ gross
+// discountTotal  = Σ discount
+// total          = subtotal − discountTotal
 export function calculateCart(
   lines: CartLineIn[],
   ctx: { productDiscounts: DiscountLike[]; global: DiscountLike | null; now: Date }
@@ -122,8 +118,6 @@ export function calculateCart(
       source = 'PRODUCT';
       unitDisc = unitDiscount(price, productDiscount.percent);
     } else if (global && getDiscountStatus(global, now) === 'ACTIVE' && global.scope === 'GLOBAL') {
-      // Global hanya untuk baris tanpa diskon produk ACTIVE (termasuk sisa
-      // kuota kepotong) — tidak menimpa diskon produk.
       applied = qty;
       discountId = global.id;
       discountName = global.name;
@@ -135,7 +129,6 @@ export function calculateCart(
     const discountAmount = applied * unitDisc;
     const net = gross - discountAmount;
     const partial = applied > 0 && applied < qty;
-    // Flag guard rugi: hanya true bila cost diketahui DAN baris kena diskon.
     const belowCost = cost !== undefined && discountPercent !== null && isBelowCost(price, cost, discountPercent);
 
     linesOut.push({
@@ -167,7 +160,6 @@ export function calculateCart(
   };
 }
 
-// Hitung delta quota untuk tiap diskon
 export function quotaDeltas(cart: CartOut): { discountId: string; units: number }[] {
   const deltas = new Map<string, number>();
   for (const line of cart.lines) {
@@ -178,17 +170,14 @@ export function quotaDeltas(cart: CartOut): { discountId: string; units: number 
   return Array.from(deltas.entries()).map(([discountId, units]) => ({ discountId, units }));
 }
 
-// Preset window
 export type WindowPreset = 'TODAY' | 'DAYS_2' | 'DAYS_7' | 'CUSTOM' | 'OPEN';
 
-// Resolve window berdasarkan preset dan zona bisnis
 export function resolveWindow(
   preset: WindowPreset,
   now: Date,
   T: BizTime,
   opts?: { startDay?: string; endDay?: string }
 ): { startsAt: Date; endsAt: Date | null } | { error: string } {
-  // Parse startDay jika ada (opsional)
   let startsAt: Date;
   let startDayParsed: Date | null = null;
 
@@ -197,18 +186,15 @@ export function resolveWindow(
     if (!startDayParsed) {
       return { error: 'Tanggal mulai tidak valid.' };
     }
-    // Hari fiktif tidak boleh di masa lalu (relatif terhadap now, bukan hari now)
     if (T.dayKey(startDayParsed) < T.dayKey(now)) {
       return { error: 'Tanggal mulai tidak boleh di masa lalu.' };
     }
-    // Jika startDay = hari ini, startsAt = now; jika hari depan, startsAt = 00:00 hari itu
     if (T.dayKey(startDayParsed) === T.dayKey(now)) {
       startsAt = now;
     } else {
       startsAt = T.startOfDay(startDayParsed);
     }
   } else {
-    // Tanpa startDay: mulai sekarang (bukan 00:00 hari ini).
     startsAt = now;
   }
 

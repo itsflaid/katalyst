@@ -15,13 +15,7 @@ export const load: PageServerLoad = async ({ locals }) => {
   return { products, role };
 };
 
-// -----------------------------------------------------------------------
-// Actions
-//
-// Catatan neon-http: tidak ada db.transaction interaktif, tapi db.batch([...])
-// menjalankan semua statement dalam SATU transaksi (gagal satu = rollback
-// semua). Semua perubahan stok + ledger di bawah lewat batch.
-// -----------------------------------------------------------------------
+// neon-http: tidak ada db.transaction interaktif; db.batch([...]) menjalankan semua statement dalam satu transaksi (gagal satu = rollback semua).
 
 export const actions: Actions = {
   create: async ({ request, locals }) => {
@@ -120,11 +114,8 @@ export const actions: Actions = {
         message: 'Produk sudah punya riwayat penjualan — nonaktifkan saja.'
       });
 
-    // Riwayat penjualan (item struk, atau ledger SALE/VOID_RESTORE dari struk
-    // yang sudah dibatalkan) tidak boleh hilang. Ledger RESTOCK/ADJUST milik
-    // produk yang belum pernah terjual ikut dibersihkan — kalau tidak, stok
-    // awal yang kini tercatat di ledger bikin produk salah input tak bisa
-    // dihapus karena FK.
+    // Riwayat penjualan (item struk atau ledger SALE/VOID_RESTORE) tidak boleh hilang.
+    // Ledger RESTOCK/ADJUST milik produk yang belum pernah terjual ikut dibersihkan — kalau tidak, stok awal di ledger bikin produk salah input tak bisa dihapus karena FK.
     const [sold] = await db
       .select({ id: transactionItem.id })
       .from(transactionItem)
@@ -207,9 +198,8 @@ export const actions: Actions = {
     if (stock === existing.stock) return fail(400, { for: 'adjust', message: 'Tidak ada perubahan.' });
 
     await db.batch([
-      // Ledger DULU: selisih dihitung di DB dari stok saat statement ini
-      // jalan (bukan dari angka yang kita baca tadi), jadi tetap benar kalau
-      // ada penjualan di sela-sela. Statement berikutnya baru set stoknya.
+  // Ledger diproses lebih awal: selisih dihitung di DB dari stok saat statement ini jalan, bukan dari angka yang kita baca tadi.
+  // Jadi tetap benar kalau ada penjualan di sela-sela. Statement berikutnya baru set stoknya.
       db.insert(stockMovement).values({
         id: crypto.randomUUID(),
         businessId,

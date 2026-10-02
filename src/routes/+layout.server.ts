@@ -5,9 +5,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
   const sessionUser = locals.user;
   if (!sessionUser) return { user: null, businessName: null, timezone: DEFAULT_TZ };
 
-  // additionalFields better-auth (role/businessId) balik sebagai string biasa,
-  // bukan literal type 'OWNER' | 'STAFF' — di-cast di sini, satu tempat,
-  // biar Sidebar.svelte gak perlu tau soal ketidaksempurnaan typing ini.
+  // additionalFields better-auth (role/businessId) balik sebagai string biasa, bukan literal type — di-cast di sini, satu tempat.
   // Bisnis dibaca dari locals (diisi hooks) agar cukup satu query per request.
   const role = (sessionUser.role as 'OWNER' | 'STAFF' | null) ?? 'STAFF';
 

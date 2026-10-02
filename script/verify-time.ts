@@ -16,7 +16,7 @@ function ok(label: string, cond: boolean, detail = '') {
   }
 }
 
-// Aserti lama dipertahankan sebagai makeTime('Asia/Makassar') = bukti tanpa regresi.
+// Aserti WITA (Makassar) dipertahankan = bukti tanpa regresi.
 const WITA = makeTime('Asia/Makassar');
 console.log('\n== time.ts: kompatibilitas WITA (Makassar) ==');
 ok('23:30Z → hari WITA 2026-09-15', WITA.dayKey(new Date('2026-09-14T23:30:00Z')) === '2026-09-15');

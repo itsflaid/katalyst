@@ -6,10 +6,8 @@
   import Sidebar from '$lib/components/Sidebar.svelte';
   export let data;
 
-  // <main> adalah scroll container (bukan document), dan elemen layout ini
-  // TIDAK dihancurkan saat navigasi client-side — cuma <slot /> yang ganti.
-  // Akibatnya scrollTop halaman A kebawa ke halaman B (SvelteKit cuma
-  // me-reset document scroll). Fix: reset manual tiap pathname berubah.
+  // <main> adalah scroll container (bukan document); layout tidak dihancurkan saat navigasi client-side.
+  // scrollTop halaman A kebawa ke halaman B — reset manual tiap pathname berubah.
   let mainEl: HTMLElement | null = null;
 
   // Drawer mobile: sidebar disembunyikan di <lg, dibuka via hamburger.
@@ -22,7 +20,7 @@
 
 {#if data.user}
   <div class="app-shell">
-    <!-- Desktop: sidebar statis seperti sebelumnya -->
+    <!-- Desktop: sidebar statis -->
     <div class="hidden lg:contents">
       <Sidebar role={data.user.role} businessName={data.businessName ?? 'Bisnis Kamu'} />
     </div>
@@ -66,11 +64,8 @@
 
 <style>
   /*
-    Sebelumnya .app-shell gak punya batas tinggi, jadi begitu konten
-    <main> lebih tinggi dari layar, yang jadi scroll container adalah
-    dokumen itu sendiri — otomatis Sidebar (sibling flex biasa) ikut
-    kegeser ke atas juga. Fix: pin .app-shell di 100vh + overflow hidden,
-    lalu biarin cuma <main> yang scroll sendiri. Sidebar jadi diam total.
+    .app-shell di-pin 100vh + overflow hidden: tanpa batas tinggi, scroll
+    container jadi dokumen dan Sidebar ikut kegeser. Hanya <main> yang scroll.
   */
   .app-shell {
     display: flex;

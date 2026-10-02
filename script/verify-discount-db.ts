@@ -1,7 +1,6 @@
-// Verifikasi constraint DB diskon (0012): semua di dalam SATU transaksi yang
-// di-rollback di akhir; tiap tes negatif jalan di savepoint (tx.transaction)
-// agar kegagalan satu statement tidak menggugurkan sisanya.
-// Pola: PASS/FAIL per baris + nama constraint, exit 1 bila ada FAIL.
+// Verifikasi constraint DB diskon: satu transaksi di-rollback; tes negatif per
+// savepoint agar kegagalan satu statement tak menggugurkan sisanya. PASS/FAIL
+// per nama constraint; exit 1 bila ada FAIL.
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
@@ -168,7 +167,7 @@ async function main() {
       }
 
       // 12. Paritas: selama semua discount_amount = 0, sum(lineNet) harus
-      // sama dengan sum(qty×price) lama — di seluruh data (termasuk fixture
+      // sama dengan sum(qty×price) — di seluruh data (termasuk fixture
       // di atas yang semuanya berdikon-nol).
       {
         const [par] = await tx

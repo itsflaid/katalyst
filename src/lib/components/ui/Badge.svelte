@@ -5,7 +5,7 @@
   // "success/warning/danger" generik Tailwind, biar konsisten sama
   // bahasa yang dipakai di lib/analytics.ts (insight type, dsb).
   export let tone: 'positive' | 'warning' | 'negative' | 'neutral' = 'neutral';
-  // sm = kompak (role, status, persentase), md = ukuran lama (KPI dashboard).
+  // sm = kompak (role, status, persentase), md = ukuran KPI dashboard.
   export let size: 'sm' | 'md' = 'md';
   let className = '';
   export { className as class };
