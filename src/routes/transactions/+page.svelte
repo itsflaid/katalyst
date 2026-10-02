@@ -8,6 +8,7 @@
   import type { SubmitFunction } from '@sveltejs/kit';
   import Badge from '$lib/components/ui/Badge.svelte';
   import { calculateCart, getDiscountStatus, unitDiscount } from '$lib/discount';
+  import { lineNetOf } from '$lib/analytics';
   import { makeTime, DEFAULT_TZ, type BizTime } from '$lib/shared/time';
   export let data;
   export let form;
@@ -330,7 +331,7 @@
                           {it.quantity}× {it.productName}
                           {#if it.discountAmount > 0}<span class="text-status-positive"> · Diskon {it.discountName} −{idr(it.discountAmount)}</span>{/if}
                         </span>
-                        <span class="tabular text-muted whitespace-nowrap">{idr(it.quantity * it.priceAtSale - it.discountAmount)}</span>
+                        <span class="tabular text-muted whitespace-nowrap">{idr(lineNetOf(it))}</span>
                       </li>
                     {/each}
                   </ul>

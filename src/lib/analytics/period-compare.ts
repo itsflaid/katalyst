@@ -1,4 +1,5 @@
 import { getBusinessSummary, type BusinessSummary, type ProductSummary, type TransactionItemLike } from './core';
+import { deltaRatio } from './facts';
 
 export interface PeriodComparison {
     current: BusinessSummary;
@@ -29,10 +30,11 @@ export interface ProductPeriodComparison {
 // caller yang tanggung jawab misahin currentItems vs previousItems by tanggal.
 // ---------------------------------------------------------------------------
 
-/** Persen perubahan (a vs b relatif ke b). Baseline 0 -> 0 (bukan NaN/Infinity). */
+/** Persen perubahan (pecahan) via deltaRatio; "dari nol" (null) dipetakan ke 0
+ *  agar kontrak lama (number, produk baru = 0) tetap utuh. Penyebut |prev|:
+ *  basis negatif kini benar tandanya (−100 → −50 = +0.5, dulu −0.5). */
 function percentChange(current: number, previous: number): number {
-    if (previous === 0) return 0;
-    return (current - previous) / previous;
+    return deltaRatio(current, previous) ?? 0;
 }
 
 export function compareBusinessPeriods(
