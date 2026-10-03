@@ -25,7 +25,7 @@ async function findPendingInvite(inviteId: string, businessId: string) {
   return invite;
 }
 
-// Kirim ulang = revoke token lama + terbitkan token baru (link lama mati seketika).
+// Kirim ulang me-revoke token lama dan menerbitkan token baru (link lama mati seketika).
 // Dipakai untuk invite kedaluwarsa maupun link yang hilang.
 export const POST: RequestHandler = async ({ request, locals }) => {
   requireOwner(locals);

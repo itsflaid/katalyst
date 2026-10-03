@@ -158,7 +158,7 @@ export const actions: Actions = {
     try {
       await db.delete(discount).where(and(eq(discount.id, id), eq(discount.businessId, businessId)));
     } catch {
-      // FK menolak di sela (dipakai tepat bersamaan) = pesan yang sama.
+      // FK yang menolak di sela (dipakai tepat bersamaan) menghasilkan pesan yang sama.
       return fail(400, { message: 'Sudah dipakai di transaksi — nonaktifkan saja.' });
     }
     return { success: true };

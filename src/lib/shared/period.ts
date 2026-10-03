@@ -1,6 +1,5 @@
-// Gabungan resolveStatistikRange + resolveSimulatorRange. Murni: jam masuk
-// lewat `now`; hanya import relatif. Output label/fromISO/toISO dan semantik
-// minggu/bulan/custom IDENTIK dengan dua resolver lama.
+// Satu resolver periode untuk statistik + simulator (semantik minggu/bulan/custom sama).
+// Murni: jam masuk lewat `now`; hanya import relatif.
 import { makeTime, type BizTz } from './time';
 
 export type PeriodKey = 'today' | 'week' | 'month' | '30d' | 'all' | 'custom';

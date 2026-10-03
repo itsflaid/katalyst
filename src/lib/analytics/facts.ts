@@ -75,7 +75,7 @@ export function metricsOf(f: Facts): Metrics {
   };
 }
 
-// lineNet = qty × price − discount   (0 bila discount null/undefined)
+// lineNet = qty × price − discount   (discount null/undefined dianggap 0)
 export function lineNetOf(i: {
   quantity: number;
   priceAtSale: number;
@@ -95,7 +95,7 @@ export function receiptTotals(
   return { subtotal, discountTotal, total: subtotal - discountTotal };
 }
 
-// delta = (cur − prev) / |prev|   (null bila prev = 0 dan cur ≠ 0)
+// delta = (cur − prev) / |prev|   (prev = 0: 0 bila cur = 0, selain itu null)
 export function deltaRatio(cur: number, prev: number): number | null {
   if (prev === 0) return cur === 0 ? 0 : null;
   return (cur - prev) / Math.abs(prev);

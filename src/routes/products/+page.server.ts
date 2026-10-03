@@ -76,7 +76,7 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  // isActive = pilihan owner (jual / tidak dijual). Tidak ada hubungan
+  // isActive itu pilihan owner (jual / tidak dijual). Tidak ada hubungan
   // dengan stok: produk stok 0 tetap "aktif" tapi otomatis tersembunyi di
   // kasir dan berlabel Habis.
   toggle: async ({ request, locals }) => {

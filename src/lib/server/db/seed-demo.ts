@@ -248,7 +248,7 @@ async function main() {
           priceAtSale: p.sellingPrice,
           costAtSale
         });
-        // 1 baris SALE per item (ref_tx_id + waktu = waktu struk).
+        // 1 baris SALE per item (ref_tx_id dan waktu mengikuti waktu struk).
         saleLedger.push({
           id: randomUUID(),
           businessId,
@@ -266,7 +266,7 @@ async function main() {
   }
 
   // ledger_konsisten: Σ qty_change per produk == product.stock
-  // restock_mingguan = round(0.9 * penjualan_minggu_sebelumnya) di Senin 09.00 WITA
+  // restock_mingguan = max(1, round(0.9 × penjualan_minggu_sebelumnya)) tiap 7 hari, 09.00 WITA
   // stok_awal = stok_akhir + terjual − restock_mingguan − adjust (>= 0)
   const otherLedger: {
     id: string;

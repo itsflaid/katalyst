@@ -129,8 +129,8 @@ const INSIGHT_RULES = {
     highMarginLowDemand: { marginRatioMin: 1.3 },
 };
 
-// revenueShare = revenue / totalRevenue
-// profitShare  = profit / totalProfit
+// revenueShare = revenue / totalRevenue   (0 bila totalRevenue = 0)
+// profitShare  = profit / totalProfit   (0 bila totalProfit = 0)
 // avgMargin    = totalProfit / totalRevenue   (0 bila totalRevenue = 0)
 export function getBusinessInsights(summaries: ProductSummary[]): BusinessInsight[] {
     if (summaries.length === 0) return [];
@@ -147,7 +147,7 @@ export function getBusinessInsights(summaries: ProductSummary[]): BusinessInsigh
         const profitShare = totalProfit === 0 ? 0 : p.profit / totalProfit;
         const qtyRank = byQuantityDesc.findIndex((x) => x.productId === p.productId);
 
-        // Insight 1: Omzet tinggi (>20%) tetapi kontribusi profit rendah (<10%).
+        // Insight 1: revenueShare > revenueShareMin dan profitShare < profitShareMax.
         if (
             revenueShare > INSIGHT_RULES.highRevenueLowProfit.revenueShareMin &&
             profitShare < INSIGHT_RULES.highRevenueLowProfit.profitShareMax
@@ -160,7 +160,7 @@ export function getBusinessInsights(summaries: ProductSummary[]): BusinessInsigh
             });
         }
 
-        // Insight 2: Produk top 3 laris tetapi margin di bawah 70% rata-rata bisnis.
+        // Insight 2: topNByQuantity terlaris tetapi margin < marginRatioMax × rata-rata bisnis.
         const isTopByQuantity = qtyRank < INSIGHT_RULES.popularLowMargin.topNByQuantity;
         if (
             isTopByQuantity &&
@@ -175,7 +175,7 @@ export function getBusinessInsights(summaries: ProductSummary[]): BusinessInsigh
             });
         }
 
-        // Insight 3: Margin tinggi (>130% rata-rata) tetapi volume penjualan rendah.
+        // Insight 3: margin > marginRatioMin × rata-rata tetapi volume paruh bawah.
         const isBottomHalfByQuantity = qtyRank >= Math.ceil(summaries.length / 2);
         if (
             isBottomHalfByQuantity &&

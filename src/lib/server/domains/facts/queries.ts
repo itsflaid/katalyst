@@ -18,8 +18,11 @@ export type Range = { from: Date | null; to: Date | null };
 // txCount = count(distinct transaction.id) per grup; jangan dijumlahkan lintas grup.
 export type FactsRow = Facts & { txCount: number };
 
-// gross = Σ (quantity * priceAtSale)  (bigint cast menghindari overflow int4)
-// cost = Σ (quantity * costAtSale)
+// qty = Σ quantity
+// gross = Σ quantity × priceAtSale   (quantity di-cast bigint agar tidak overflow int4)
+// discount = Σ discountAmount
+// cost = Σ quantity × costAtSale   (cast bigint seperti gross)
+// discountedQty = Σ discountedQty
 export function factColumns() {
   return {
     qty: sql<string>`sum(${transactionItem.quantity})::text`,

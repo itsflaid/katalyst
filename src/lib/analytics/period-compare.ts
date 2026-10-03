@@ -49,6 +49,9 @@ export function compareBusinessPeriods(
     };
 }
 
+// quantity/revenue/profitChangePercent = deltaRatio(cur, prev) ?? 0
+// marginChangePoints = cur.margin − prev.margin
+// produk tanpa pembanding: semua perubahan = 0
 export function compareProductPeriods(
     currentSummaries: ProductSummary[],
     previousSummaries: ProductSummary[]

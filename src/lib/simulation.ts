@@ -67,9 +67,12 @@ function reqInt(name: string, v: number, min: number, max?: number): number {
   return v;
 }
 
-// simQty      = qty × (P − unitDisc) − qty × c
-// revenue     = gross − discount
-// discountRate = discount / gross   (dari baseline)
+// gross         = qty × price
+// discount      = min(qty, units ?? qty) × unitDiscount(price, pct)   (tuas percent)
+// discountedQty = min(qty, units ?? qty)   (tuas percent)
+// discount      = round(gross × discountRate)   (tuas keep; discountRate dari baseline)
+// discountedQty = round(baseDiscountedQty × qty / baseQty)   (tuas keep; 0 bila baseQty = 0)
+// cost          = qty × cost
 function projectQty(
   qty: number,
   price: number,
@@ -93,10 +96,8 @@ function projectQty(
   return { qty, gross, discount, cost: qty * cost, discountedQty };
 }
 
-// revenue = (simRevenue − baseRevenue) / |baseRevenue|   (null bila base = 0)
-// profit  = (simProfit − baseProfit) / |baseProfit|
-// qty     = (simQty − baseQty) / |baseQty|
-// marginPoints = simMargin − baseMargin
+// impact.revenue, .profit, .qty = deltaRatio(sim, base)   (null bila base = 0 dan sim ≠ 0)
+// impact.marginPoints           = sim.margin − base.margin
 function impactOf(sim: Metrics, base: Metrics): Impact {
   return {
     revenue: deltaRatio(sim.revenue, base.revenue),

@@ -82,7 +82,7 @@ export async function getGlobalDiscount(businessId: string, id: string) {
 }
 
 // Cari diskon PRODUCT aktif yang rentangnya bertabrakan (untuk validasi overlap).
-// endsAt null = tak hingga. excludeId = abaikan diri sendiri (saat update/toggle).
+// endsAt null berarti tak hingga; excludeId mengabaikan diri sendiri (saat update/toggle).
 export async function findOverlap(
   businessId: string,
   productId: string,

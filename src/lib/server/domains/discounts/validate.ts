@@ -125,7 +125,7 @@ export async function parseDiscountForm(form: FormData, ctx: DiscountFormCtx): P
     }
   }
 
-  // Guard rugi = peringatan + konfirmasi, bukan blok keras.
+  // Guard rugi hanya peringatan + konfirmasi, bukan blok keras.
   const confirmLoss = form.get('confirmLoss') === 'on';
   if (!confirmLoss) {
     const lossProducts: { id: string; name: string }[] = [];
