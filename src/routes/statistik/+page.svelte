@@ -20,12 +20,11 @@
   const fmtShort = (v: number) =>
     v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)} jt` : v >= 1_000 ? `${Math.round(v / 1_000)} rb` : `${v}`;
 
-  let activeRange: string = data.range ?? '30d';
+  $: activeRange = data.range ?? '30d';
   let fromInput: string = data.rangeFrom ?? '';
   let toInput: string = data.rangeTo ?? '';
 
   function goWithRange(key: string, from = '', to = '') {
-    activeRange = key;
     const u = new URL(window.location.href);
     u.searchParams.set('range', key);
     if (from) u.searchParams.set('from', from);
@@ -69,6 +68,9 @@
     <button type="button" on:click={() => goWithRange('week')} class={btn('week')}>Minggu ini</button>
     <button type="button" on:click={() => goWithRange('30d')} class={btn('30d')}>30 hari</button>
     <button type="button" on:click={() => goWithRange('month')} class={btn('month')}>Bulan ini</button>
+    {#if activeRange === 'custom'}
+      <span class="rounded border border-ink-navy bg-ink-navy text-white font-semibold px-2.5 py-1.5 text-body-sm">Custom</span>
+    {/if}
     <span class="flex items-center gap-1.5 ml-1">
       <input type="date" bind:value={fromInput} class="h-9 rounded border border-border-input bg-white px-2 text-body-sm text-ink" aria-label="Dari tanggal" />
       <span class="text-muted">–</span>
