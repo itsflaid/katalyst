@@ -16,7 +16,7 @@
   $: fmtDate = (d: string | Date) => T.fmt(d, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
   // Tren + delta 30 hari dihitung di load (agregat harian SQL 60 hari: 30 terakhir buat chart, 30 vs 30 sebelumnya buat delta).
-  // Nilai tren dalam jt Rp biar sumbu terbaca. Delta null = tumbuh dari nol.
+  // Nilai tren dalam jt Rp biar sumbu terbaca. Delta null berarti tumbuh dari nol.
   $: trendLabels = data.trend.labels;
   $: revenueTrend = data.trend.revenue;
   $: profitTrend = data.trend.profit;

@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
-import { product, transaction, transactionItem, user } from '$lib/server/db/schema';
-import { and, asc, count, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { product, transaction } from '$lib/server/db/schema';
+import { and, asc, count, eq, gte, lte, sql } from 'drizzle-orm';
 import {
   calculateMargin,
   compareProductPeriods,
@@ -17,6 +17,7 @@ import {
 import { makeTime, type BizTz } from '$lib/shared/time';
 import { previousWindow, resolvePeriod } from '$lib/shared/period';
 import { queryFactsByDay, queryFactsByProduct } from '$lib/server/domains/facts/queries';
+import { queryRecentItems } from '$lib/server/domains/transactions/recent';
 import { metricsOf, ZERO_FACTS } from '$lib/analytics';
 import { queryCashiers, queryHourly, queryInventory, queryMovementWeekly, querySusut, INVENTORY_WINDOW_DAYS } from './queries';
 import { pickMoneyUnit, scaleMoney } from '$lib/shared/format';
@@ -102,8 +103,7 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
   const revenue = scaleMoney(revenueRaw, moneyUnit);
   const profit = scaleMoney(profitRaw, moneyUnit);
 
-  // productPerf = top 30 produk by revenue
-  // margin = profit / revenue
+  // productPerf = 30 teratas menurut revenue (margin ikut dari summary).
   const productPerf = [...cur]
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 30)
@@ -120,9 +120,9 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
     pieData.push(pieRest);
   }
   const withSales = cur.filter((p) => p.revenue > 0);
+  const byMargin = [...withSales].sort((a, b) => b.margin - a.margin);
   // avgTicket = curRev / tx   (0 bila tx = 0)
   // prevAvg = prevRev / prevTx   (0 bila prevTx = 0)
-  const byMargin = [...withSales].sort((a, b) => b.margin - a.margin);
   const avgTicket = tx === 0 ? 0 : curRev / tx;
   const prevAvg = prevTx === 0 ? 0 : prevRev / prevTx;
 
@@ -186,9 +186,10 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
   const cashiers = [...cashierRows].sort((a, b) => b.revenue - a.revenue);
   const cashierStats = { list: cashiers, show: cashiers.length >= 2 };
 
-  // stockValue = Σ (stok × modal)  (Rupiah)
-  // dead = stok > 0 & sold14 = 0
-  // daysCover = stok / (sold14 / 14) hari
+  // stockValue = Σ stock × costPrice   (Rupiah)
+  // out        = stock ≤ 0
+  // restock    = 0 < stock ≤ minStock   (minStock kosong dianggap 5)
+  // dead       = stock > 0 dan sold14 = 0
   const invProducts = invData.products;
   const stockValue = invProducts.reduce((s, p) => s + p.stock * p.costPrice, 0);
   const invOut = invProducts.filter((p) => p.stock <= 0).length;
@@ -231,8 +232,10 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
     susut: susut
   };
 
-  // matrix.x = qty; y = margin% (1 desimal)
-  // matrix.r = 5 + √(rev/maxRev) × 13
+  // xLine = qty indeks ⌊n/2⌋ dari qty terurut naik   (n genap: median atas)
+  // yLine = margin bisnis × 100, 1 desimal
+  // y     = margin produk × 100, 1 desimal
+  // r     = 5 + √(revenue / maxRevenue) × 13, 1 desimal   (maxRevenue minimal 1)
   const quantities = withSales.map((p) => p.quantitySold).sort((a, b) => a - b);
   const medianQty = quantities.length === 0 ? 0 : quantities[Math.floor(quantities.length / 2)];
   const overallMargin = calculateMargin(curRev, curProfit);
@@ -297,9 +300,9 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
 
 export async function getDashboardPageData(businessId: string, tz: BizTz) {
   const T = makeTime(tz);
-  // 4 query independen jalan paralel dalam satu Promise.all; agregasi KPI
+  // Query independen jalan paralel dalam satu Promise.all; agregasi KPI
   // dihitung di SQL (GROUP BY + SUM) sehingga transfer hanya 1 baris per produk.
-  // Query ke-5: agregat harian 60 hari; semua batas hari pakai zona bisnis.
+  // Agregat harian 60 hari; semua batas hari pakai zona bisnis.
   const sixtyDaysAgo = T.startOfDay(T.addDays(new Date(), -59));
   const [products, grouped, countRows, recentTransactions, dailyRows, restockList, restockCounts] = await Promise.all([
     db
@@ -316,25 +319,8 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
       .from(transaction)
       .where(eq(transaction.businessId, businessId)),
 
-    // 10 transaksi terbaru; leftJoin user agar struk staff terhapus tetap tampil
-    // via cashier_name. discountAmount ikut agar total bersih (net).
-    db
-      .select({
-        productName: product.name,
-        quantity: transactionItem.quantity,
-        priceAtSale: transactionItem.priceAtSale,
-        discountAmount: transactionItem.discountAmount,
-        createdAt: transaction.createdAt,
-        cashierName: transaction.cashierName,
-        userName: user.name
-      })
-      .from(transaction)
-      .innerJoin(transactionItem, eq(transactionItem.transactionId, transaction.id))
-      .innerJoin(product, eq(product.id, transactionItem.productId))
-      .leftJoin(user, eq(user.id, transaction.userId))
-      .where(eq(transaction.businessId, businessId))
-      .orderBy(desc(transaction.createdAt))
-      .limit(10),
+    // 10 baris item terbaru dari lapisan transaksi.
+    queryRecentItems(businessId),
 
     // Agregat harian 60 hari dari lapisan Facts.
     queryFactsByDay(db, businessId, { from: sixtyDaysAgo, to: null }, tz),
@@ -442,7 +428,7 @@ export async function getSimulatorPageData(businessId: string, url: URL, tz: Biz
   const baselines = products.map((p) => {
     const a = agg.get(p.id);
     const facts = a
-      ? { qty: a.qty, gross: a.gross, discount: a.discount, cost: a.cost, discountedQty: a.discountedQty }
+      ? { qty: a.qty, gross: a.gross, discount: a.discount, cost: a.cost, discountedQty: a.discountedQty } // arch-allow: field Facts, bukan kolom DB
       : { ...ZERO_FACTS };
     const m = metricsOf(facts);
     return {

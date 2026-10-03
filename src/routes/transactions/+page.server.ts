@@ -112,8 +112,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     }
     receipts = pageHeaders.map((h) => {
       const items = byTx.get(h.id) ?? [];
-      // Total struk dari engine: subtotal = Σ qty×harga normal,
-      // total = subtotal − Σ diskon baris.
+      // Total struk dihitung engine (receiptTotals).
       const totals = receiptTotals(items);
       return {
         txId: h.id,
@@ -134,7 +133,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   }
 
   // Buat dropdown produk di panel "Transaksi Baru" — hanya produk aktif yang stoknya masih ada.
-  // Habis = tersembunyi dari kasir (turunan dari stok, isActive sendiri tidak disentuh). costPrice sengaja tidak dipilih — halaman ini bisa dibuka STAFF.
+  // Produk habis tersembunyi dari kasir (turunan stok; isActive sendiri tidak disentuh). costPrice sengaja tidak dipilih — halaman ini bisa dibuka STAFF.
   const products = await db
     .select({ id: product.id, name: product.name, sellingPrice: product.sellingPrice, stock: product.stock })
     .from(product)
@@ -192,8 +191,8 @@ export const actions: Actions = {
     // client untuk deteksi harga berubah.
     const globalDiscountIdRaw = String(form.get('globalDiscountId') ?? '').trim();
     const globalDiscountId = globalDiscountIdRaw === '' ? null : globalDiscountIdRaw;
-    // Hilang/kosong = klien lama/cacat → tolak (jangan anggap 0, karena
-    // total 0 yang sah — mis. diskon 100% — tetap lolos via '0' eksplisit).
+    // expectedTotal yang hilang/kosong berarti klien lama atau cacat → tolak.
+    // Jangan anggap 0: total 0 yang sah (mis. diskon 100%) lolos via '0' eksplisit.
     const expectedRaw = form.get('expectedTotal');
     const expectedTotal = expectedRaw === null || String(expectedRaw).trim() === '' ? NaN : Number(expectedRaw);
     if (!Number.isInteger(expectedTotal) || expectedTotal < 0) {
@@ -296,7 +295,7 @@ export const actions: Actions = {
             transactionId: txId,
             productId: pid,
             quantity: merged.get(pid)!,
-            // priceAtSale = harga normal (snapshot); diskon di kolom sendiri.
+            // priceAtSale menyimpan harga normal (snapshot); diskon di kolom sendiri.
             priceAtSale: p.sellingPrice,
             costAtSale: p.costPrice,
             discountId: line.discountedQty > 0 ? line.discountId : null,
@@ -372,9 +371,8 @@ export const actions: Actions = {
       .where(and(eq(transaction.id, txId), eq(transaction.businessId, businessId)));
     if (!existing) return fail(404, { message: 'Struk tidak ditemukan.' });
 
-    // Satu statement (CTE) = atomik dan idempoten: item struk dihapus dan dipakai sebagai sumber pengembalian stok + kuota diskon + ledger, lalu header dihapus.
-    // Klik dua kali / dua tab membatalkan struk yang sama: yang kedua tidak menemukan item → stok & kuota tidak dikembalikan dua kali.
-    // isActive tidak disentuh. CHECK quota_used >= 0 jadi jaring pengaman.
+    // Satu statement (CTE) agar atomik dan idempoten: item terhapus jadi sumber pengembalian stok + kuota + ledger.
+    // Klik ganda aman (upaya kedua tak menemukan item); isActive tak tersentuh; CHECK quota_used >= 0 jadi jaring pengaman.
     await db.execute(sql`
       with removed as (
         delete from transaction_item ti

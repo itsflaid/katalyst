@@ -83,12 +83,12 @@ function selectProductDiscount(
   return active[0];
 }
 
-// gross          = Σ qty × price
-// discount       = Σ discountedQty × unitDiscount(price, percent)
-// net            = gross − discount
-// subtotal       = Σ gross
-// discountTotal  = Σ discount
-// total          = subtotal − discountTotal
+// line.gross          = qty × price
+// line.discountedQty  = qty bila kuota tak terbatas atau diskon GLOBAL; selain itu min(qty, sisa kuota); 0 bila tanpa diskon
+// line.discountAmount = discountedQty × unitDiscount(price, percent)
+// line.net            = gross − discountAmount
+// subtotal = Σ line.gross;  discountTotal = Σ line.discountAmount
+// total    = subtotal − discountTotal
 export function calculateCart(
   lines: CartLineIn[],
   ctx: { productDiscounts: DiscountLike[]; global: DiscountLike | null; now: Date }

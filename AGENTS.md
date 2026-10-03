@@ -31,7 +31,7 @@ Rumus bisnis = angka yang tampil ke pengguna atau memengaruhi keputusan: revenue
 
 - Nama di kiri sama dengan identifier di kode. Bila tidak ada identifier, pakai frasa pendek (`efek volume`).
 - Rumus yang berkaitan ditulis berurutan dalam satu blok tanpa baris kosong; `=` boleh disejajarkan. Blok rumus tidak dibatasi 3 baris, tapi tiap barisnya tetap berbentuk `nama = rumus`.
-- Operator seperti di kode (`+ - * /`), `Σ` untuk jumlah atas baris data.
+- Operator boleh memakai simbol ringkas (`× − Σ ≤`) agar mudah dibaca; selain itu seperti di kode.
 - Satuan dan kasus tepi di akhir baris dalam kurung: `(Rupiah)`, `(0 bila revenue = 0)`.
 - Ditulis sekali, di tempat rumus diimplementasikan (engine, simulasi, fragmen SQL). Pemanggil yang hanya memakai fungsinya tidak mengulang rumus.
 - Rumus di komentar harus sama dengan kodenya. Mengubah rumus berarti mengubah komentarnya di commit yang sama.

@@ -76,7 +76,7 @@
     name = '';
   }
 
-  // Kirim ulang = revoke token lama + terbitkan baru (link lama mati).
+  // Kirim ulang me-revoke token lama dan menerbitkan yang baru (link lama mati).
   async function resendInvite(inviteId: string) {
     busyInviteId = inviteId;
     listError = '';

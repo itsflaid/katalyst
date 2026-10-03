@@ -21,10 +21,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   const path = event.url.pathname;
 
-  // Signup publik tidak dipakai: Owner dibuat via seed, Staff via invite —
-  // keduanya lewat auth.api.* di server, bukan HTTP. Admin API juga tak
-  // dipakai dari luar; tanpa blok ini siapa pun bisa POST sign-up dan
-  // mendapat role default OWNER (admin plugin).
+  // Signup publik dan admin API tidak dipakai: Owner dari seed, Staff dari invite (auth.api.*, bukan HTTP).
+  // Tanpa blokir ini, POST sign-up membuat akun dengan role default OWNER (admin plugin).
   if (path === '/api/auth/sign-up/email' || path.startsWith('/api/auth/admin/')) {
     return new Response(null, { status: 404 });
   }

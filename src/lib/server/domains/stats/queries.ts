@@ -25,7 +25,7 @@ export async function queryHourly(businessId: string, from: Date, to: Date, tz: 
 }
 
 // Penjualan per kasir: kelompok per userId (stabil walau staff ganti nama),
-// label = nama user terkini, fallback snapshot cashier_name.
+// label berisi nama user terkini, fallback snapshot cashier_name.
 // Revenue dari factColumns + metricsOf.
 export async function queryCashiers(businessId: string, from: Date, to: Date) {
   // Literal coalesce — tanpa parameter, jadi aman dipakai ulang di groupBy.

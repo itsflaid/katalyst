@@ -136,8 +136,9 @@
   $: breakEvenQty = result.breakEvenQty;
   $: maxDiscount = result.maxDiscountPct;
 
-  // ambang positif = profitDelta >= 0.05 && marginPts >= -0.02
-  // ambang negatif = profitDelta <= -0.05 || margin simulasi < 0
+  // urutan: simQty = 0 → netral; unitProfit < 0 → negatif; lalu ambang berikut
+  // positif = profitDelta ≥ 0.05 dan marginPts ≥ −0.02   (profitDelta vs kondisi sekarang)
+  // negatif = profitDelta ≤ −0.05 atau margin simulasi < 0
   $: verdict =
     simQty === 0
       ? { tone: 'neutral', title: 'Belum ada volume', desc: 'Isi override quantity atau pastikan produk punya histori penjualan.' }
