@@ -8,6 +8,7 @@
   import Badge from '$lib/components/ui/Badge.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
+  import SlideOver from '$lib/components/ui/SlideOver.svelte';
   import { goto } from '$app/navigation';
   export let data;
 
@@ -25,6 +26,7 @@
   let toInput: string = data.rangeTo ?? '';
 
   function goWithRange(key: string, from = '', to = '') {
+    showPeriodSheet = false;
     const u = new URL(window.location.href);
     u.searchParams.set('range', key);
     if (from) u.searchParams.set('from', from);
@@ -42,6 +44,9 @@
 
   const btn = (key: string) =>
     `rounded border px-2.5 py-1.5 text-body-sm ${activeRange === key ? 'border-ink-navy bg-ink-navy text-white font-semibold' : 'border-border-input bg-white text-ink hover:bg-table-header'}`;
+  const rangeNames: Record<string, string> = { today: 'Hari ini', week: 'Minggu ini', '30d': '30 hari', month: 'Bulan ini', custom: 'Custom' };
+
+  let showPeriodSheet = false;
 
   // Kartu "Performa per Produk": satu kartu + toggle metrik (client-side).
   let perfMetric: 'revenue' | 'profit' | 'margin' = 'revenue';
@@ -63,7 +68,7 @@
 <PageHeader title="Statistik" subtitle="Laporan performa per periode — delta selalu dibanding periode sebelumnya yang sama panjang." />
 
 <Card class="mb-6">
-  <div class="flex flex-wrap items-center gap-2">
+  <div class="hidden sm:flex flex-wrap items-center gap-2">
     <button type="button" on:click={() => goWithRange('today')} class={btn('today')}>Hari ini</button>
     <button type="button" on:click={() => goWithRange('week')} class={btn('week')}>Minggu ini</button>
     <button type="button" on:click={() => goWithRange('30d')} class={btn('30d')}>30 hari</button>
@@ -81,7 +86,38 @@
       <span class="text-body-sm text-muted ml-auto">Dipakai: <strong class="text-ink">{data.rangeLabel}</strong></span>
     {/if}
   </div>
+  <div class="sm:hidden flex flex-col gap-2">
+    <button type="button" on:click={() => (showPeriodSheet = true)} class="inline-flex h-9 items-center justify-between rounded border border-border-input bg-white px-3 text-body-md text-ink">
+      <span>Periode: <strong>{rangeNames[activeRange] ?? '30 hari'}</strong></span>
+      <span aria-hidden="true" class="text-muted">▾</span>
+    </button>
+    {#if data.rangeLabel}
+      <span class="text-body-sm text-muted">Dipakai: <strong class="text-ink">{data.rangeLabel}</strong></span>
+    {/if}
+  </div>
 </Card>
+
+{#if showPeriodSheet}
+  <SlideOver title="Pilih Periode" onClose={() => (showPeriodSheet = false)}>
+    <div class="flex flex-col gap-2">
+      <button type="button" on:click={() => goWithRange('today')} class={`${btn('today')} w-full text-left`}>Hari ini</button>
+      <button type="button" on:click={() => goWithRange('week')} class={`${btn('week')} w-full text-left`}>Minggu ini</button>
+      <button type="button" on:click={() => goWithRange('30d')} class={`${btn('30d')} w-full text-left`}>30 hari</button>
+      <button type="button" on:click={() => goWithRange('month')} class={`${btn('month')} w-full text-left`}>Bulan ini</button>
+      <div class="flex flex-col gap-2 rounded border border-border-cool p-3">
+        <label class="flex flex-col gap-1 text-body-md text-ink">
+          Dari
+          <input type="date" bind:value={fromInput} class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink" />
+        </label>
+        <label class="flex flex-col gap-1 text-body-md text-ink">
+          Sampai
+          <input type="date" bind:value={toInput} min={fromInput || undefined} class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink" />
+        </label>
+        <Button class="w-full" on:click={applyCustom}>Terapkan</Button>
+      </div>
+    </div>
+  </SlideOver>
+{/if}
 
 {#key [data.range, data.rangeFrom, data.rangeTo, data.trend.labels.join(',')].join('|')}
   <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
