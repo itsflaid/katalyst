@@ -353,12 +353,12 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  // Batalkan struk: hapus header + items atomik berurutan. OWNER-only — kasir
-  // yang salah catat lapor ke owner, owner yang membatalkan lalu buat struk
+  // Void struk: hapus header + items atomik berurutan. OWNER-only — kasir
+  // yang salah catat lapor ke owner, owner yang melakukan void lalu buat struk
   // koreksi baru. Tidak ada edit qty in-place biar histori teraudit.
   deleteTx: async ({ request, locals }) => {
     if (!locals.user || locals.user.role !== 'OWNER') {
-      return fail(403, { message: 'Cuma Owner yang bisa membatalkan struk.' });
+      return fail(403, { message: 'Cuma Owner yang bisa void struk.' });
     }
     const businessId = locals.user.businessId as string;
     const form = await request.formData();

@@ -9,7 +9,7 @@
 
   $: T = makeTime(data.timezone ?? DEFAULT_TZ);
   $: fmtDate = (d: string | Date) => T.fmt(d, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const reasonLabel: Record<string, string> = { SALE: 'Penjualan', VOID_RESTORE: 'Batal struk', RESTOCK: 'Restock', ADJUST: 'Koreksi' };
+  const reasonLabel: Record<string, string> = { SALE: 'Penjualan', VOID_RESTORE: 'Void', RESTOCK: 'Restock', ADJUST: 'Koreksi' };
   const reasonTone = (r: string) =>
     r === 'RESTOCK' ? 'positive' : r === 'SALE' ? 'neutral' : r === 'VOID_RESTORE' ? 'neutral' : 'warning';
 
@@ -23,7 +23,7 @@
 <ProductTabs isOwner={true} />
 
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-  <Card><p class="text-label-sm uppercase text-muted">Masuk (restock + batal struk)</p><p class="text-num-display text-status-positive tabular">+{data.summary.masuk}</p></Card>
+  <Card><p class="text-label-sm uppercase text-muted">Masuk (restock + void)</p><p class="text-num-display text-status-positive tabular">+{data.summary.masuk}</p></Card>
   <Card><p class="text-label-sm uppercase text-muted">Terjual</p><p class="text-num-display text-status-negative tabular">−{data.summary.terjual}</p></Card>
   <Card><p class="text-label-sm uppercase text-muted">Koreksi bersih</p><p class="text-num-display text-ink tabular">{data.summary.koreksi >= 0 ? `+${data.summary.koreksi}` : data.summary.koreksi}</p></Card>
 </div>
@@ -35,7 +35,7 @@
       <select name="reason" bind:value={reasonInput} class="h-9 rounded border border-border-input bg-white px-3 text-body-md text-ink">
         <option value="">Semua alasan</option>
         <option value="SALE">Penjualan</option>
-        <option value="VOID_RESTORE">Batal struk</option>
+        <option value="VOID_RESTORE">Void</option>
         <option value="RESTOCK">Restock</option>
         <option value="ADJUST">Koreksi</option>
       </select>

@@ -9,7 +9,7 @@
   const num = (n: number) => new Intl.NumberFormat('id-ID').format(n);
   $: T = makeTime(data.timezone ?? DEFAULT_TZ);
   $: fmtDate = (d: string | Date) => T.fmt(d, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const reasonLabel: Record<string, string> = { SALE: 'Penjualan', VOID_RESTORE: 'Batal struk', RESTOCK: 'Restock', ADJUST: 'Koreksi' };
+  const reasonLabel: Record<string, string> = { SALE: 'Penjualan', VOID_RESTORE: 'Void', RESTOCK: 'Restock', ADJUST: 'Koreksi' };
 </script>
 
 <a href="/products" class="text-body-sm text-muted hover:text-ink no-underline hover:underline">← Kembali ke Produk</a>
