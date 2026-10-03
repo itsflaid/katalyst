@@ -35,7 +35,7 @@
       d: 'Nama staff/owner yang mencatat struk. Nama tetap tampil di riwayat walau akun staff-nya sudah dihapus.'
     },
     {
-      t: 'Batalkan struk',
+      t: 'Void struk',
       d: 'Hapus satu struk utuh karena salah catat (khusus Owner). Stok yang tadi berkurang ikut dikembalikan. Tidak ada ubah angka diam-diam biar tercatat rapi.'
     },
     {
@@ -67,7 +67,7 @@
     },
     {
       t: 'Riwayat Stok',
-      d: 'Tab khusus Owner di halaman Produk: semua pergerakan stok (penjualan, batal struk, restock, koreksi) lengkap dengan siapa dan kapan. Dashboard juga menampilkan kartu "Perlu restock" berisi produk yang stoknya menipis.'
+      d: 'Tab khusus Owner di halaman Produk: semua pergerakan stok (penjualan, void, restock, koreksi) lengkap dengan siapa dan kapan. Dashboard juga menampilkan kartu "Perlu restock" berisi produk yang stoknya menipis.'
     }
   ];
 
@@ -109,7 +109,7 @@
     { t: 'Dashboard', d: 'Ringkasan kondisi bisnis: omzet, untung, margin, tren 30 hari, produk teratas, dan temuan otomatis.' },
     { t: 'Statistik', d: 'Laporan lengkap per periode (harian/mingguan/bulanan/custom): komposisi untung, margin per produk, dan hari tersibuk.' },
     { t: 'Produk', d: 'Daftar barang dagangan: harga modal, harga jual, margin, stok, dan batas menipis per produk. Stok habis otomatis hilang dari kasir (tanpa menonaktifkan). Tab Riwayat Stok mencatat semua pergerakan.' },
-    { t: 'Transaksi', d: 'Kasir: catat penjualan multi-produk per struk, lihat riwayat per hari, batalkan struk yang salah catat.' },
+    { t: 'Transaksi', d: 'Kasir: catat penjualan multi-produk per struk, lihat riwayat per hari, void struk yang salah catat.' },
     { t: 'Simulator', d: 'Lab percobaan: geser harga, diskon, modal, atau volume untuk lihat dampaknya sebelum benar-benar diterapkan.' },
     { t: 'Copilot', d: 'Asisten tanya-jawab soal performa bisnismu, jawabannya dihitung dari data transaksimu sendiri.' },
     { t: 'Pengaturan', d: 'Nama bisnis dan kelola staff: undang akun baru, kirim ulang undangan, reset password yang lupa, dan hapus (khusus Owner).' },

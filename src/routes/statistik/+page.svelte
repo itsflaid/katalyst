@@ -346,7 +346,7 @@
         labels={data.movement.labels}
         datasets={[
           { label: 'Restock', data: data.movement.restock, color: '#16A34A' },
-          { label: 'Batal struk', data: data.movement.void, color: '#0284C7' },
+          { label: 'Void', data: data.movement.void, color: '#0284C7' },
           { label: 'Terjual', data: data.movement.sold, color: '#172554' },
           { label: 'Koreksi', data: data.movement.adjust, color: '#B45309' }
         ]}
