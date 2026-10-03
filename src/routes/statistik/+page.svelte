@@ -9,6 +9,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import SlideOver from '$lib/components/ui/SlideOver.svelte';
+  import type { PeriodKey } from '$lib/shared/period';
   import { goto } from '$app/navigation';
   export let data;
 
@@ -25,7 +26,8 @@
   let fromInput: string = data.rangeFrom ?? '';
   let toInput: string = data.rangeTo ?? '';
 
-  function goWithRange(key: string, from = '', to = '') {
+  function goWithRange(key: PeriodKey, from = '', to = '') {
+    activeRange = key;
     showPeriodSheet = false;
     const u = new URL(window.location.href);
     u.searchParams.set('range', key);
@@ -42,8 +44,8 @@
     goWithRange('custom', fromInput, toInput);
   }
 
-  const btn = (key: string) =>
-    `rounded border px-2.5 py-1.5 text-body-sm ${activeRange === key ? 'border-ink-navy bg-ink-navy text-white font-semibold' : 'border-border-input bg-white text-ink hover:bg-table-header'}`;
+  const btn = (current: string, key: string) =>
+    `rounded border px-2.5 py-1.5 text-body-sm ${current === key ? 'border-ink-navy bg-ink-navy text-white font-semibold' : 'border-border-input bg-white text-ink hover:bg-table-header'}`;
   const rangeNames: Record<string, string> = { today: 'Hari ini', week: 'Minggu ini', '30d': '30 hari', month: 'Bulan ini', custom: 'Custom' };
 
   let showPeriodSheet = false;
@@ -56,8 +58,8 @@
     )
     .slice(0, 8);
   $: perfUnit = perfMetric === 'margin' ? '% · 8 teratas' : `${perfMetric === 'revenue' ? 'Nominal' : 'Nominal'} · 8 teratas`;
-  const perfBtn = (key: 'revenue' | 'profit' | 'margin') =>
-    `rounded border px-2.5 py-1 text-body-sm ${perfMetric === key ? 'border-ink-navy bg-ink-navy text-white font-semibold' : 'border-border-input bg-white text-ink hover:bg-table-header'}`;
+  const perfBtn = (current: 'revenue' | 'profit' | 'margin', key: 'revenue' | 'profit' | 'margin') =>
+    `rounded border px-2.5 py-1 text-body-sm ${current === key ? 'border-ink-navy bg-ink-navy text-white font-semibold' : 'border-border-input bg-white text-ink hover:bg-table-header'}`;
 
   // Warna per-bar chart estimasi hari stok: ≤3 hari merah, ≤7 amber, sisanya navy.
   $: daysColors = data.inventory.daysList.map((p) =>
@@ -69,10 +71,10 @@
 
 <Card class="mb-6">
   <div class="hidden sm:flex flex-wrap items-center gap-2">
-    <button type="button" on:click={() => goWithRange('today')} class={btn('today')}>Hari ini</button>
-    <button type="button" on:click={() => goWithRange('week')} class={btn('week')}>Minggu ini</button>
-    <button type="button" on:click={() => goWithRange('30d')} class={btn('30d')}>30 hari</button>
-    <button type="button" on:click={() => goWithRange('month')} class={btn('month')}>Bulan ini</button>
+    <button type="button" on:click={() => goWithRange('today')} class={btn(activeRange, 'today')}>Hari ini</button>
+    <button type="button" on:click={() => goWithRange('week')} class={btn(activeRange, 'week')}>Minggu ini</button>
+    <button type="button" on:click={() => goWithRange('30d')} class={btn(activeRange, '30d')}>30 hari</button>
+    <button type="button" on:click={() => goWithRange('month')} class={btn(activeRange, 'month')}>Bulan ini</button>
     {#if activeRange === 'custom'}
       <span class="rounded border border-ink-navy bg-ink-navy text-white font-semibold px-2.5 py-1.5 text-body-sm">Custom</span>
     {/if}
@@ -100,10 +102,10 @@
 {#if showPeriodSheet}
   <SlideOver title="Pilih Periode" onClose={() => (showPeriodSheet = false)}>
     <div class="flex flex-col gap-2">
-      <button type="button" on:click={() => goWithRange('today')} class={`${btn('today')} w-full text-left`}>Hari ini</button>
-      <button type="button" on:click={() => goWithRange('week')} class={`${btn('week')} w-full text-left`}>Minggu ini</button>
-      <button type="button" on:click={() => goWithRange('30d')} class={`${btn('30d')} w-full text-left`}>30 hari</button>
-      <button type="button" on:click={() => goWithRange('month')} class={`${btn('month')} w-full text-left`}>Bulan ini</button>
+      <button type="button" on:click={() => goWithRange('today')} class={`${btn(activeRange, 'today')} w-full text-left`}>Hari ini</button>
+      <button type="button" on:click={() => goWithRange('week')} class={`${btn(activeRange, 'week')} w-full text-left`}>Minggu ini</button>
+      <button type="button" on:click={() => goWithRange('30d')} class={`${btn(activeRange, '30d')} w-full text-left`}>30 hari</button>
+      <button type="button" on:click={() => goWithRange('month')} class={`${btn(activeRange, 'month')} w-full text-left`}>Bulan ini</button>
       <div class="flex flex-col gap-2 rounded border border-border-cool p-3">
         <label class="flex flex-col gap-1 text-body-md text-ink">
           Dari
@@ -136,9 +138,9 @@
       <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
         <h2 class="text-headline-sm text-ink">Performa per Produk</h2>
         <div class="flex gap-1" role="group" aria-label="Metrik performa">
-          <button type="button" on:click={() => (perfMetric = 'revenue')} class={perfBtn('revenue')}>Revenue</button>
-          <button type="button" on:click={() => (perfMetric = 'profit')} class={perfBtn('profit')}>Profit</button>
-          <button type="button" on:click={() => (perfMetric = 'margin')} class={perfBtn('margin')}>Margin</button>
+          <button type="button" on:click={() => (perfMetric = 'revenue')} class={perfBtn(perfMetric, 'revenue')}>Revenue</button>
+          <button type="button" on:click={() => (perfMetric = 'profit')} class={perfBtn(perfMetric, 'profit')}>Profit</button>
+          <button type="button" on:click={() => (perfMetric = 'margin')} class={perfBtn(perfMetric, 'margin')}>Margin</button>
         </div>
       </div>
       <p class="text-body-sm text-muted mb-3">{perfUnit}</p>
