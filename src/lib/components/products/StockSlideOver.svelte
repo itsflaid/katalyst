@@ -14,13 +14,6 @@
   let sQty = '';
   let sStock = String(modal.stock);
   let sNote = '';
-
-  // Reset field tiap ganti produk/mode.
-  $: if (modal) {
-    sQty = '';
-    sStock = String(modal.stock);
-    sNote = '';
-  }
 </script>
 
 <SlideOver title={modal.mode === 'restock' ? `Restock — ${modal.name}` : `Koreksi Stok — ${modal.name}`} onClose={onClose}>
