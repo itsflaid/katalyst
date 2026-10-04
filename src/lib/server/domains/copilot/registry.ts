@@ -2,6 +2,8 @@ import { getSummary } from './tools/summary';
 import { rankProducts } from './tools/rank-products';
 import { comparePeriods } from './tools/compare-periods';
 import { getInventory } from './tools/inventory';
+import { explainChange } from './tools/explain-change';
+import { simulatePrice } from './tools/simulate-price';
 import type { ToolContext } from './context';
 import type { ToolResult } from './envelope';
 
@@ -43,6 +45,14 @@ export const TOOL_REGISTRY: RegisteredTool[] = [
   {
     name: 'get_inventory', description: 'Stok produk aktif, produk habis, dan produk menipis dibanding ambang stoknya.', maxQueries: 2, enabled: true,
     parameters: { type: 'object', properties: { filter: { type: 'string', enum: ['all', 'low'] }, limit: { type: 'integer' } }, additionalProperties: false }, run: getInventory
+  },
+  {
+    name: 'explain_change', description: 'Menjelaskan perubahan profit dengan faktor volume, harga, diskon, dan modal.', maxQueries: 2, enabled: true,
+    parameters: { type: 'object', properties: { period: { type: 'string' }, from: { type: 'string' }, to: { type: 'string' } }, required: ['period'], additionalProperties: false }, run: explainChange
+  },
+  {
+    name: 'simulate_price', description: 'Mensimulasikan harga, diskon, atau perubahan volume untuk satu produk aktif.', maxQueries: 2, enabled: true,
+    parameters: { type: 'object', properties: { product: { type: 'string' }, period: { type: 'string' }, from: { type: 'string' }, to: { type: 'string' }, priceDelta: { type: 'integer' }, price: { type: 'integer' }, discountPct: { type: 'integer' }, volumePct: { type: 'integer' } }, required: ['product'], additionalProperties: false }, run: simulatePrice
   }
 ];
 
