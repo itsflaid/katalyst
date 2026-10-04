@@ -61,7 +61,7 @@ console.log('\n== copilot core ==');
   ok('resolver ambigu', resolveProduct('amplang', products).kind === 'ambiguous');
   ok('resolver produk tidak ada', resolveProduct('kerupuk', products).kind === 'not_found');
   ok('sanitasi membuang kontrol', sanitizeText(' Nama\u200b\nProduk\u0000 ') === 'Nama Produk');
-  ok('registri memuat empat tool fase 1', TOOL_REGISTRY.length === 4 && TOOL_REGISTRY.every((tool) => tool.enabled));
+  ok('registri memuat enam tool aktif', TOOL_REGISTRY.length === 6 && TOOL_REGISTRY.every((tool) => tool.enabled));
   const modelView = JSON.stringify(toModelView({ revenue: 125000, revenueText: 'Rp125.000', nested: { margin: 0.2, marginText: '20,0%' } }));
   ok('proyeksi model hanya memuat teks angka', !modelView.includes('125000') && !modelView.includes('0.2') && modelView.includes('Rp125.000'));
 }
