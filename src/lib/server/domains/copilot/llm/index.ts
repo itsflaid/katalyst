@@ -24,7 +24,7 @@ export function createLlmClient(cfg: LlmConfig, fetchImpl?: typeof fetch): LlmCl
       baseUrl: cfg.baseUrl ?? profile.baseUrl,
       apiKey: cfg.apiKey,
       model,
-      extraBody: profile.extraBody,
+      extraBody: profile.extraBodyByModel?.[model],
       parallelToolCalls: profile.parallelToolCalls,
       usageInStream: profile.usageInStream,
       fetchImpl
