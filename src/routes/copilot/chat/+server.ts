@@ -12,8 +12,8 @@ import { drizzle } from 'drizzle-orm/neon-http';
 import { sql } from 'drizzle-orm';
 import * as schema from '$lib/server/db/schema';
 
-const MAX_MESSAGES = 12;
-const MAX_CONTENT = 2000;
+const MAX_MESSAGES = 6;
+const MAX_CONTENT = 800;
 const MAX_STEPS = 3;
 
 function fmtRp(n: number): string {
@@ -40,6 +40,7 @@ function countedDb(url: string, budget: SubrequestBudget): Db {
   const query = neon(url);
   const base = query as unknown as (...args: never[]) => Promise<unknown>;
   const baseQuery = query.query as unknown as (...args: never[]) => Promise<unknown>;
+  const baseTransaction = (query as unknown as { transaction: (...args: never[]) => Promise<unknown> }).transaction.bind(query);
   const wrapped = (async (...args: never[]) => {
     budget.spend(1);
     return base(...args);
@@ -47,6 +48,10 @@ function countedDb(url: string, budget: SubrequestBudget): Db {
   (wrapped as unknown as { query: unknown }).query = async (...args: never[]) => {
     budget.spend(1);
     return baseQuery(...args);
+  };
+  (wrapped as unknown as { transaction: unknown }).transaction = async (...args: never[]) => {
+    budget.spend(1);
+    return baseTransaction(...args);
   };
   return drizzle(wrapped, { schema });
 }
@@ -104,7 +109,7 @@ const TOOLS: ToolDef[] = [
 ];
 
 function parseMessages(body: unknown): { ok: true; messages: LlmMessage[] } | { ok: false; message: string } {
-  const invalid = 'Isi pesan maksimal 12, tiap pesan maksimal 2000 karakter, pesan terakhir harus dari pengguna.';
+  const invalid = 'Isi pesan maksimal 6, tiap pesan maksimal 800 karakter, pesan terakhir harus dari pengguna.';
   const list = (body as { messages?: unknown })?.messages;
   if (!Array.isArray(list) || list.length === 0 || list.length > MAX_MESSAGES) return { ok: false, message: invalid };
   const out: LlmMessage[] = [];
@@ -235,8 +240,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             toolCalls: called,
             budgetUsed: budget.used,
             model,
-            failovers,
-            grounding: 'ok'
+            failovers
           });
           console.log(JSON.stringify({ budgetUsed: budget.used, steps, wallMs: Date.now() - startMs }));
         }
