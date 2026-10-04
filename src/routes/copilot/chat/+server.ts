@@ -10,37 +10,21 @@ import { toModelView } from '$lib/server/domains/copilot/model-view';
 import { verifyGrounding } from '$lib/server/domains/copilot/grounding';
 import { canUseCopilot } from '$lib/server/domains/copilot/limits';
 import { copilotPrompt } from '$lib/server/domains/copilot/prompt';
+import {
+  addMessage,
+  createConversation,
+  hasConversation,
+  recentTextContext,
+  renameFromFirstMessage
+} from '$lib/server/domains/copilot/history';
+import { countedDb } from '$lib/server/domains/copilot/db';
 import type { Db } from '$lib/server/domains/facts/queries';
 import { makeTime, type BizTz } from '$lib/shared/time';
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
-import * as schema from '$lib/server/db/schema';
 
 const MAX_MESSAGES = 6;
 const MAX_CONTENT = 800;
 const MAX_STEPS = 5;
 const MAX_TOOL_CALLS = 6;
-
-// Tiap query HTTP dihitung: drizzle memakai `.query`, bukan pemanggilan langsung.
-function countedDb(url: string, budget: SubrequestBudget): Db {
-  const query = neon(url);
-  const base = query as unknown as (...args: never[]) => Promise<unknown>;
-  const baseQuery = query.query as unknown as (...args: never[]) => Promise<unknown>;
-  const baseTransaction = (query as unknown as { transaction: (...args: never[]) => Promise<unknown> }).transaction.bind(query);
-  const wrapped = (async (...args: never[]) => {
-    budget.spend(1);
-    return base(...args);
-  }) as unknown as typeof query;
-  (wrapped as unknown as { query: unknown }).query = async (...args: never[]) => {
-    budget.spend(1);
-    return baseQuery(...args);
-  };
-  (wrapped as unknown as { transaction: unknown }).transaction = async (...args: never[]) => {
-    budget.spend(1);
-    return baseTransaction(...args);
-  };
-  return drizzle(wrapped, { schema });
-}
 
 function parseMessages(body: unknown): { ok: true; messages: LlmMessage[] } | { ok: false; message: string } {
   const invalid = 'Isi pesan maksimal 6, tiap pesan maksimal 800 karakter, pesan terakhir harus dari pengguna.';
@@ -56,6 +40,30 @@ function parseMessages(body: unknown): { ok: true; messages: LlmMessage[] } | { 
   }
   if (out[out.length - 1].role !== 'user') return { ok: false, message: invalid };
   return { ok: true, messages: out };
+}
+
+// Simpan pesan user lalu ambil konteks teks dari server; null bila percakapan asing.
+async function loadHistory(
+  db: Db,
+  businessId: string,
+  asked: string | undefined,
+  incoming: LlmMessage[]
+): Promise<{ conversationId: string; history: LlmMessage[] } | null> {
+  let conversationId = asked;
+  if (conversationId && !(await hasConversation(db, businessId, conversationId))) return null;
+  if (!conversationId) {
+    conversationId = globalThis.crypto.randomUUID();
+    await createConversation(db, businessId, conversationId);
+  }
+  const fresh = incoming.filter((m) => m.role === 'user');
+  for (const m of fresh) {
+    await addMessage(db, businessId, conversationId, { id: globalThis.crypto.randomUUID(), role: 'user', content: m.content });
+  }
+  const stored = await recentTextContext(db, businessId, conversationId);
+  if (stored.filter((m) => m.role === 'user').length <= fresh.length && fresh[0]) {
+    await renameFromFirstMessage(db, businessId, conversationId, fresh[0].content);
+  }
+  return { conversationId, history: stored };
 }
 
 export const POST: RequestHandler = async ({ request, url, locals }) => {
@@ -75,6 +83,8 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
   }
   const parsed = parseMessages(body);
   if (!parsed.ok) return Response.json({ error: parsed.message }, { status: 400 });
+  const rawConv = (body as { conversationId?: unknown })?.conversationId;
+  const askedConv = typeof rawConv === 'string' && rawConv ? rawConv : undefined;
 
   const apiKey = env.LLM_API_KEY ?? '';
   if (!apiKey) return Response.json({ error: 'LLM belum dikonfigurasi.' }, { status: 503 });
@@ -99,7 +109,9 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
       onAttempt: () => budget.spend(1)
     }
   );
-  const history: LlmMessage[] = [...parsed.messages];
+  const loaded = await loadHistory(requestDb, business.id, askedConv, parsed.messages);
+  if (!loaded) return Response.json({ error: 'Percakapan tidak ditemukan.' }, { status: 404 });
+  const history: LlmMessage[] = loaded.history;
   const T = makeTime(tz);
   const system = copilotPrompt({ businessName: business.name, dateLabel: T.fmt(now, { day: 'numeric', month: 'short', year: 'numeric' }), tz });
 
@@ -110,7 +122,10 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
       };
       let steps = 0;
+      const convId = loaded.conversationId;
+      const saveFailure = { code: 'SAVE_FAILED', message: 'Gagal menyimpan riwayat, jawaban tetap ditampilkan.' };
       try {
+        send('conversation', { id: convId });
         let inputTokens = 0;
         let outputTokens = 0;
         let model = '';
@@ -170,6 +185,18 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             toolCache.set(cacheKey, result);
             toolResults.push(result);
             send('tool_result', { id: call.id, name: call.name, result });
+            try {
+              await addMessage(requestDb, business.id, convId, {
+                id: globalThis.crypto.randomUUID(),
+                role: 'tool',
+                content: call.name,
+                toolName: call.name,
+                toolResult: result as Record<string, unknown>
+              });
+            } catch (saveError) {
+              console.error(JSON.stringify({ save: 'tool', error: String(saveError) }));
+              send('error', saveFailure);
+            }
             history.push({ role: 'tool', toolCallId: call.id, content: JSON.stringify(toModelView(result)) });
           }
         }
@@ -190,20 +217,35 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             else { finalText = null; grounding = 'failed'; }
           }
         }
+        const donePayload = {
+          usage: { inputTokens, outputTokens },
+          toolCalls: called,
+          budgetUsed: budget.used,
+          model,
+          failovers,
+          grounding
+        };
         if (finalText === null || finalText === '') {
           console.log(JSON.stringify({ budgetUsed: budget.used, steps, wallMs: Date.now() - startMs }));
-          if (grounding === 'failed') send('notice', { code: 'UNVERIFIED', message: 'Jawaban memuat angka yang tidak dapat diverifikasi; lihat hasil tool di atas.' });
-          else send('error', { code: 'PROVIDER', message: 'Belum ada jawaban final, coba lagi sebentar.' });
+          if (grounding === 'failed') {
+            const notice = 'Jawaban memuat angka yang tidak dapat diverifikasi; lihat hasil tool di atas.';
+            try {
+              await addMessage(requestDb, business.id, convId, { id: globalThis.crypto.randomUUID(), role: 'notice', content: notice });
+            } catch (saveError) {
+              console.error(JSON.stringify({ save: 'notice', error: String(saveError) }));
+            }
+            send('notice', { code: 'UNVERIFIED', message: notice });
+            send('done', donePayload);
+          } else send('error', { code: 'PROVIDER', message: 'Belum ada jawaban final, coba lagi sebentar.' });
         } else {
+          try {
+            await addMessage(requestDb, business.id, convId, { id: globalThis.crypto.randomUUID(), role: 'assistant', content: finalText });
+          } catch (saveError) {
+            console.error(JSON.stringify({ save: 'assistant', error: String(saveError) }));
+            send('error', saveFailure);
+          }
           send('text', { text: finalText });
-          send('done', {
-            usage: { inputTokens, outputTokens },
-            toolCalls: called,
-            budgetUsed: budget.used,
-            model,
-            failovers,
-            grounding
-          });
+          send('done', donePayload);
           console.log(JSON.stringify({ budgetUsed: budget.used, steps, wallMs: Date.now() - startMs }));
         }
       } catch (e) {
