@@ -27,6 +27,8 @@
     "verify:copilot-core": "tsx script/verify-copilot-core.ts",
     "verify:copilot-tools": "tsx script/verify-copilot-tools.ts",
     "verify:decompose": "tsx script/verify-decompose.ts",
+    "verify:grounding": "tsx script/verify-grounding.ts",
+    "eval:copilot": "tsx script/eval-copilot.ts",
     "copilot:call": "tsx script/copilot-call.ts",
     "verify:all": "npm run verify:engine && npm run verify:discount && npm run verify:time && npm run verify:facts && npm run verify:sim && npm run verify:period && npm run verify:copilot-llm && npm run verify:copilot-core && npm run verify:arch",
     "verify:facts": "tsx script/verify-facts.ts",

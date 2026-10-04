@@ -7,6 +7,9 @@ import { TOOL_REGISTRY, findTool } from '$lib/server/domains/copilot/registry';
 import type { ToolContext } from '$lib/server/domains/copilot/context';
 import { failure } from '$lib/server/domains/copilot/envelope';
 import { toModelView } from '$lib/server/domains/copilot/model-view';
+import { verifyGrounding } from '$lib/server/domains/copilot/grounding';
+import { canUseCopilot } from '$lib/server/domains/copilot/limits';
+import { copilotPrompt } from '$lib/server/domains/copilot/prompt';
 import type { Db } from '$lib/server/domains/facts/queries';
 import { makeTime, type BizTz } from '$lib/shared/time';
 import { neon } from '@neondatabase/serverless';
@@ -15,7 +18,8 @@ import * as schema from '$lib/server/db/schema';
 
 const MAX_MESSAGES = 6;
 const MAX_CONTENT = 800;
-const MAX_STEPS = 3;
+const MAX_STEPS = 5;
+const MAX_TOOL_CALLS = 6;
 
 // Tiap query HTTP dihitung: drizzle memakai `.query`, bukan pemanggilan langsung.
 function countedDb(url: string, budget: SubrequestBudget): Db {
@@ -74,6 +78,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
 
   const apiKey = env.LLM_API_KEY ?? '';
   if (!apiKey) return Response.json({ error: 'LLM belum dikonfigurasi.' }, { status: 503 });
+  if (!canUseCopilot().ok) return Response.json({ error: 'Batas pemakaian Copilot tercapai.' }, { status: 429 });
   const models = (env.LLM_MODELS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 
   const business = locals.business;
@@ -96,9 +101,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
   );
   const history: LlmMessage[] = [...parsed.messages];
   const T = makeTime(tz);
-  const system =
-    `Kamu Katalyst Copilot untuk ${business.name}. Hari ini ${T.fmt(now, { day: 'numeric', month: 'short', year: 'numeric' })} (${tz}). ` +
-    'Jawab singkat bahasa Indonesia. Semua angka wajib dari hasil tool; salin string berformatnya persis tanpa menghitung ulang. Selalu sebut rentang waktunya.';
+  const system = copilotPrompt({ businessName: business.name, dateLabel: T.fmt(now, { day: 'numeric', month: 'short', year: 'numeric' }), tz });
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -113,13 +116,16 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
         let model = '';
         let failovers = 0;
         const called: string[] = [];
+        const toolResults: unknown[] = [];
+        const toolCache = new Map<string, unknown>();
         let finalText: string | null = null;
+        let grounding: 'ok' | 'retried' | 'failed' = 'ok';
         for (let step = 0; step < MAX_STEPS && finalText === null; step++) {
           let textBuf = '';
           const pending: { id: string; name: string; argsJson: string }[] = [];
           steps++;
           for await (const ev of client.stream(
-            { system, messages: history, tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })), toolChoice: 'auto', maxTokens: 600, temperature: 0 },
+            { system, messages: history, tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })), toolChoice: step === MAX_STEPS - 1 ? 'none' : 'auto', maxTokens: 600, temperature: 0 },
             request.signal
           )) {
             if (ev.type === 'model') {
@@ -153,18 +159,41 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             }
             send('tool_start', { id: call.id, name: call.name, args });
             called.push(call.name);
-            const result = !tool
+            const cacheKey = `${call.name}:${JSON.stringify(args)}`;
+            const result = toolCache.get(cacheKey) ?? (!tool
               ? failure(call.name, 'INVALID_ARGS', `Tool tak dikenal: ${call.name}`)
+              : called.length > MAX_TOOL_CALLS
+                ? failure(call.name, 'BUDGET_EXCEEDED', 'Terlalu banyak tool dipanggil, persempit pertanyaan.')
               : !budget.canAfford(tool.maxQueries)
                 ? failure(call.name, 'BUDGET_EXCEEDED', 'Anggaran komputasi habis, persempit pertanyaan.')
-                : await tool.run(ctx, args);
+                : await tool.run(ctx, args));
+            toolCache.set(cacheKey, result);
+            toolResults.push(result);
             send('tool_result', { id: call.id, name: call.name, result });
             history.push({ role: 'tool', toolCallId: call.id, content: JSON.stringify(toModelView(result)) });
           }
         }
+        if (finalText) {
+          const checked = verifyGrounding(finalText, toolResults);
+          if (!checked.ok) {
+            grounding = 'retried';
+            let retryText = '';
+            for await (const ev of client.stream(
+              { system: `${system} Jawaban sebelumnya ditolak karena memuat angka yang tidak ada di hasil tool. Jawab ulang tanpa tool dan hanya gunakan angka dari hasil tool.`, messages: history, tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })), toolChoice: 'none', maxTokens: 600, temperature: 0 },
+              request.signal
+            )) {
+              if (ev.type === 'model') { model = ev.model; failovers = ev.failovers; }
+              else if (ev.type === 'usage') { inputTokens += ev.inputTokens; outputTokens += ev.outputTokens; }
+              else if (ev.type === 'text') retryText += ev.delta;
+            }
+            if (retryText && verifyGrounding(retryText, toolResults).ok) finalText = retryText;
+            else { finalText = null; grounding = 'failed'; }
+          }
+        }
         if (finalText === null || finalText === '') {
           console.log(JSON.stringify({ budgetUsed: budget.used, steps, wallMs: Date.now() - startMs }));
-          send('error', { code: 'PROVIDER', message: 'Belum ada jawaban final, coba lagi sebentar.' });
+          if (grounding === 'failed') send('notice', { code: 'UNVERIFIED', message: 'Jawaban memuat angka yang tidak dapat diverifikasi; lihat hasil tool di atas.' });
+          else send('error', { code: 'PROVIDER', message: 'Belum ada jawaban final, coba lagi sebentar.' });
         } else {
           send('text', { text: finalText });
           send('done', {
@@ -172,7 +201,8 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             toolCalls: called,
             budgetUsed: budget.used,
             model,
-            failovers
+            failovers,
+            grounding
           });
           console.log(JSON.stringify({ budgetUsed: budget.used, steps, wallMs: Date.now() - startMs }));
         }
