@@ -1,7 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { onMount, tick } from 'svelte';
-  import { ChevronRight, Plus, Send } from 'lucide-svelte';
+  import { ChevronRight, Plus, Send, Trash2 } from 'lucide-svelte';
 
   type Role = 'user' | 'assistant';
   type ToolResult = Record<string, unknown>;
@@ -19,7 +19,6 @@
     id: string;
     title: string;
     updatedAt: number;
-    messages: ChatMessage[];
   }
 
   const storageKey = 'katalyst-copilot-conversations-v1';
@@ -29,51 +28,99 @@
   let messages: ChatMessage[] = [];
   let draft = '';
   let sending = false;
-  let ready = false;
-  let scrollTarget: HTMLDivElement;
-
-  $: if (ready && browser) localStorage.setItem(storageKey, JSON.stringify(conversations));
-
-  onMount(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      conversations = saved ? JSON.parse(saved) : [];
-    } catch {
-      conversations = [];
-    }
-    if (conversations.length > 0) openConversation(conversations[0].id);
-    else createConversation();
-    ready = true;
-  });
+  let loadingList = true;
+  let listError = '';
+  let deleting = '';
 
   function newId() {
     return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
   }
 
+  async function api(path: string, init?: RequestInit) {
+    const response = await fetch(path, init);
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error ?? 'Copilot tidak dapat memproses permintaan ini.');
+    }
+    return response.json();
+  }
+
+  function toChat(row: { id: string; role: string; content: string; toolName: string | null; toolResult: unknown }): ChatMessage | null {
+    if (row.role === 'tool') {
+      return { id: row.id, role: 'assistant', content: '', toolName: row.toolName ?? undefined, result: (row.toolResult as ToolResult) ?? {}, loading: false };
+    }
+    if (row.role === 'user' || row.role === 'assistant' || row.role === 'notice') {
+      return { id: row.id, role: row.role === 'notice' ? 'assistant' : row.role, content: row.content };
+    }
+    return null;
+  }
+
+  async function refreshList() {
+    const body = await api('/copilot/conversations');
+    conversations = (body.conversations as Conversation[]).sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  async function openConversation(conversationId: string) {
+    const body = await api(`/copilot/conversations/${conversationId}`);
+    activeId = body.conversation.id as string;
+    messages = ((body.messages as Parameters<typeof toChat>[0][]).map(toChat).filter(Boolean)) as ChatMessage[];
+    await scrollToBottom();
+  }
+
+  onMount(async () => {
+    try {
+      await refreshList();
+      if (browser) localStorage.removeItem(storageKey);
+      if (conversations.length > 0) await openConversation(conversations[0].id);
+    } catch (error) {
+      listError = error instanceof Error ? error.message : 'Riwayat tidak dapat dimuat.';
+    } finally {
+      loadingList = false;
+    }
+  });
+
   function createConversation() {
-    const conversation: Conversation = { id: newId(), title: 'Percakapan baru', updatedAt: Date.now(), messages: [] };
-    conversations = [conversation, ...conversations];
-    activeId = conversation.id;
+    activeId = '';
     messages = [];
     draft = '';
   }
 
-  function openConversation(conversationId: string) {
-    const conversation = conversations.find((item) => item.id === conversationId);
-    if (!conversation) return;
-    activeId = conversation.id;
-    messages = conversation.messages;
+  async function deleteConversation(conversationId: string) {
+    const target = conversations.find((item) => item.id === conversationId);
+    if (!target || deleting) return;
+    if (!globalThis.confirm(`Hapus "${target.title}"? Semua pesan dan kartu tool di percakapan ini akan terhapus.`)) return;
+    deleting = conversationId;
+    try {
+      await api(`/copilot/conversations/${conversationId}`, { method: 'DELETE' });
+      conversations = conversations.filter((item) => item.id !== conversationId);
+      if (activeId === conversationId) {
+        if (conversations.length > 0) await openConversation(conversations[0].id);
+        else createConversation();
+      }
+    } catch (error) {
+      addLocal({ id: newId(), role: 'assistant', content: error instanceof Error ? error.message : 'Gagal menghapus percakapan.' });
+    } finally {
+      deleting = '';
+    }
   }
 
-  function sync(title?: string) {
-    conversations = conversations
-      .map((conversation) => conversation.id === activeId ? { ...conversation, title: title ?? conversation.title, updatedAt: Date.now(), messages } : conversation)
-      .sort((a, b) => b.updatedAt - a.updatedAt);
+  async function deleteAll() {
+    if (deleting || conversations.length === 0) return;
+    if (!globalThis.confirm('Hapus seluruh riwayat Copilot bisnis ini? Tindakan ini tidak dapat dibatalkan.')) return;
+    deleting = 'all';
+    try {
+      await api('/copilot/conversations', { method: 'DELETE' });
+      conversations = [];
+      createConversation();
+    } catch (error) {
+      addLocal({ id: newId(), role: 'assistant', content: error instanceof Error ? error.message : 'Gagal menghapus riwayat.' });
+    } finally {
+      deleting = '';
+    }
   }
 
-  function addMessage(message: ChatMessage) {
+  function addLocal(message: ChatMessage) {
     messages = [...messages, message];
-    sync();
     void scrollToBottom();
   }
 
@@ -84,7 +131,6 @@
 
   function updateToolMessage(messageId: string, result: ToolResult) {
     messages = messages.map((message) => message.id === messageId ? { ...message, result, loading: false } : message);
-    sync();
   }
 
   function resultText(result: ToolResult | undefined) {
@@ -99,21 +145,41 @@
   async function ask(question = draft.trim()) {
     if (!question || sending) return;
     draft = '';
-    addMessage({ id: newId(), role: 'user', content: question });
-    sync(messages.filter((message) => message.role === 'user').length === 1 ? question.slice(0, 52) : undefined);
+    const tempId = activeId;
+    if (!tempId) {
+      conversations = [{ id: `baru-${Date.now()}`, title: question.slice(0, 52), updatedAt: Date.now() }, ...conversations];
+    }
+    addLocal({ id: newId(), role: 'user', content: question });
     sending = true;
     try {
-      const payload = messages.filter((message) => !message.toolName && message.content).slice(-6).map((message) => ({ role: message.role, content: message.content }));
-      const response = await fetch('/copilot/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: payload }) });
+      const response = await fetch('/copilot/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: tempId || undefined, messages: [{ role: 'user', content: question }] })
+      });
       if (!response.ok || !response.body) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body.error ?? 'Copilot tidak dapat memproses pertanyaan ini.');
       }
       await readStream(response.body);
     } catch (error) {
-      addMessage({ id: newId(), role: 'assistant', content: error instanceof Error ? error.message : 'Copilot sedang bermasalah. Coba lagi sebentar.' });
+      addLocal({ id: newId(), role: 'assistant', content: error instanceof Error ? error.message : 'Copilot sedang bermasalah. Coba lagi sebentar.' });
     } finally {
       sending = false;
+      await refreshAfterStream();
+    }
+  }
+
+  async function refreshAfterStream() {
+    try {
+      await refreshList();
+      if (activeId) {
+        const body = await api(`/copilot/conversations/${activeId}`);
+        messages = ((body.messages as Parameters<typeof toChat>[0][]).map(toChat).filter(Boolean)) as ChatMessage[];
+        await scrollToBottom();
+      }
+    } catch {
+      return;
     }
   }
 
@@ -142,34 +208,53 @@
     } catch {
       return;
     }
-    if (event === 'tool_start') {
+    if (event === 'conversation' && typeof data.id === 'string') {
+      activeId = data.id;
+      conversations = conversations.filter((item) => !item.id.startsWith('baru-'));
+    } else if (event === 'tool_start') {
       const messageId = newId();
       toolMessages.set(String(data.id), messageId);
-      addMessage({ id: messageId, role: 'assistant', content: '', toolName: String(data.name), loading: true });
+      addLocal({ id: messageId, role: 'assistant', content: '', toolName: String(data.name), loading: true });
     } else if (event === 'tool_result') {
       const messageId = toolMessages.get(String(data.id));
       if (messageId) updateToolMessage(messageId, data.result as ToolResult);
     } else if (event === 'text' && typeof data.text === 'string') {
-      addMessage({ id: newId(), role: 'assistant', content: data.text });
+      addLocal({ id: newId(), role: 'assistant', content: data.text });
     } else if ((event === 'notice' || event === 'error') && typeof data.message === 'string') {
-      addMessage({ id: newId(), role: 'assistant', content: data.message });
+      addLocal({ id: newId(), role: 'assistant', content: data.message });
     }
   }
+
+  let scrollTarget: HTMLDivElement;
 </script>
 
 <div class="flex -m-8 h-screen min-h-[560px] overflow-hidden bg-[#F7F1E6]">
   <aside class="hidden w-72 shrink-0 flex-col border-r border-border-warm bg-[#F7F1E6] lg:flex">
     <div class="flex items-center justify-between px-5 pb-4 pt-5">
       <div><h1 class="text-headline-sm text-ink">Katalyst Copilot</h1><p class="mt-1 text-body-sm text-muted">Riwayat percakapan</p></div>
-      <button type="button" on:click={createConversation} class="grid h-8 w-8 place-items-center rounded-panel border border-border-warm text-ink hover:bg-black/[0.04]" aria-label="Percakapan baru"><Plus size={16} /></button>
+      <button type="button" on:click={createConversation} disabled={sending} class="grid h-8 w-8 place-items-center rounded-panel border border-border-warm text-ink hover:bg-black/[0.04] disabled:opacity-50" aria-label="Percakapan baru"><Plus size={16} /></button>
     </div>
     <div class="flex-1 overflow-y-auto px-3">
-      {#each conversations as conversation}
-        <button type="button" on:click={() => openConversation(conversation.id)} class:active={conversation.id === activeId} class="history group mb-1 flex w-full items-center gap-2 border-l-2 border-transparent px-3 py-3 text-left hover:bg-black/[0.025]">
-          <span class="min-w-0 flex-1 truncate text-body-sm text-ink">{conversation.title}</span><ChevronRight size={15} class="shrink-0 text-muted/50 group-hover:translate-x-0.5" />
-        </button>
-      {/each}
+      {#if loadingList}
+        <p class="px-3 py-3 text-body-sm text-muted">Memuat riwayat…</p>
+      {:else if listError && conversations.length === 0}
+        <p class="px-3 py-3 text-body-sm text-muted">{listError}</p>
+      {:else}
+        {#each conversations as conversation}
+          <div class="group mb-1 flex items-center gap-1">
+            <button type="button" on:click={() => openConversation(conversation.id)} disabled={sending} class:active={conversation.id === activeId} class="history flex min-w-0 flex-1 items-center gap-2 border-l-2 border-transparent px-3 py-3 text-left hover:bg-black/[0.025] disabled:opacity-60">
+              <span class="min-w-0 flex-1 truncate text-body-sm text-ink">{conversation.title}</span><ChevronRight size={15} class="shrink-0 text-muted/50 group-hover:translate-x-0.5" />
+            </button>
+            <button type="button" on:click={() => deleteConversation(conversation.id)} disabled={sending || deleting !== ''} class="hidden h-7 w-7 shrink-0 place-items-center rounded text-muted hover:bg-black/[0.05] hover:text-ink group-hover:grid group-focus-within:grid disabled:opacity-50" aria-label={`Hapus ${conversation.title}`}><Trash2 size={14} /></button>
+          </div>
+        {/each}
+      {/if}
     </div>
+    {#if conversations.length > 0}
+      <div class="border-t border-border-warm px-5 py-3">
+        <button type="button" on:click={deleteAll} disabled={sending || deleting !== ''} class="text-body-sm text-muted underline-offset-2 hover:text-ink hover:underline disabled:opacity-50">{deleting === 'all' ? 'Menghapus…' : 'Hapus semua riwayat'}</button>
+      </div>
+    {/if}
   </aside>
 
   <section class="flex min-w-0 flex-1 flex-col bg-ink-navy">
