@@ -3,11 +3,14 @@ import type { RequestHandler } from './$types';
 import { createLlmClient } from '$lib/server/domains/copilot/llm/index';
 import { LlmHttpError, type LlmMessage } from '$lib/server/domains/copilot/llm/types';
 import { SubrequestBudget } from '$lib/server/domains/copilot/budget';
-import { db } from '$lib/server/db';
-import { queryFactsByDay } from '$lib/server/domains/facts/queries';
+import { queryFactsByDay, type Db } from '$lib/server/domains/facts/queries';
 import { metricsOf, sumFacts } from '$lib/analytics/facts';
 import { resolvePeriod } from '$lib/shared/period';
 import { makeTime, type BizTz } from '$lib/shared/time';
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { sql } from 'drizzle-orm';
+import * as schema from '$lib/server/db/schema';
 
 const MAX_MESSAGES = 12;
 const MAX_CONTENT = 2000;
@@ -28,6 +31,24 @@ interface ToolCtx {
   businessId: string;
   tz: BizTz;
   now: Date;
+  db: Db;
+  budget: SubrequestBudget;
+}
+
+// Tiap query HTTP dihitung: drizzle memakai `.query`, bukan pemanggilan langsung.
+function countedDb(url: string, budget: SubrequestBudget): Db {
+  const query = neon(url);
+  const base = query as unknown as (...args: never[]) => Promise<unknown>;
+  const baseQuery = query.query as unknown as (...args: never[]) => Promise<unknown>;
+  const wrapped = (async (...args: never[]) => {
+    budget.spend(1);
+    return base(...args);
+  }) as unknown as typeof query;
+  (wrapped as unknown as { query: unknown }).query = async (...args: never[]) => {
+    budget.spend(1);
+    return baseQuery(...args);
+  };
+  return drizzle(wrapped, { schema });
 }
 
 // TODO(T1.7: ganti dengan TL-1 dan format dari shared/format): tool sementara
@@ -35,7 +56,7 @@ async function runGetSummary(ctx: ToolCtx): Promise<Record<string, unknown>> {
   const period = resolvePeriod(new URL('http://internal/?range=30d'), ctx.tz, ctx.now, { default: '30d', allow: [] });
   const from = period.from as Date;
   const to = period.to as Date;
-  const rows = await queryFactsByDay(db, ctx.businessId, { from, to }, ctx.tz);
+  const rows = await queryFactsByDay(ctx.db, ctx.businessId, { from, to }, ctx.tz);
   const list = [...rows.values()];
   const m = metricsOf(sumFacts(list));
   const txCount = list.reduce((s, r) => s + r.txCount, 0);
@@ -53,12 +74,32 @@ async function runGetSummary(ctx: ToolCtx): Promise<Record<string, unknown>> {
   };
 }
 
-const TOOLS = [
+interface ToolDef {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  run: (ctx: ToolCtx, args: unknown) => Promise<Record<string, unknown>>;
+}
+
+const TOOLS: ToolDef[] = [
   {
     name: 'get_summary',
     description: 'Ringkasan bisnis 30 hari terakhir: omzet, modal, profit, margin, jumlah struk. Pakai untuk pertanyaan omzet atau untung.',
     parameters: { type: 'object', properties: {}, additionalProperties: false },
-    run: runGetSummary
+    run: (ctx: ToolCtx) => runGetSummary(ctx)
+  },
+  {
+    name: '__measure',
+    description: 'Alat ukur internal: menjalankan N query ringan paralel.',
+    parameters: { type: 'object', properties: { queries: { type: 'integer', enum: [2, 5, 8] } }, required: ['queries'], additionalProperties: false },
+    // TODO(T1.7: hapus saat TL-1 asli masuk): alat ukur T0.4
+    run: async (ctx: ToolCtx, args: unknown) => {
+      const n = (args as { queries?: unknown })?.queries;
+      if (n !== 2 && n !== 5 && n !== 8) return { error: 'Argumen queries harus 2, 5, atau 8.' };
+      const start = Date.now();
+      await Promise.all(Array.from({ length: n }, () => ctx.db.execute(sql`select 1`)));
+      return { queries: n, budgetUsed: ctx.budget.used, wallMs: Date.now() - start };
+    }
   }
 ];
 
@@ -103,7 +144,11 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
   const business = locals.business;
   const tz = business.timezone;
   const now = new Date();
+  const startMs = Date.now();
   const budget = new SubrequestBudget();
+  const requestDb = countedDb(env.DATABASE_URL ?? '', budget);
+  const ctx: ToolCtx = { businessId: business.id, tz, now, db: requestDb, budget };
+  const tools = env.COPILOT_MEASURE === '1' ? TOOLS : TOOLS.filter((t) => t.name !== '__measure');
   const client = createLlmClient(
     {
       provider: env.LLM_PROVIDER || 'groq',
@@ -126,6 +171,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
       const send = (event: string, data: unknown) => {
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
       };
+      let steps = 0;
       try {
         let inputTokens = 0;
         let outputTokens = 0;
@@ -136,8 +182,9 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
         for (let step = 0; step < MAX_STEPS && finalText === null; step++) {
           let textBuf = '';
           const pending: { id: string; name: string; argsJson: string }[] = [];
+          steps++;
           for await (const ev of client.stream(
-            { system, messages: history, tools: TOOLS.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })), toolChoice: 'auto', maxTokens: 600, temperature: 0 },
+            { system, messages: history, tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })), toolChoice: 'auto', maxTokens: 600, temperature: 0 },
             request.signal
           )) {
             if (ev.type === 'model') {
@@ -162,7 +209,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             toolCalls: pending.map((c) => ({ id: c.id, name: c.name, argsJson: c.argsJson }))
           });
           for (const call of pending) {
-            const tool = TOOLS.find((t) => t.name === call.name);
+            const tool = tools.find((t) => t.name === call.name);
             let args: unknown = call.argsJson;
             try {
               args = JSON.parse(call.argsJson);
@@ -172,13 +219,14 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             send('tool_start', { id: call.id, name: call.name, args });
             called.push(call.name);
             const result = tool
-              ? await tool.run({ businessId: business.id, tz, now })
+              ? await tool.run(ctx, args)
               : { error: `Tool tak dikenal: ${call.name}` };
             send('tool_result', { id: call.id, name: call.name, result });
             history.push({ role: 'tool', toolCallId: call.id, content: JSON.stringify(result) });
           }
         }
         if (finalText === null || finalText === '') {
+          console.log(JSON.stringify({ budgetUsed: budget.used, steps, wallMs: Date.now() - startMs }));
           send('error', { code: 'PROVIDER', message: 'Belum ada jawaban final, coba lagi sebentar.' });
         } else {
           send('text', { text: finalText });
@@ -190,9 +238,11 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             failovers,
             grounding: 'ok'
           });
+          console.log(JSON.stringify({ budgetUsed: budget.used, steps, wallMs: Date.now() - startMs }));
         }
       } catch (e) {
         if ((e as Error)?.name === 'AbortError' || request.signal.aborted) return;
+        console.log(JSON.stringify({ budgetUsed: budget.used, steps, wallMs: Date.now() - startMs }));
         const code = e instanceof LlmHttpError && e.status === 429 ? 'RATE_LIMITED' : 'PROVIDER';
         const message =
           code === 'RATE_LIMITED'
