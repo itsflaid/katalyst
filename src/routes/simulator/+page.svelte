@@ -125,6 +125,8 @@
   $: volDelta = result.impact.vsStatusQuo.qty;
   $: marginPts = result.impact.vsStatusQuo.marginPoints;
   $: histRatePct = (result.actual.discountRate * 100).toFixed(1);
+  // Posisi slider saat mode histori: pembulatan histori, dibatasi rentang slider (0..50).
+  $: histRateInt = Math.min(50, Math.round(result.actual.discountRate * 100));
 
   // Qty impas & diskon maks dari engine (integer; null = mustahil/tak tentu).
   // (Deklarasi `let` + assign reaktif terpisah — Svelte tidak mengizinkan
@@ -398,11 +400,11 @@
             </div>
             {#if discountMode === 'keep'}
               <p class="text-body-sm text-muted">Sesuai histori ({histRatePct}% rata-rata nilai). Geser slider atau isi angka untuk mencoba diskon lain.</p>
-              <input type="range" min={0} max={50} step={1} value={0} on:input={onDiscount} class="w-full accent-ink-navy" aria-label="Persentase diskon" />
-              <Input type="number" min="0" step="1" value="" placeholder="cth: 15" on:input={onDiscountNum} aria-label="Diskon skenario (persen)" />
-            {:else}
-              <input type="range" min={0} max={50} step={1} value={discountPct} on:input={onDiscount} class="w-full accent-ink-navy" aria-label="Persentase diskon" />
-              <Input type="number" min="0" step="1" value={String(discountPct)} on:input={onDiscountNum} aria-label="Diskon skenario (persen)" />
+            {/if}
+            <!-- Elemen input tidak boleh berada di dalam cabang {#if}: ganti mode akan membongkarnya dan memutus drag/fokus ketikan. -->
+            <input type="range" min={0} max={50} step={1} value={discountMode === 'keep' ? histRateInt : discountPct} on:input={onDiscount} class="w-full accent-ink-navy" aria-label="Persentase diskon" />
+            <Input type="number" min="0" step="1" value={discountMode === 'keep' ? '' : String(discountPct)} placeholder={`histori ${histRatePct}%`} on:input={onDiscountNum} aria-label="Diskon skenario (persen)" />
+            {#if discountMode === 'percent'}
               <button type="button" on:click={backToHist} class="text-body-sm font-semibold text-muted hover:text-ink mt-1">Kembali ke histori</button>
             {/if}
             <p class="text-body-sm text-muted mt-1">Harga efektif: <strong class="text-ink tabular">{idr(effPrice)}</strong></p>
