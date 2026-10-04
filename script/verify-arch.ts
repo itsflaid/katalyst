@@ -1,6 +1,6 @@
 // Aturan lapis R1-R5 (baca file, tanpa DB); R5 juga memindai script/*.ts.
 // Mode laporan: cetak pelanggaran, exit 0; --enforce: exit 1 bila ada pelanggaran.
-// Pengecualian per baris: `// arch-allow: <alasan>`. `src/routes/copilot/**` di luar scope.
+// Pengecualian per baris: `// arch-allow: <alasan>`.
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
@@ -18,16 +18,14 @@ interface Violation {
 
 const violations: Violation[] = [];
 
-// Kumpulkan file sumber (ts/svelte/js), lewati copilot.
+// Kumpulkan file sumber (ts/svelte/js).
 function collect(dir: string, out: string[] = []): string[] {
   for (const e of readdirSync(dir)) {
     const p = join(dir, e);
     const st = statSync(p);
     if (st.isDirectory()) {
-      if (p.replace(/\\/g, '/').includes('src/routes/copilot')) continue;
       collect(p, out);
     } else if (/\.(ts|svelte|js)$/.test(e)) {
-      if (p.replace(/\\/g, '/').includes('src/routes/copilot')) continue;
       out.push(p);
     }
   }
