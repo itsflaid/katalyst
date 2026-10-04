@@ -37,7 +37,7 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 | Kapasitas token kolam 3 model | ≈ 24K token/menit dan ≈ 600K token/hari bila beban tersebar | hitungan dari tiga baris limit di atas; asumsi TPM/TPD menghitung masukan + keluaran (belum diverifikasi) |
 | Paket akun Groq | Free; console menawarkan Developer plan untuk limit lebih tinggi | screenshot; harga belum dicek |
 | Pengaturan retensi/pelatihan data akun Groq | Global ZDR Disabled; Inference ZDR Disabled (simpan ≤30 hari untuk reliabilitas); Batch On; Fine-tuning On (keduanya tak dipakai Copilot); data di GCP US | Data Controls console + docs Your Data, 4 Okt 2026 |
-| Kekhasan Groq terverifikasi (parameter penalaran, `parallel_tool_calls`, `usage` di stream, header batas laju) | belum | T0.2 |
+| Kekhasan Groq terverifikasi (parameter penalaran, `parallel_tool_calls`, `usage` di stream, header batas laju) | terverifikasi 4 Okt 2026: base `https://api.groq.com/openai/v1` (/docs/openai); tool+streaming gpt-oss-120b/20b Ya, paralel gpt-oss Tidak, qwen Ya (/docs/tool-use/overview); penalaran gpt-oss `reasoning_effort` low/med/high + `include_reasoning`, tanpa `reasoning_format` (/docs/reasoning); 429 + `retry-after` detik + `x-ratelimit-*` (/docs/rate-limits); `usage` di stream tak eksplisit → `usageInStream` tidak diset; profil memakai `extraBody` penalaran rendah; `--live` SKIP (tanpa kunci) | T0.2 |
 | Tanggal final OASE III | 15 Okt 2026 (batas selesai dari pemilik, 4 Okt 2026) | |
 | Garis potong (H−21) | menunggu pemilik | |
 | CPU p95 per jawaban di Cloudflare Free | belum | T0.4 |
@@ -51,7 +51,7 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 **Fase 0**
 - [ ] T0.0 README: Copilot "dalam pengembangan" (DITUNDA ke T4.8 atas permintaan pemilik, 4 Okt 2026)
 - [x] T0.1 `.env.example`, rujukan di `AGENTS.md`, kolom limit "menunggu pemilik"
-- [ ] T0.2 lapisan LLM + `verify:copilot-llm`
+- [x] T0.2 lapisan LLM + `verify:copilot-llm`
 - [ ] T0.3 endpoint `/copilot/chat` + loop minimal
 - [ ] T0.4 `budget.ts`, alat ukur, deploy dan pengukuran Free
 
@@ -99,6 +99,7 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 | Tanggal | Agen / model | Tugas | Commit | Catatan |
 |---|---|---|---|---|
 | 4 Okt 2026 | OpenCode / Muse Spark | T0.1 | | `.env.example` + rujukan AGENTS; docs/copilot/ masuk repo; retensi Groq + batas 15 Okt dari pemilik; T0.0 ditunda ke T4.8 |
+| 4 Okt 2026 | OpenCode / Muse Spark | T0.2 | | `llm/` + `verify:copilot-llm` 17/17; docs Groq diverifikasi; `--live` SKIP tanpa kunci |
 
 ## Penyimpangan dari PRD dan temuan
 
