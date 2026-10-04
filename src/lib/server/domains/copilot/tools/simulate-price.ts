@@ -41,7 +41,10 @@ export async function simulatePrice(ctx: ToolContext, input: unknown): Promise<T
   if (!window.from || !window.to) return failure(TOOL, 'INVALID_ARGS', 'Periode tidak valid.');
   const products = await ctx.db.select({ id: product.id, name: product.name, sellingPrice: product.sellingPrice, costPrice: product.costPrice }).from(product).where(and(eq(product.businessId, ctx.businessId), eq(product.isActive, true)));
   const resolved = resolveProduct(checked.value.product as string, products);
-  if (resolved.kind === 'not_found') return failure(TOOL, 'PRODUCT_NOT_FOUND', `Produk '${resolved.query}' tidak ditemukan.`);
+  if (resolved.kind === 'not_found') {
+    const names = resolved.candidates.map((c) => c.name).join(', ');
+    return failure(TOOL, 'PRODUCT_NOT_FOUND', `Produk '${resolved.query}' tidak ditemukan.${names ? ` Yang mirip: ${names}.` : ''}`, resolved.candidates);
+  }
   if (resolved.kind === 'ambiguous') return failure(TOOL, 'AMBIGUOUS_PRODUCT', `Ada ${resolved.candidates.length} produk yang cocok dengan '${resolved.query}'.`, resolved.candidates);
   const selected = products.find((item) => item.id === resolved.product.id)!;
   const facts = await queryFactsByProduct(ctx.db, ctx.businessId, { from: window.from, to: window.to }, { productIds: [selected.id] });
