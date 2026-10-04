@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer, pgEnum, index, check } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, integer, jsonb, pgEnum, index, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // Tabel autentikasi better-auth (user, session, account, verification).
@@ -233,4 +233,36 @@ export const stockMovement = pgTable(
     createdAt: timestamp('created_at').notNull().defaultNow()
   },
   (t) => [index('stock_movement_business_product_created_idx').on(t.businessId, t.productId, t.createdAt)]
+);
+
+// Riwayat Copilot per bisnis agar owner dapat lanjut di perangkat lain.
+export const copilotConversation = pgTable(
+  'copilot_conversation',
+  {
+    id: text('id').primaryKey(),
+    businessId: text('business_id')
+      .notNull()
+      .references(() => business.id),
+    title: text('title').notNull().default('Percakapan baru'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow()
+  },
+  (t) => [index('copilot_conversation_business_updated_idx').on(t.businessId, t.updatedAt)]
+);
+
+// Pesan user, jawaban assistant, hasil tool, dan notice; role teks agar migrasi ringan.
+export const copilotMessage = pgTable(
+  'copilot_message',
+  {
+    id: text('id').primaryKey(),
+    conversationId: text('conversation_id')
+      .notNull()
+      .references(() => copilotConversation.id, { onDelete: 'cascade' }),
+    role: text('role').notNull(),
+    content: text('content').notNull(),
+    toolName: text('tool_name'),
+    toolResult: jsonb('tool_result'),
+    createdAt: timestamp('created_at').notNull().defaultNow()
+  },
+  (t) => [index('copilot_message_conversation_created_idx').on(t.conversationId, t.createdAt)]
 );

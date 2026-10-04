@@ -11,7 +11,7 @@ Semua angka (omzet, modal, untung, margin) dihitung langsung dari data transaksi
 - **Transaksi (kasir)** — keranjang multi-produk, 1 struk tersimpan sebagai 1 transaksi + N item dengan snapshot harga. Riwayat dikelompokkan Hari > Struk > Item + subtotal. Struk yang salah catat dibatalkan utuh oleh owner lalu dibuatkan struk koreksi (tanpa edit diam-diam, biar teraudit).
 - **Statistik** — laporan per periode: tren revenue/profit (unit adaptif rb/jt), performa per produk (toggle Revenue/Profit/Margin), struk per hari, jam tersibuk & pola hari (WITA), penjualan per kasir, panel inventori (nilai stok, estimasi hari stok, stok mati), pergerakan stok mingguan, dan matriks Volume vs Margin.
 - **Simulator "what-if"** — lab satu produk: geser harga jual, diskon, modal, volume, langsung lihat dampak revenue/profit/margin, titik impas, dan diskon maksimum. Baseline bisa hari ini, minggu ini, bulan ini, atau custom.
-- **Copilot** — tanya jawab soal performa bisnis berbasis angka yang sama.
+- **Copilot** — tanya jawab Owner berbasis data transaksi: ringkasan, ranking produk, perbandingan periode, penyebab perubahan profit, stok, dan simulasi harga. Angka ditahan bila tidak berasal dari hasil tool.
 - **Pengaturan** — identitas bisnis + kelola staff (tambah/hapus, role OWNER/STAFF). Riwayat struk staff yang sudah dihapus tetap menampilkan namanya.
 
 ## Preview
@@ -21,7 +21,8 @@ Semua angka (omzet, modal, untung, margin) dihitung langsung dari data transaksi
 ![Produk](docs/preview/produk.png)
 ![Transaksi](docs/preview/transaksi.png)
 ![Simulator](docs/preview/simulator.png)
-![Copilot](docs/preview/copilot.png)
+
+Copilot sekarang berjalan dari halaman `/copilot`; preview akan diperbarui setelah gladi bersih dengan data demo saat ini.
 
 > Catatan: screenshot di atas diambil dari data demo sebelumnya (Resto Etam).
 > Data demo saat ini: Cindera Etam (toko oleh-oleh khas Kaltim).

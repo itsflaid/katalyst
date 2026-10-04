@@ -3,6 +3,7 @@
 import { makeTime, type BizTz } from './time';
 
 export type PeriodKey = 'today' | 'week' | 'month' | '30d' | 'all' | 'custom';
+export type NamedPeriodKey = 'today' | 'this_week' | 'this_month' | 'last_30d' | 'custom';
 
 export interface Period {
   key: PeriodKey;
@@ -72,4 +73,23 @@ export function previousWindow(p: Period & { from: Date; to: Date }): { from: Da
   const prevTo = p.from;
   const prevFrom = new Date(p.from.getTime() - Math.max(dur, 1));
   return { from: prevFrom, to: prevTo };
+}
+
+export function resolveNamedPeriod(
+  key: NamedPeriodKey,
+  tz: BizTz,
+  now: Date,
+  custom?: { from: string; to: string }
+): Period {
+  const range = key === 'this_week' ? 'week' : key === 'this_month' ? 'month' : key === 'last_30d' ? '30d' : key;
+  const url = new URL(`http://internal/?range=${range}`);
+  if (custom) {
+    url.searchParams.set('from', custom.from);
+    url.searchParams.set('to', custom.to);
+  }
+  return resolvePeriod(url, tz, now, { default: '30d', allow: ['today', 'week', 'month', 'custom'] });
+}
+
+export function comparableWindow(period: Period & { from: Date; to: Date }): { from: Date; to: Date } {
+  return previousWindow(period);
 }

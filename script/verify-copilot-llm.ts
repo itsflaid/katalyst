@@ -182,6 +182,7 @@ const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
   const tried: string[] = [];
   const pool = createPooledClient([member('m1', [], 429, { 'retry-after': '1' }), member('m2', okChunks)], {
     maxFailover: 2,
+    cooldowns: new Map(),
     onAttempt: (m) => tried.push(m)
   });
   const events = await collect(pool, baseReq);
@@ -191,7 +192,7 @@ const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
 
 {
   const t5xx: string[] = [];
-  const pool5xx = createPooledClient([member('m1', [], 500), member('m2', okChunks)], { maxFailover: 2, onAttempt: (m) => t5xx.push(m) });
+  const pool5xx = createPooledClient([member('m1', [], 500), member('m2', okChunks)], { maxFailover: 2, cooldowns: new Map(), onAttempt: (m) => t5xx.push(m) });
   const e5xx = await collect(pool5xx, baseReq);
   const failingFetch = (() => Promise.reject(new Error('jaringan putus'))) as typeof fetch;
   const poolTimeout = createPooledClient(
@@ -199,7 +200,7 @@ const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
       { model: 'm1', client: createOpenAiCompatClient({ baseUrl: 'https://x.test', apiKey: 'k', model: 'm1', fetchImpl: failingFetch }) },
       member('m2', okChunks)
     ],
-    { maxFailover: 2 }
+    { maxFailover: 2, cooldowns: new Map() }
   );
   const eTimeout = await collect(poolTimeout, baseReq);
   ok('(10) 5xx dan timeout memicu pindah', e5xx[0]?.type === 'model' && e5xx[0].model === 'm2' && eTimeout[0]?.type === 'model' && eTimeout[0].model === 'm2' && t5xx.join(',') === 'm1,m2');
@@ -214,7 +215,7 @@ const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
       throw new Error('putus di tengah');
     }
   };
-  const pool = createPooledClient([{ model: 'm1', client: failAfterFirst }, member('m2', okChunks)], { maxFailover: 2, onAttempt: (m) => tried.push(m) });
+  const pool = createPooledClient([{ model: 'm1', client: failAfterFirst }, member('m2', okChunks)], { maxFailover: 2, cooldowns: new Map(), onAttempt: (m) => tried.push(m) });
   const err = await collectFails(pool, baseReq);
   ok('(11) gagal setelah event pertama tidak pindah', err instanceof Error && err.message === 'putus di tengah' && tried.join(',') === 'm1', `${String(err)} tried=${tried}`);
 }
@@ -223,6 +224,7 @@ const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
   const tried: string[] = [];
   const pool = createPooledClient([member('m1', [], 500), member('m2', [], 500), member('m3', okChunks)], {
     maxFailover: 1,
+    cooldowns: new Map(),
     onAttempt: (m) => tried.push(m)
   });
   await collect(pool, baseReq).catch(() => null);
@@ -230,7 +232,7 @@ const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
 }
 
 {
-  const pool = createPooledClient([member('m1', [], 429), member('m2', [], 429)], { maxFailover: 2 });
+  const pool = createPooledClient([member('m1', [], 429), member('m2', [], 429)], { maxFailover: 2, cooldowns: new Map() });
   const err = await collectFails(pool, baseReq);
   ok('(13) semua 429 jadi 429', err instanceof LlmHttpError && err.status === 429, String(err));
 }
@@ -241,6 +243,7 @@ const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
   const pool = createPooledClient([member('m1', [], 429, { 'retry-after': '60' }), member('m2', okChunks)], {
     maxFailover: 2,
     now: () => nowMs,
+    cooldowns: new Map(),
     onAttempt: (m) => tried.push(m)
   });
   await collect(pool, baseReq);
@@ -263,6 +266,71 @@ const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
     unknown = String(e);
   }
   ok('(15) penyedia tak dikenal menyebut daftar', unknown.includes('groq'), unknown);
+}
+
+{
+  const tried: string[] = [];
+  const pool = createPooledClient([member('m1', [], 401), member('m2', okChunks)], {
+    maxFailover: 2,
+    cooldowns: new Map(),
+    onAttempt: (m) => tried.push(m)
+  });
+  const err = await collectFails(pool, baseReq);
+  ok('(16) 401 tidak pindah', err instanceof LlmHttpError && err.status === 401 && tried.join(',') === 'm1', `${String(err)} tried=${tried}`);
+}
+
+{
+  const tried: string[] = [];
+  const pool = createPooledClient([member('m1', [], 400), member('m2', okChunks)], {
+    maxFailover: 2,
+    cooldowns: new Map(),
+    onAttempt: (m) => tried.push(m)
+  });
+  const err = await collectFails(pool, baseReq);
+  ok('(17) 400 tidak pindah', err instanceof LlmHttpError && err.status === 400 && tried.join(',') === 'm1', `${String(err)} tried=${tried}`);
+}
+
+{
+  const tried: string[] = [];
+  const abortFetch = (() => Promise.reject(new DOMException('dibatalkan', 'AbortError'))) as typeof fetch;
+  const pool = createPooledClient(
+    [
+      { model: 'm1', client: createOpenAiCompatClient({ baseUrl: 'https://x.test', apiKey: 'k', model: 'm1', fetchImpl: abortFetch }) },
+      member('m2', okChunks)
+    ],
+    { maxFailover: 2, cooldowns: new Map(), onAttempt: (m) => tried.push(m) }
+  );
+  const err = await collectFails(pool, baseReq);
+  ok('(18) abort tidak pindah', err instanceof DOMException && err.name === 'AbortError' && tried.join(',') === 'm1', `${String(err)} tried=${tried}`);
+}
+
+{
+  const tried: string[] = [];
+  const poolA = createPooledClient([member('q1', [], 429), member('q2', okChunks)], { maxFailover: 2 });
+  await collect(poolA, baseReq);
+  const poolB = createPooledClient([member('q1', [], 429), member('q2', okChunks)], {
+    maxFailover: 2,
+    onAttempt: (m) => tried.push(m)
+  });
+  const events = await collect(poolB, baseReq);
+  ok('(19) cooldown dibagi antar kolam', tried.join(',') === 'q2' && events[0]?.type === 'model' && events[0].model === 'q2', tried.join(','));
+}
+
+{
+  const bodies: Record<string, unknown>[] = [];
+  const capFetch = (async (_url: unknown, init: unknown) => {
+    const body = JSON.parse((init as { body: string }).body) as Record<string, unknown>;
+    bodies.push(body);
+    if (body['model'] === 'openai/gpt-oss-20b') return sse([], 429);
+    return sse(okChunks);
+  }) as typeof fetch;
+  const client = createLlmClient({ provider: 'groq', apiKey: 'k', models: ['openai/gpt-oss-20b', 'qwen/qwen3.8-27b'] }, capFetch);
+  const events = await collect(client, baseReq);
+  ok(
+    '(20) extraBody per model',
+    bodies.length === 2 && bodies[0]['reasoning_effort'] === 'low' && bodies[1]['reasoning_effort'] === undefined && events[0]?.type === 'model' && events[0].model === 'qwen/qwen3.8-27b',
+    JSON.stringify(bodies.map((b) => ({ model: b['model'], reasoning_effort: b['reasoning_effort'] })))
+  );
 }
 
 if (process.argv.includes('--live')) {
