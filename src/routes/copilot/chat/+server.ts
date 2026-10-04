@@ -3,37 +3,19 @@ import type { RequestHandler } from './$types';
 import { createLlmClient } from '$lib/server/domains/copilot/llm/index';
 import { LlmHttpError, type LlmMessage } from '$lib/server/domains/copilot/llm/types';
 import { SubrequestBudget } from '$lib/server/domains/copilot/budget';
-import { queryFactsByDay, type Db } from '$lib/server/domains/facts/queries';
-import { metricsOf, sumFacts } from '$lib/analytics/facts';
-import { resolvePeriod } from '$lib/shared/period';
+import { TOOL_REGISTRY, findTool } from '$lib/server/domains/copilot/registry';
+import type { ToolContext } from '$lib/server/domains/copilot/context';
+import { failure } from '$lib/server/domains/copilot/envelope';
+import { toModelView } from '$lib/server/domains/copilot/model-view';
+import type { Db } from '$lib/server/domains/facts/queries';
 import { makeTime, type BizTz } from '$lib/shared/time';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import { sql } from 'drizzle-orm';
 import * as schema from '$lib/server/db/schema';
 
 const MAX_MESSAGES = 6;
 const MAX_CONTENT = 800;
 const MAX_STEPS = 3;
-
-function fmtRp(n: number): string {
-  const digits = Math.abs(Math.round(n))
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return (n < 0 ? '-Rp' : 'Rp') + digits;
-}
-
-function fmtPct(x: number): string {
-  return `${(Math.round(x * 1000) / 10).toFixed(1).replace('.', ',')}%`;
-}
-
-interface ToolCtx {
-  businessId: string;
-  tz: BizTz;
-  now: Date;
-  db: Db;
-  budget: SubrequestBudget;
-}
 
 // Tiap query HTTP dihitung: drizzle memakai `.query`, bukan pemanggilan langsung.
 function countedDb(url: string, budget: SubrequestBudget): Db {
@@ -55,58 +37,6 @@ function countedDb(url: string, budget: SubrequestBudget): Db {
   };
   return drizzle(wrapped, { schema });
 }
-
-// TODO(T1.7: ganti dengan TL-1 dan format dari shared/format): tool sementara
-async function runGetSummary(ctx: ToolCtx): Promise<Record<string, unknown>> {
-  const period = resolvePeriod(new URL('http://internal/?range=30d'), ctx.tz, ctx.now, { default: '30d', allow: [] });
-  const from = period.from as Date;
-  const to = period.to as Date;
-  const rows = await queryFactsByDay(ctx.db, ctx.businessId, { from, to }, ctx.tz);
-  const list = [...rows.values()];
-  const m = metricsOf(sumFacts(list));
-  const txCount = list.reduce((s, r) => s + r.txCount, 0);
-  return {
-    revenue: m.revenue,
-    revenueText: fmtRp(m.revenue),
-    cost: m.cost,
-    costText: fmtRp(m.cost),
-    profit: m.profit,
-    profitText: fmtRp(m.profit),
-    margin: m.margin,
-    marginText: fmtPct(m.margin),
-    txCount,
-    window: period.label
-  };
-}
-
-interface ToolDef {
-  name: string;
-  description: string;
-  parameters: Record<string, unknown>;
-  run: (ctx: ToolCtx, args: unknown) => Promise<Record<string, unknown>>;
-}
-
-const TOOLS: ToolDef[] = [
-  {
-    name: 'get_summary',
-    description: 'Ringkasan bisnis 30 hari terakhir: omzet, modal, profit, margin, jumlah struk. Pakai untuk pertanyaan omzet atau untung.',
-    parameters: { type: 'object', properties: {}, additionalProperties: false },
-    run: (ctx: ToolCtx) => runGetSummary(ctx)
-  },
-  {
-    name: '__measure',
-    description: 'Alat ukur internal: menjalankan N query ringan paralel.',
-    parameters: { type: 'object', properties: { queries: { type: 'integer', enum: [2, 5, 8] } }, required: ['queries'], additionalProperties: false },
-    // TODO(T1.7: hapus saat TL-1 asli masuk): alat ukur T0.4
-    run: async (ctx: ToolCtx, args: unknown) => {
-      const n = (args as { queries?: unknown })?.queries;
-      if (n !== 2 && n !== 5 && n !== 8) return { error: 'Argumen queries harus 2, 5, atau 8.' };
-      const start = Date.now();
-      await Promise.all(Array.from({ length: n }, () => ctx.db.execute(sql`select 1`)));
-      return { queries: n, budgetUsed: ctx.budget.used, wallMs: Date.now() - start };
-    }
-  }
-];
 
 function parseMessages(body: unknown): { ok: true; messages: LlmMessage[] } | { ok: false; message: string } {
   const invalid = 'Isi pesan maksimal 6, tiap pesan maksimal 800 karakter, pesan terakhir harus dari pengguna.';
@@ -152,8 +82,8 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
   const startMs = Date.now();
   const budget = new SubrequestBudget();
   const requestDb = countedDb(env.DATABASE_URL ?? '', budget);
-  const ctx: ToolCtx = { businessId: business.id, tz, now, db: requestDb, budget };
-  const tools = env.COPILOT_MEASURE === '1' ? TOOLS : TOOLS.filter((t) => t.name !== '__measure');
+  const ctx: ToolContext = { businessId: business.id, tz, now, db: requestDb, budget };
+  const tools = TOOL_REGISTRY.filter((tool) => tool.enabled);
   const client = createLlmClient(
     {
       provider: env.LLM_PROVIDER || 'groq',
@@ -168,7 +98,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
   const T = makeTime(tz);
   const system =
     `Kamu Katalyst Copilot untuk ${business.name}. Hari ini ${T.fmt(now, { day: 'numeric', month: 'short', year: 'numeric' })} (${tz}). ` +
-    'Jawab singkat bahasa Indonesia. Semua angka WAJIB dari hasil tool get_summary; salin string berformatnya persis tanpa menghitung ulang. Selalu sebut rentang waktunya.';
+    'Jawab singkat bahasa Indonesia. Semua angka wajib dari hasil tool; salin string berformatnya persis tanpa menghitung ulang. Selalu sebut rentang waktunya.';
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -214,7 +144,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             toolCalls: pending.map((c) => ({ id: c.id, name: c.name, argsJson: c.argsJson }))
           });
           for (const call of pending) {
-            const tool = tools.find((t) => t.name === call.name);
+            const tool = findTool(call.name);
             let args: unknown = call.argsJson;
             try {
               args = JSON.parse(call.argsJson);
@@ -223,11 +153,13 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             }
             send('tool_start', { id: call.id, name: call.name, args });
             called.push(call.name);
-            const result = tool
-              ? await tool.run(ctx, args)
-              : { error: `Tool tak dikenal: ${call.name}` };
+            const result = !tool
+              ? failure(call.name, 'INVALID_ARGS', `Tool tak dikenal: ${call.name}`)
+              : !budget.canAfford(tool.maxQueries)
+                ? failure(call.name, 'BUDGET_EXCEEDED', 'Anggaran komputasi habis, persempit pertanyaan.')
+                : await tool.run(ctx, args);
             send('tool_result', { id: call.id, name: call.name, result });
-            history.push({ role: 'tool', toolCallId: call.id, content: JSON.stringify(result) });
+            history.push({ role: 'tool', toolCallId: call.id, content: JSON.stringify(toModelView(result)) });
           }
         }
         if (finalText === null || finalText === '') {

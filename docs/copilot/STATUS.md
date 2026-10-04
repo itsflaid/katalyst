@@ -56,15 +56,15 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 - [x] T0.4 `budget.ts`, alat ukur, deploy dan pengukuran Free (subrequest terukur 10/45; D8 Free bersyarat, CPU revalidasi T4.9)
 
 **Fase 1**
-- [ ] T1.1 format
-- [ ] T1.2 periode bernama
-- [ ] T1.3 fungsi `analytics`
-- [ ] T1.4 refactor `loaders.ts` + D2
-- [ ] T1.5 query (productIds, handle, recent movements)
-- [ ] T1.6 kerangka `copilot/`
-- [ ] T1.7 TL-1, TL-2, TL-3, TL-6
-- [ ] T1.8 `verify-copilot-tools.ts`
-- [ ] T1.9 `copilot-call.ts`
+- [x] T1.1 format
+- [x] T1.2 periode bernama
+- [ ] T1.3 fungsi `analytics` (dipindahkan ke Fase 2: dipakai TL-4/TL-5)
+- [ ] T1.4 refactor `loaders.ts` + D2 (dipindahkan: tidak memblokir Copilot demo)
+- [ ] T1.5 query (productIds, handle, recent movements) (dipindahkan ke Fase 2: dipakai tool lanjutan)
+- [x] T1.6 kerangka `copilot/` (context, envelope, validator, resolver, sanitasi, model-view, registry)
+- [x] T1.7 TL-1, TL-2, TL-3, TL-6
+- [x] T1.8 `verify-copilot-tools.ts`
+- [x] T1.9 `copilot-call.ts`
 
 **Fase 2**
 - [ ] T2.1 dekomposisi
@@ -112,7 +112,9 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 | 4 Okt 2026 | OpenCode / Muse Spark | Finish Fase 0 | | ukur produksi 2/5/8 lolos (budget 4/7/10, wallMs 8/11/18, token ±700, failovers 0); Traces Free kosong → D8 Free bersyarat + revalidasi T4.9; rekomendasi opsi B; laporan `docs/copilot/LAPORAN-FASE0.md` |
 | 4 Okt 2026 | OpenCode / Muse Spark | Temuan Claude 1-3 | | cooldown modul-level (dibagi semua kolam, injeksi map untuk tes); failover hanya 429/404/5xx/gagal jaringan, abort dilempar ulang; `extraBody` per model; kontrak 22/22 |
 | 4 Okt 2026 | OpenCode / Muse Spark | Temuan Claude 4-6 | | batas body 6×800; field `grounding` dihapus dari `done` sampai pemeriksaan nyata ada; `db.batch` ikut terhitung via forward `transaction`; manual lulus (400 + happy path tanpa grounding) |
+| 4 Okt 2026 | Codex / GPT-5 | Fase 1 fondasi + TL-1 | | PRD dipadatkan untuk demo; formatter, periode bernama, context/envelope/validator/resolver/sanitasi/registry, dan `get_summary` masuk endpoint; verify core 16/16, period 5/5, arch bersih. |
+| 4 Okt 2026 | Codex / GPT-5 | Selesai Fase 1 demo | | Tambah `rank_products`, `compare_periods`, `get_inventory`, model-view, CLI, dan verifikasi DB; copilot-tools 4/4 serta facts-db 20/20 lulus terhadap Neon. |
 
 ## Penyimpangan dari PRD dan temuan
 
-(kosong)
+Fase 1 dipersempit sesuai PRD demo agar pekerjaan analitik yang belum dipakai tidak menunda empat tool siap demo. T1.3–T1.5 digabung dengan TL-4/TL-5 di Fase 2.
