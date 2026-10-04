@@ -9,6 +9,7 @@ export interface LlmConfig {
   models?: string[];
   baseUrl?: string;
   maxFailover?: number;
+  onAttempt?: (model: string) => void;
 }
 
 export function createLlmClient(cfg: LlmConfig, fetchImpl?: typeof fetch): LlmClient {
@@ -29,5 +30,5 @@ export function createLlmClient(cfg: LlmConfig, fetchImpl?: typeof fetch): LlmCl
       fetchImpl
     })
   }));
-  return createPooledClient(members, { maxFailover: cfg.maxFailover ?? 2 });
+  return createPooledClient(members, { maxFailover: cfg.maxFailover ?? 2, onAttempt: cfg.onAttempt });
 }

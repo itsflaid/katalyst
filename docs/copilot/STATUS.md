@@ -52,7 +52,7 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 - [ ] T0.0 README: Copilot "dalam pengembangan" (DITUNDA ke T4.8 atas permintaan pemilik, 4 Okt 2026)
 - [x] T0.1 `.env.example`, rujukan di `AGENTS.md`, kolom limit "menunggu pemilik"
 - [x] T0.2 lapisan LLM + `verify:copilot-llm`
-- [ ] T0.3 endpoint `/copilot/chat` + loop minimal
+- [x] T0.3 endpoint `/copilot/chat` + loop minimal
 - [ ] T0.4 `budget.ts`, alat ukur, deploy dan pengukuran Free
 
 **Fase 1**
@@ -100,6 +100,7 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 |---|---|---|---|---|
 | 4 Okt 2026 | OpenCode / Muse Spark | T0.1 | | `.env.example` + rujukan AGENTS; docs/copilot/ masuk repo; retensi Groq + batas 15 Okt dari pemilik; T0.0 ditunda ke T4.8 |
 | 4 Okt 2026 | OpenCode / Muse Spark | T0.2 | | `llm/` + `verify:copilot-llm` 17/17; docs Groq diverifikasi; `--live` SKIP tanpa kunci |
+| 4 Okt 2026 | OpenCode / Muse Spark | T0.3 | | endpoint + loop `get_summary` sementara; manual lulus semua (tanpa cookie 303, STAFF 303, origin asing 403, tanpa origin 403, body salah 400, owner 200: tool_start→tool_result→text→done, Rp66.612.000/774 struk, usage 553/82, budget 2); `--live` script 19/19 setelah kunci ada; `onAttempt` diteruskan ke pool untuk spend per percobaan |
 
 ## Penyimpangan dari PRD dan temuan
 
