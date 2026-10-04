@@ -3,6 +3,30 @@
 
 export type MoneyUnit = { key: 'jt' | 'rb' | 'rp'; divisor: number; decimals: number; label: string };
 
+function groupInt(value: number): string {
+  return Math.abs(Math.round(value)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+export function fmtInt(value: number): string {
+  return `${value < 0 ? '-' : ''}${groupInt(value)}`;
+}
+
+export function fmtRupiah(value: number): string {
+  return `${value < 0 ? '-Rp' : 'Rp'}${groupInt(value)}`;
+}
+
+export function fmtPercent(value: number): string {
+  return `${(Math.round(value * 1000) / 10).toFixed(1).replace('.', ',')}%`;
+}
+
+export function fmtDelta(value: number | null): string {
+  return value === null ? 'baru' : `${value > 0 ? '+' : ''}${fmtPercent(value)}`;
+}
+
+export function fmtPoints(value: number): string {
+  return `${value > 0 ? '+' : ''}${fmtPercent(value)} poin`;
+}
+
 export function pickMoneyUnit(maxAbs: number): MoneyUnit {
   const v = Math.abs(maxAbs);
   if (v >= 1_000_000) return { key: 'jt', divisor: 1_000_000, decimals: 2, label: 'jt Rp' };
