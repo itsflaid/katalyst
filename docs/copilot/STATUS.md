@@ -42,7 +42,7 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 | Garis potong (H−21) | menunggu pemilik | |
 | CPU p95 per jawaban di Cloudflare Free | belum | T0.4 |
 | Subrequest terburuk per jawaban | belum | T0.4 |
-| Mekanisme penghitung query (§8.6) | belum dipilih | T0.4 |
+| Mekanisme penghitung query (§8.6) | instance drizzle per request dari `neon()` yang dibungkus: tiap pemanggilan `.query` spend(1); 1 query drizzle = 1 HTTP (drizzle memakai `.query`, bukan pemanggilan langsung); terverifikasi lokal (`get_summary` budget 3 = 2 LLM + 1 DB; `__measure` 5 query budget 7) | T0.4 |
 | Keputusan D8 (Free atau Paid) | belum | T0.4 |
 | Kolam model final (urutan) | belum | T3.6 |
 
@@ -53,7 +53,7 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 - [x] T0.1 `.env.example`, rujukan di `AGENTS.md`, kolom limit "menunggu pemilik"
 - [x] T0.2 lapisan LLM + `verify:copilot-llm`
 - [x] T0.3 endpoint `/copilot/chat` + loop minimal
-- [ ] T0.4 `budget.ts`, alat ukur, deploy dan pengukuran Free
+- [x] T0.4 `budget.ts`, alat ukur, deploy dan pengukuran Free (kode selesai; pengukuran Free menunggu pemilik)
 
 **Fase 1**
 - [ ] T1.1 format
@@ -94,6 +94,13 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 - [ ] T4.8 README final
 - [ ] T4.9 uji produksi Free
 
+## Prosedur pengukuran T0.4 (untuk pemilik)
+
+1. Deploy branch `feat/copilot` ke Cloudflare Free; set secret `LLM_API_KEY` dan env `COPILOT_MEASURE=1`.
+2. Sebagai owner, kirim tiga pertanyaan yang memicu `__measure`: masing-masing dengan `queries` 2, 5, dan 8 (mis. "Panggil tool __measure dengan queries 5.").
+3. Dari tiap jawaban catat `budgetUsed` (event `done`) dan CPU time di observability Cloudflare.
+4. Isi tabel: CPU p95 per jawaban dan subrequest terburuk; putuskan D8 (tetap Free bila CPU p95 ≤ 8 ms dan subrequest ≤ 45, selain itu Workers Paid sebelum Fase 3).
+
 ## Log sesi
 
 | Tanggal | Agen / model | Tugas | Commit | Catatan |
@@ -101,6 +108,7 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 | 4 Okt 2026 | OpenCode / Muse Spark | T0.1 | | `.env.example` + rujukan AGENTS; docs/copilot/ masuk repo; retensi Groq + batas 15 Okt dari pemilik; T0.0 ditunda ke T4.8 |
 | 4 Okt 2026 | OpenCode / Muse Spark | T0.2 | | `llm/` + `verify:copilot-llm` 17/17; docs Groq diverifikasi; `--live` SKIP tanpa kunci |
 | 4 Okt 2026 | OpenCode / Muse Spark | T0.3 | | endpoint + loop `get_summary` sementara; manual lulus semua (tanpa cookie 303, STAFF 303, origin asing 403, tanpa origin 403, body salah 400, owner 200: tool_start→tool_result→text→done, Rp66.612.000/774 struk, usage 553/82, budget 2); `--live` script 19/19 setelah kunci ada; `onAttempt` diteruskan ke pool untuk spend per percobaan |
+| 4 Okt 2026 | OpenCode / Muse Spark | T0.4 | | `budget.ts` + `verify:copilot-core` 6/6; db per-request terhitung (drizzle memakai `.query`, bukan call langsung — temuan saat `__measure` gagal); `__measure` lulus lokal (5 query wallMs 179, budget 7); tiap jawaban log JSON; pengukuran Free + putusan D8 menunggu pemilik |
 
 ## Penyimpangan dari PRD dan temuan
 
