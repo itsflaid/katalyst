@@ -95,8 +95,8 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 - [ ] T4.9 uji produksi Free
 
 **Fase 5**
-- [x] T5.1 riwayat percakapan localStorage: buka dan buat baru
-- [ ] T5.2 putuskan apakah riwayat server diperlukan setelah demo
+- [ ] T5.1 riwayat percakapan server: daftar, detail, buat, hapus
+- [x] T5.2 keputusan riwayat server: diperlukan untuk lintas perangkat
 
 ## Prosedur pengukuran T0.4 (untuk pemilik)
 

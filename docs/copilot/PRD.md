@@ -70,4 +70,4 @@ Dokumen penuh v1.1 tersimpan di riwayat Git. `STATUS.md` adalah sumber kemajuan 
 
 ## 7. Fase 5 — Riwayat percakapan
 
-Riwayat bukan bagian dari jawaban AI dan tidak boleh menghambat demo. Setelah Fase 4, simpan percakapan di localStorage agar Owner dapat membuka percakapan sebelumnya, membuat percakapan baru, dan menghapus riwayat lokal. Riwayat server hanya dibuat bila kebutuhan sinkronisasi antar perangkat muncul; tidak ada data percakapan dikirim ke server selain konteks enam pesan yang dibutuhkan request aktif.
+Riwayat bukan bagian dari jawaban AI dan tidak boleh menghambat demo. Setelah Fase 4, simpan percakapan di server agar Owner dapat membuka riwayat yang sama dari perangkat lain. Rincian schema, endpoint, streaming, UI, dan verifikasi ada di `docs/copilot/PLAN-FASE5.md`. LLM hanya menerima enam pesan teks terbaru dari percakapan aktif.
