@@ -76,12 +76,12 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 - [ ] T2.7 TL-7, TL-8 (dikerjakan bersama UI pada Fase 4 demo)
 
 **Fase 3**
-- [ ] T3.1 prompt
-- [ ] T3.2 loop
-- [ ] T3.3 grounding
-- [ ] T3.4 `copilot_usage` + `limits.ts`
-- [ ] T3.5 log
-- [ ] T3.6 eval + pilih model
+- [x] T3.1 prompt
+- [x] T3.2 loop
+- [x] T3.3 grounding
+- [x] T3.4 `limits.ts` stub (batas harian DB dibuang dari scope demo)
+- [x] T3.5 log
+- [ ] T3.6 eval + pilih model (set 12 kasus siap; perlu eksekusi LLM nyata)
 
 **Fase 4**
 - [ ] T4.1 kartu
@@ -115,9 +115,12 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 | 4 Okt 2026 | Codex / GPT-5 | Fase 1 fondasi + TL-1 | | PRD dipadatkan untuk demo; formatter, periode bernama, context/envelope/validator/resolver/sanitasi/registry, dan `get_summary` masuk endpoint; verify core 16/16, period 5/5, arch bersih. |
 | 4 Okt 2026 | Codex / GPT-5 | Selesai Fase 1 demo | | Tambah `rank_products`, `compare_periods`, `get_inventory`, model-view, CLI, dan verifikasi DB; copilot-tools 4/4 serta facts-db 20/20 lulus terhadap Neon. |
 | 4 Okt 2026 | Codex / GPT-5 | Fase 2 inti demo | | Tambah dekomposisi profit deterministik dan TL-4/TL-5; uji dekomposisi 10.000 kasus serta pemeriksaan tipe dan arsitektur lulus. Verifikasi DB nyata menunggu otorisasi lingkungan. |
+| 4 Okt 2026 | Codex / GPT-5 | Fase 3 inti | | Prompt tool-aware, loop 5 langkah/6 tool dengan cache, grounding + retry sekali, limits stub, dan set eval 12 kasus; grounding 4/4, core 17/17, kontrak LLM 22/22, arsitektur bersih. |
 
 ## Penyimpangan dari PRD dan temuan
 
 Fase 1 dipersempit sesuai PRD demo agar pekerjaan analitik yang belum dipakai tidak menunda empat tool siap demo. T1.3–T1.5 digabung dengan TL-4/TL-5 di Fase 2.
 
 Fase 2 demo mencakup TL-4 dan TL-5. Riwayat stok habis, penggunaan promo, preset Simulator, toleransi volume, serta TL-7/TL-8 tidak mengubah alur keputusan inti dan dilanjutkan setelah UI chat nyata selesai.
+
+Batas harian `copilot_usage` tidak dibuat untuk demo karena memerlukan migrasi dan jalur tulis khusus; anggaran per jawaban serta batas penyedia tetap berlaku. T3.6 baru ditutup setelah 12 kasus dijalankan melalui endpoint dengan model Groq yang dipilih.
