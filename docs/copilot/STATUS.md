@@ -40,10 +40,10 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 | Kekhasan Groq terverifikasi (parameter penalaran, `parallel_tool_calls`, `usage` di stream, header batas laju) | terverifikasi 4 Okt 2026: base `https://api.groq.com/openai/v1` (/docs/openai); tool+streaming gpt-oss-120b/20b Ya, paralel gpt-oss Tidak, qwen Ya (/docs/tool-use/overview); penalaran gpt-oss `reasoning_effort` low/med/high + `include_reasoning`, tanpa `reasoning_format` (/docs/reasoning); 429 + `retry-after` detik + `x-ratelimit-*` (/docs/rate-limits); `usage` di stream tak eksplisit → `usageInStream` tidak diset; profil memakai `extraBody` penalaran rendah; `--live` SKIP (tanpa kunci) | T0.2 |
 | Tanggal final OASE III | 15 Okt 2026 (batas selesai dari pemilik, 4 Okt 2026) | |
 | Garis potong (H−21) | menunggu pemilik | |
-| CPU p95 per jawaban di Cloudflare Free | belum | T0.4 |
-| Subrequest terburuk per jawaban | belum | T0.4 |
+| CPU p95 per jawaban di Cloudflare Free | belum terukur (Traces paket Free kosong; D8 diputuskan bersyarat, revalidasi wajib di T4.9) | T0.4, 4 Okt 2026 |
+| Subrequest terburuk per jawaban | 10 (ukur 8 query: budget 10 = 2 LLM + 8 DB; jawaban nyata `get_summary` budget 3) | T0.4, produksi 4 Okt 2026 |
 | Mekanisme penghitung query (§8.6) | instance drizzle per request dari `neon()` yang dibungkus: tiap pemanggilan `.query` spend(1); 1 query drizzle = 1 HTTP (drizzle memakai `.query`, bukan pemanggilan langsung); terverifikasi lokal (`get_summary` budget 3 = 2 LLM + 1 DB; `__measure` 5 query budget 7) | T0.4 |
-| Keputusan D8 (Free atau Paid) | belum | T0.4 |
+| Keputusan D8 (Free atau Paid) | Free (bersyarat: subrequest 10/45 lolos, token 700/6000 lolos, CPU belum terukur; final di T4.9; bila CPU > 8 ms pindah Paid sebelum Fase 3) | T0.4, 4 Okt 2026 |
 | Kolam model final (urutan) | belum | T3.6 |
 
 ## Checklist tugas
@@ -53,7 +53,7 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 - [x] T0.1 `.env.example`, rujukan di `AGENTS.md`, kolom limit "menunggu pemilik"
 - [x] T0.2 lapisan LLM + `verify:copilot-llm`
 - [x] T0.3 endpoint `/copilot/chat` + loop minimal
-- [x] T0.4 `budget.ts`, alat ukur, deploy dan pengukuran Free (kode selesai; pengukuran Free menunggu pemilik)
+- [x] T0.4 `budget.ts`, alat ukur, deploy dan pengukuran Free (subrequest terukur 10/45; D8 Free bersyarat, CPU revalidasi T4.9)
 
 **Fase 1**
 - [ ] T1.1 format
@@ -109,6 +109,7 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 | 4 Okt 2026 | OpenCode / Muse Spark | T0.2 | | `llm/` + `verify:copilot-llm` 17/17; docs Groq diverifikasi; `--live` SKIP tanpa kunci |
 | 4 Okt 2026 | OpenCode / Muse Spark | T0.3 | | endpoint + loop `get_summary` sementara; manual lulus semua (tanpa cookie 303, STAFF 303, origin asing 403, tanpa origin 403, body salah 400, owner 200: tool_start→tool_result→text→done, Rp66.612.000/774 struk, usage 553/82, budget 2); `--live` script 19/19 setelah kunci ada; `onAttempt` diteruskan ke pool untuk spend per percobaan |
 | 4 Okt 2026 | OpenCode / Muse Spark | T0.4 | | `budget.ts` + `verify:copilot-core` 6/6; db per-request terhitung (drizzle memakai `.query`, bukan call langsung — temuan saat `__measure` gagal); `__measure` lulus lokal (5 query wallMs 179, budget 7); tiap jawaban log JSON; pengukuran Free + putusan D8 menunggu pemilik |
+| 4 Okt 2026 | OpenCode / Muse Spark | Finish Fase 0 | | ukur produksi 2/5/8 lolos (budget 4/7/10, wallMs 8/11/18, token ±700, failovers 0); Traces Free kosong → D8 Free bersyarat + revalidasi T4.9; rekomendasi opsi B; laporan `docs/copilot/LAPORAN-FASE0.md` |
 
 ## Penyimpangan dari PRD dan temuan
 
