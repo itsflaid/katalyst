@@ -84,15 +84,19 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 - [ ] T3.6 eval + pilih model (set 12 kasus siap; perlu eksekusi LLM nyata)
 
 **Fase 4**
-- [ ] T4.1 kartu
-- [ ] T4.2 halaman chat
-- [ ] T4.3 riwayat
-- [ ] T4.4 state
-- [ ] T4.5 mobile dan aksesibilitas
-- [ ] T4.6 hapus mockup
-- [ ] T4.7 hapus pengecualian `verify-arch`
-- [ ] T4.8 README final
+- [x] T4.1 kartu
+- [x] T4.2 halaman chat
+- [x] T4.3 riwayat localStorage
+- [x] T4.4 state
+- [x] T4.5 mobile dan aksesibilitas
+- [x] T4.6 hapus mockup
+- [x] T4.7 hapus pengecualian `verify-arch`
+- [x] T4.8 README final (preview menunggu gladi bersih)
 - [ ] T4.9 uji produksi Free
+
+**Fase 5**
+- [x] T5.1 riwayat percakapan localStorage: buka dan buat baru
+- [ ] T5.2 putuskan apakah riwayat server diperlukan setelah demo
 
 ## Prosedur pengukuran T0.4 (untuk pemilik)
 
@@ -116,6 +120,7 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 | 4 Okt 2026 | Codex / GPT-5 | Selesai Fase 1 demo | | Tambah `rank_products`, `compare_periods`, `get_inventory`, model-view, CLI, dan verifikasi DB; copilot-tools 4/4 serta facts-db 20/20 lulus terhadap Neon. |
 | 4 Okt 2026 | Codex / GPT-5 | Fase 2 inti demo | | Tambah dekomposisi profit deterministik dan TL-4/TL-5; uji dekomposisi 10.000 kasus serta pemeriksaan tipe dan arsitektur lulus. Verifikasi DB nyata menunggu otorisasi lingkungan. |
 | 4 Okt 2026 | Codex / GPT-5 | Fase 3 inti | | Prompt tool-aware, loop 5 langkah/6 tool dengan cache, grounding + retry sekali, limits stub, dan set eval 12 kasus; grounding 4/4, core 17/17, kontrak LLM 22/22, arsitektur bersih. |
+| 4 Okt 2026 | Codex / GPT-5 | Fase 4 UI | | Mock diganti chat SSE nyata dengan kartu tool, state kirim/gagal, responsif, dan riwayat localStorage; svelte-check 0 error/0 warning, verify-arch tanpa pengecualian Copilot bersih; visual diverifikasi pemilik. |
 
 ## Penyimpangan dari PRD dan temuan
 

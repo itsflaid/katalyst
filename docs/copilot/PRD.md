@@ -67,3 +67,7 @@ Evaluasi minimal mencakup ringkasan, ranking, perbandingan, simulasi, inventori,
 - Cloudflare Free digunakan bersyarat: cek beban 20 pertanyaan dan `budgetUsed <= 45`; pindah paket hanya bila batas nyata terlewati.
 
 Dokumen penuh v1.1 tersimpan di riwayat Git. `STATUS.md` adalah sumber kemajuan harian.
+
+## 7. Fase 5 — Riwayat percakapan
+
+Riwayat bukan bagian dari jawaban AI dan tidak boleh menghambat demo. Setelah Fase 4, simpan percakapan di localStorage agar Owner dapat membuka percakapan sebelumnya, membuat percakapan baru, dan menghapus riwayat lokal. Riwayat server hanya dibuat bila kebutuhan sinkronisasi antar perangkat muncul; tidak ada data percakapan dikirim ke server selain konteks enam pesan yang dibutuhkan request aktif.
