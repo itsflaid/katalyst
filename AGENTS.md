@@ -71,3 +71,5 @@ Komentar alasan yang baik:
 
 - Jalankan `npm run verify:arch`; ia memeriksa bentuk komentar (banner, rujukan dokumen, kata riwayat, panjang, TODO tanpa kondisi).
 - Baca ulang komentar yang baru ditulis: masih benar dan berguna bagi orang yang tidak ikut diskusinya?
+
+Pekerjaan Copilot: baca docs/copilot/STATUS.md dan docs/copilot/PRD.md sebelum mulai.
