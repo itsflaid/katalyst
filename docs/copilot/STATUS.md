@@ -95,7 +95,7 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 - [ ] T4.9 uji produksi Free
 
 **Fase 5**
-- [ ] T5.1 riwayat percakapan server: daftar, detail, buat, hapus
+- [x] T5.1 riwayat percakapan server: daftar, detail, buat, hapus (migrasi 0013; tulis histori satu-satunya pengecualian I1 baru)
 - [x] T5.2 keputusan riwayat server: diperlukan untuk lintas perangkat
 
 ## Prosedur pengukuran T0.4 (untuk pemilik)
@@ -121,10 +121,12 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 | 4 Okt 2026 | Codex / GPT-5 | Fase 2 inti demo | | Tambah dekomposisi profit deterministik dan TL-4/TL-5; uji dekomposisi 10.000 kasus serta pemeriksaan tipe dan arsitektur lulus. Verifikasi DB nyata menunggu otorisasi lingkungan. |
 | 4 Okt 2026 | Codex / GPT-5 | Fase 3 inti | | Prompt tool-aware, loop 5 langkah/6 tool dengan cache, grounding + retry sekali, limits stub, dan set eval 12 kasus; grounding 4/4, core 17/17, kontrak LLM 22/22, arsitektur bersih. |
 | 4 Okt 2026 | Codex / GPT-5 | Fase 4 UI | | Mock diganti chat SSE nyata dengan kartu tool, state kirim/gagal, responsif, dan riwayat localStorage; svelte-check 0 error/0 warning, verify-arch tanpa pengecualian Copilot bersih; visual diverifikasi pemilik. |
+| 4 Okt 2026 | OpenCode / Muse Spark | T5.1 | | migrasi 0013 + `history.ts` + 5 endpoint + chat pakai konteks server + UI server-state; `verify-history-db` 19/19; manual lulus (staff 303, asing 404, urutan conversation→done, judul dari pertanyaan pertama, lintas sesi, hapus 1/semuanya); budget jawaban 2-tool 15; jawab 6 pesan terakhir dari server |
 
 ## Penyimpangan dari PRD dan temuan
 
 Fase 1 dipersempit sesuai PRD demo agar pekerjaan analitik yang belum dipakai tidak menunda empat tool siap demo. T1.3–T1.5 digabung dengan TL-4/TL-5 di Fase 2.
+T5.1: tabel `copilot_conversation`/`copilot_message` menjadi pengecualian tulis I1 kedua setelah `copilot_usage`; `role` memakai teks tervalidasi (bukan enum PG); event `conversation` selalu dikirim; `done` juga dikirim setelah `notice`; tulis histori lewat db per-request yang terhitung.
 
 Fase 2 demo mencakup TL-4 dan TL-5. Riwayat stok habis, penggunaan promo, preset Simulator, toleransi volume, serta TL-7/TL-8 tidak mengubah alur keputusan inti dan dilanjutkan setelah UI chat nyata selesai.
 
