@@ -39,7 +39,7 @@
 </script>
 
 <Table headers={["Produk", "Modal", "Jual", "Margin", "Stok", "Status", "Aksi"]}>
-  {#each products as p}
+  {#each products as p (p.id)}
     {@const m = marginOf(p)}
     <tr class={!p.isActive ? "opacity-60" : ""}>
       <td class="px-3 py-2 text-ink font-semibold whitespace-nowrap"><a href={`/products/${p.id}`} class="text-ink-navy hover:underline">{p.name}</a></td>
