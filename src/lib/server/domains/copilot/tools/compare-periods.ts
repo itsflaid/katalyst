@@ -1,5 +1,5 @@
 import { deltaRatio, metricsOf, sumFacts } from '../../../../analytics/facts';
-import { fmtDelta, fmtPoints, fmtRupiah } from '../../../../shared/format';
+import { fmtDelta, fmtPercent, fmtPoints, fmtRupiah } from '../../../../shared/format';
 import { comparableWindow, resolveNamedPeriod, type NamedPeriodKey } from '../../../../shared/period';
 import { queryFactsByDay } from '../../facts/queries';
 import type { ToolContext } from '../context';
@@ -13,8 +13,8 @@ export interface ComparePeriodsData {
   empty: boolean;
   window: { key: NamedPeriodKey; label: string };
   baselineWindow: { label: string };
-  current: { revenue: number; revenueText: string; profit: number; profitText: string; margin: number };
-  baseline: { revenue: number; revenueText: string; profit: number; profitText: string; margin: number };
+  current: { revenue: number; revenueText: string; profit: number; profitText: string; margin: number; marginText: string };
+  baseline: { revenue: number; revenueText: string; profit: number; profitText: string; margin: number; marginText: string };
   change: { revenue: number | null; revenueText: string; profit: number | null; profitText: string; marginPoints: number; marginPointsText: string };
 }
 
@@ -41,8 +41,8 @@ export async function comparePeriods(ctx: ToolContext, input: unknown): Promise<
     empty: currentRows.size === 0,
     window: { key: period, label: window.label },
     baselineWindow: { label: 'Periode sebelumnya dengan panjang yang sama' },
-    current: { revenue: current.revenue, revenueText: fmtRupiah(current.revenue), profit: current.profit, profitText: fmtRupiah(current.profit), margin: current.margin },
-    baseline: { revenue: baseline.revenue, revenueText: fmtRupiah(baseline.revenue), profit: baseline.profit, profitText: fmtRupiah(baseline.profit), margin: baseline.margin },
+    current: { revenue: current.revenue, revenueText: fmtRupiah(current.revenue), profit: current.profit, profitText: fmtRupiah(current.profit), margin: current.margin, marginText: fmtPercent(current.margin) },
+    baseline: { revenue: baseline.revenue, revenueText: fmtRupiah(baseline.revenue), profit: baseline.profit, profitText: fmtRupiah(baseline.profit), margin: baseline.margin, marginText: fmtPercent(baseline.margin) },
     change: { revenue: revenueChange, revenueText: fmtDelta(revenueChange), profit: profitChange, profitText: fmtDelta(profitChange), marginPoints, marginPointsText: fmtPoints(marginPoints) }
   }, currentRows.size === 0 ? ['Belum ada transaksi pada periode ini.'] : []);
 }

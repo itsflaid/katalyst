@@ -75,6 +75,8 @@ export function previousWindow(p: Period & { from: Date; to: Date }): { from: Da
   return { from: prevFrom, to: prevTo };
 }
 
+const MAX_CUSTOM_DAYS = 366;
+
 export function resolveNamedPeriod(
   key: NamedPeriodKey,
   tz: BizTz,
@@ -87,7 +89,13 @@ export function resolveNamedPeriod(
     url.searchParams.set('from', custom.from);
     url.searchParams.set('to', custom.to);
   }
-  return resolvePeriod(url, tz, now, { default: '30d', allow: ['today', 'week', 'month', 'custom'] });
+  const period = resolvePeriod(url, tz, now, { default: '30d', allow: ['today', 'week', 'month', 'custom'] });
+  if (key !== 'custom') return period;
+  // Custom tak valid atau lebih dari 366 hari dikembalikan tanpa from/to; pemanggil menolaknya.
+  const T = makeTime(tz);
+  const valid = !!custom && !!T.parseDay(custom.from) && !!T.parseDay(custom.to);
+  const tooLong = !!period.from && !!period.to && period.to.getTime() - period.from.getTime() > MAX_CUSTOM_DAYS * 86_400_000;
+  return valid && !tooLong ? period : { ...period, from: null, to: null };
 }
 
 export function comparableWindow(period: Period & { from: Date; to: Date }): { from: Date; to: Date } {
