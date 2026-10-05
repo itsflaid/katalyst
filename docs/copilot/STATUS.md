@@ -124,6 +124,7 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 | 4 Okt 2026 | Codex / GPT-5 | Fase 4 UI | | Mock diganti chat SSE nyata dengan kartu tool, state kirim/gagal, responsif, dan riwayat localStorage; svelte-check 0 error/0 warning, verify-arch tanpa pengecualian Copilot bersih; visual diverifikasi pemilik. |
 | 4 Okt 2026 | OpenCode / Muse Spark | T5.1 | | migrasi 0013 + `history.ts` + 5 endpoint + chat pakai konteks server + UI server-state; `verify-history-db` 19/19; manual lulus (staff 303, asing 404, urutan conversation→done, judul dari pertanyaan pertama, lintas sesi, hapus 1/semuanya); budget jawaban 2-tool 15; jawab 6 pesan terakhir dari server |
 | 5 Okt 2026 | OpenCode / Muse Spark | Bug B1–B5 | | B1 sudah sembuh di HEAD, tambah uji regresi titik penutup; B2 `marginText` di `compare_periods`; B3 `enum` period di 4 skema tool; B4/B5 `custom` tak valid atau >366 hari ditolak; grounding 10/10, period 5/5, core 20/20, kontrak LLM 22/22, arch bersih |
+| 5 Okt 2026 | OpenCode / Muse Spark | Format jawaban | | Balon chat render subset markdown tanpa dependensi (`chat-markdown.ts`: tebal, daftar, tabel, judul, kode; HTML jawaban di-escape); instruksi format di prompt; `verify:chat-markdown` 10/10, check 0/0, arch bersih |
 
 ## Penyimpangan dari PRD dan temuan
 

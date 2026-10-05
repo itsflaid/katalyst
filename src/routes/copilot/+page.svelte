@@ -2,6 +2,7 @@
   import { browser } from '$app/environment';
   import { onMount, tick } from 'svelte';
   import { ChevronRight, Plus, Send, Trash2 } from 'lucide-svelte';
+  import { renderChatMarkdown } from '$lib/shared/chat-markdown';
 
   type Role = 'user' | 'assistant';
   type ToolResult = Record<string, unknown>;
@@ -273,7 +274,7 @@
           {:else if message.role === 'user'}
             <div class="flex justify-end"><p class="max-w-[84%] rounded-panel rounded-br-sm bg-status-positive px-4 py-3 text-body-md leading-relaxed text-white">{message.content}</p></div>
           {:else}
-            <div class="flex gap-3"><img src="/logo/logo-copilot.png" alt="" class="mt-1 h-7 w-7 shrink-0 rounded object-cover" /><div class="max-w-[88%] rounded-panel rounded-tl-sm bg-[#F7F1E6] px-4 py-3 text-body-md leading-relaxed text-[#30343B]">{message.content}</div></div>
+            <div class="flex gap-3"><img src="/logo/logo-copilot.png" alt="" class="mt-1 h-7 w-7 shrink-0 rounded object-cover" /><div class="md max-w-[88%] rounded-panel rounded-tl-sm bg-[#F7F1E6] px-4 py-3 text-body-md leading-relaxed text-[#30343B]">{@html renderChatMarkdown(message.content)}</div></div>
           {/if}
         {/each}
       </div>
@@ -285,6 +286,19 @@
 </div>
 
 <style>
+  .md :global(p) { margin: 0 0 0.5rem; }
+  .md :global(p:last-child) { margin-bottom: 0; }
+  .md :global(h3) { margin: 0.75rem 0 0.375rem; font-size: 1rem; font-weight: 600; }
+  .md :global(h4) { margin: 0.625rem 0 0.25rem; font-size: 0.9375rem; font-weight: 600; }
+  .md :global(ul), .md :global(ol) { margin: 0 0 0.5rem; padding-left: 1.25rem; }
+  .md :global(ul) { list-style: disc; }
+  .md :global(ol) { list-style: decimal; }
+  .md :global(li) { margin: 0.125rem 0; }
+  .md :global(code) { padding: 0.05rem 0.3rem; border-radius: 0.25rem; background: rgba(23, 32, 51, 0.08); font-size: 0.875em; }
+  .md :global(.md-table) { margin: 0 0 0.5rem; overflow-x: auto; }
+  .md :global(table) { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
+  .md :global(th), .md :global(td) { border: 1px solid rgba(23, 32, 51, 0.18); padding: 0.375rem 0.625rem; text-align: left; vertical-align: top; }
+  .md :global(thead th) { background: rgba(23, 32, 51, 0.07); font-weight: 600; }
   .history.active { border-left-color: #172033; background: rgba(0, 0, 0, 0.045); }
   .scroll-navy { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.25) transparent; }
   .scroll-navy::-webkit-scrollbar { width: 6px; }
