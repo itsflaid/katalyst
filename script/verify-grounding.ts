@@ -10,6 +10,7 @@ const results = [{ data: { revenue: 125000, revenueText: 'Rp125.000', margin: 0.
 ok('angka hasil tool diterima', verifyGrounding('Omzet Rp125.000 dengan margin 20,0%.', results).ok);
 ok('angka baru ditolak', !verifyGrounding('Omzet Rp999.999.', results).ok);
 ok('token utuh diperiksa', !verifyGrounding('Margin 120,0%.', [{ data: { marginText: '20,0%' } }]).ok);
+ok('titik penutup kalimat tidak ikut token', verifyGrounding('Omzet Rp125.000.', results).ok);
 ok('teks tanpa angka diterima', verifyGrounding('Data belum tersedia.', []).ok);
 ok('tanda depan diabaikan', verifyGrounding('Naik 133,3% menjadi Rp3.409.000.', [{ data: { deltaText: '+133,3%', totalText: 'Rp3.409.000' } }]).ok);
 ok('minus boleh ditulis tanpa tanda', verifyGrounding('Turun Rp420.000.', [{ data: { deltaText: '-Rp420.000' } }]).ok);
