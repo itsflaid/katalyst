@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { product, stockMovement, transactionItem } from '$lib/server/db/schema';
 import { denyUnlessOwner, getOwnedProduct, parseProductFields, parseInitialStock } from '$lib/server/domains/products';
-import { eq, and, inArray, sql } from 'drizzle-orm';
+import { eq, and, inArray, sql, asc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 // crypto.randomUUID global (bukan import 'crypto') biar jalan di Workers.
 // Node 19+ dan semua browser modern juga menyediakannya.
@@ -9,7 +9,12 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
   const businessId = locals.user!.businessId as string;
-  const products = await db.select().from(product).where(eq(product.businessId, businessId));
+  // Urutan tetap: tanpa ORDER BY, baris yang di-UPDATE pindah posisi dan daftar tampak tertukar.
+  const products = await db
+    .select()
+    .from(product)
+    .where(eq(product.businessId, businessId))
+    .orderBy(asc(product.createdAt), asc(product.id));
   // role ikut dikirim biar UI bisa menyembunyikan aksi yang memang ditolak server.
   const role: 'OWNER' | 'STAFF' = locals.user!.role === 'OWNER' ? 'OWNER' : 'STAFF';
   return { products, role };
