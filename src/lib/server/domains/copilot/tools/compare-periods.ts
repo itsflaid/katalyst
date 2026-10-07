@@ -1,13 +1,14 @@
 import { deltaRatio, metricsOf, sumFacts, type Facts } from '../../../../analytics/facts';
 import { fmtDelta, fmtPercent, fmtPoints, fmtRupiah } from '../../../../shared/format';
-import { comparableWindow, resolveNamedPeriod, type NamedPeriodKey } from '../../../../shared/period';
+import { comparableWindow, resolveNamedPeriod, spanLabel, type NamedPeriodKey } from '../../../../shared/period';
+import { makeTime } from '../../../../shared/time';
 import { queryFactsByDay } from '../../facts/queries';
 import type { ToolContext } from '../context';
 import { failure, success, type ToolResult } from '../envelope';
 import { validateArgs } from '../validate';
 
 const TOOL = 'compare_periods';
-const periods = ['today', 'this_week', 'this_month', 'last_30d', 'custom'] as const;
+const periods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'custom'] as const;
 
 export interface ComparePeriodsData {
   empty: boolean;
@@ -54,7 +55,7 @@ export async function comparePeriods(ctx: ToolContext, input: unknown): Promise<
   if (period === 'custom' && (!from || !to)) return failure(TOOL, 'INVALID_ARGS', 'Periode custom memerlukan from dan to.');
   const window = resolveNamedPeriod(period, ctx.tz, ctx.now, from && to ? { from, to } : undefined);
   if (!window.from || !window.to) return failure(TOOL, 'INVALID_ARGS', 'Periode tidak valid.');
-  const previous = comparableWindow(window as typeof window & { from: Date; to: Date });
+  const previous = comparableWindow({ from: window.from, to: window.to, key: period }, ctx.tz, ctx.now);
   const [currentRows, previousRows] = await Promise.all([
     queryFactsByDay(ctx.db, ctx.businessId, { from: window.from, to: window.to }, ctx.tz),
     queryFactsByDay(ctx.db, ctx.businessId, previous, ctx.tz)
@@ -65,8 +66,14 @@ export async function comparePeriods(ctx: ToolContext, input: unknown): Promise<
     baseline: sumFacts([...previousRows.values()]),
     empty,
     period,
-    windowLabel: window.label,
-    baselineLabel: 'Periode sebelumnya dengan panjang yang sama'
+    windowLabel: spanLabel(window.from, window.to, ctx.tz),
+    baselineLabel: spanLabel(previous.from, previous.to, ctx.tz)
   });
-  return success(TOOL, data, empty ? ['Belum ada transaksi pada periode ini.'] : []);
+  const notes = empty
+    ? ['Belum ada transaksi pada periode ini.']
+    : [
+        ...(previous.clamped ? ['Periode pembanding dipotong mengikuti panjang bulan lalu.'] : []),
+        ...(window.to.getTime() < makeTime(ctx.tz).endOfDay(window.to).getTime() ? ['Periode berjalan belum penuh.'] : [])
+      ];
+  return success(TOOL, data, notes);
 }

@@ -6,6 +6,7 @@ export function copilotPrompt(input: { businessName: string; dateLabel: string; 
     'Jawab singkat dalam bahasa Indonesia.',
     'Untuk pertanyaan bisnis, panggil tool yang paling sesuai sebelum menjawab.',
     'Salin angka berformat dari hasil tool persis; jangan menghitung, membulatkan, atau membuat angka baru.',
+    'Periode bernama: today hari ini, yesterday kemarin, this_week pekan ini, last_week pekan lalu, this_month bulan ini, last_month bulan lalu, last_30d 30 hari terakhir, custom rentang tanggal.',
     'Tebalkan angka kunci, pakai daftar untuk ranking dan tabel untuk perbandingan.',
     'Jika data atau tool tidak tersedia, katakan tidak tersedia. Jangan menebak.',
     'Copilot hanya membaca data; arahkan perubahan harga atau stok ke halaman terkait.'
