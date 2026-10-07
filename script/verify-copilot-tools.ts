@@ -40,6 +40,20 @@ async function main() {
     const simulated = sampleProduct && simulate ? await simulate.run(ctx, { product: sampleProduct.name, priceDelta: 2000 }) : null;
     const simulatedJson = JSON.stringify(simulated);
     ok('simulate_price sukses dan JSON aman', simulated?.ok === true && !simulatedJson.includes('NaN') && !simulatedJson.includes('Infinity') && ctx.budget.used <= 45);
+    const withVolume = sampleProduct && simulate ? await simulate.run(ctx, { product: sampleProduct.name, priceDelta: 2000, volumePct: 10 }) : null;
+    const withVolumeJson = JSON.stringify(withVolume);
+    const scenarios = (withVolume as { ok: boolean; data?: { volumeScenarios?: unknown[] } })?.ok
+      ? ((withVolume as { data: { volumeScenarios: unknown[] } }).data.volumeScenarios ?? [])
+      : [];
+    ok(
+      'simulate_price skenario volume tunggal dan JSON aman',
+      withVolume?.ok === true &&
+        scenarios.length === 1 &&
+        withVolumeJson.includes('Skenario volume adalah asumsi, bukan prediksi.') &&
+        !withVolumeJson.includes('NaN') &&
+        !withVolumeJson.includes('Infinity') &&
+        ctx.budget.used <= 45
+    );
   } finally {
     await client.end();
   }
