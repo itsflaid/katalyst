@@ -3,9 +3,9 @@
 import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { transaction, transactionItem } from '../../db/schema';
+import { product, transaction, transactionItem } from '../../db/schema';
 import type * as schema from '../../db/schema';
-import { localDate } from '../../sql';
+import { localDate, localHour } from '../../sql';
 import type { BizTz } from '../../../shared/time';
 import type { Facts } from '../../../analytics/facts';
 
@@ -79,11 +79,15 @@ export async function queryFactsByDay(
   db: Db,
   businessId: string,
   range: Range,
-  tz: BizTz
+  tz: BizTz,
+  opts?: { productIds?: string[] }
 ): Promise<Map<string, FactsRow>> {
+  if (opts?.productIds && opts.productIds.length === 0) return new Map();
   // Objek ekspresi yang sama dipakai di select & groupBy (lihat sql.ts).
   const dayExpr = localDate(transaction.createdAt, tz);
   const facts = factColumns();
+  const conds = rangeConds(businessId, range);
+  if (opts?.productIds) conds.push(inArray(transactionItem.productId, opts.productIds));
   const rows = await db
     .select({
       day: sql<string>`(${dayExpr})::text`,
@@ -92,7 +96,55 @@ export async function queryFactsByDay(
     })
     .from(transaction)
     .innerJoin(transactionItem, eq(transactionItem.transactionId, transaction.id))
-    .where(and(...rangeConds(businessId, range)))
+    .where(and(...conds))
     .groupBy(dayExpr);
   return new Map(rows.map((r) => [r.day, { ...toFacts(r), txCount: Number(r.txCount) }]));
+}
+
+export interface NamedFactsRow extends FactsRow {
+  name: string;
+}
+
+// Agregat per produk beserta nama; satu query agar pemanggil hemat anggaran.
+export async function queryProductFacts(db: Db, businessId: string, range: Range): Promise<Map<string, NamedFactsRow>> {
+  const facts = factColumns();
+  const rows = await db
+    .select({
+      productId: transactionItem.productId,
+      name: product.name,
+      ...facts,
+      txCount: sql<string>`count(distinct ${transaction.id})::text`
+    })
+    .from(transactionItem)
+    .innerJoin(transaction, eq(transaction.id, transactionItem.transactionId))
+    .innerJoin(product, eq(product.id, transactionItem.productId))
+    .where(and(...rangeConds(businessId, range)))
+    .groupBy(transactionItem.productId, product.name);
+  return new Map(rows.map((r) => [r.productId, { ...toFacts(r), txCount: Number(r.txCount), name: r.name }]));
+}
+
+// Satu transaksi punya satu jam, jadi txCount aditif lintas jam.
+export async function queryFactsByHour(
+  db: Db,
+  businessId: string,
+  range: Range,
+  tz: BizTz,
+  opts?: { productIds?: string[] }
+): Promise<Map<number, FactsRow>> {
+  if (opts?.productIds && opts.productIds.length === 0) return new Map();
+  const hourExpr = localHour(transaction.createdAt, tz);
+  const facts = factColumns();
+  const conds = rangeConds(businessId, range);
+  if (opts?.productIds) conds.push(inArray(transactionItem.productId, opts.productIds));
+  const rows = await db
+    .select({
+      hour: sql<string>`(${hourExpr})::text`,
+      ...facts,
+      txCount: sql<string>`count(distinct ${transaction.id})::text`
+    })
+    .from(transaction)
+    .innerJoin(transactionItem, eq(transactionItem.transactionId, transaction.id))
+    .where(and(...conds))
+    .groupBy(hourExpr);
+  return new Map(rows.map((r) => [Number(r.hour), { ...toFacts(r), txCount: Number(r.txCount) }]));
 }

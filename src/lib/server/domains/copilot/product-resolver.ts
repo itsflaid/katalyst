@@ -1,6 +1,12 @@
+import { sanitizeText } from './sanitize';
+
 export interface ProductCandidate {
   id: string;
   name: string;
+}
+
+function clean(candidate: ProductCandidate): ProductCandidate {
+  return { id: candidate.id, name: sanitizeText(candidate.name, 200) };
 }
 
 export type ProductResolution =
@@ -51,22 +57,23 @@ function byName(a: ProductCandidate, b: ProductCandidate): number {
 
 export function resolveProduct(query: string, products: ProductCandidate[]): ProductResolution {
   const needle = normalize(query);
-  if (!needle) return { kind: 'not_found', query, candidates: [] };
+  const echo = sanitizeText(query, 200);
+  if (!needle) return { kind: 'not_found', query: echo, candidates: [] };
   const byId = products.find((product) => product.id === query.trim());
-  if (byId) return { kind: 'found', product: byId };
+  if (byId) return { kind: 'found', product: clean(byId) };
   const exact = products.filter((product) => normalize(product.name) === needle);
-  if (exact.length === 1) return { kind: 'found', product: exact[0] };
+  if (exact.length === 1) return { kind: 'found', product: clean(exact[0]) };
   const queryTokens = tokensOf(query);
   const subset = products.filter((product) => tokenMatch(queryTokens, tokensOf(product.name), false));
-  if (subset.length === 1) return { kind: 'found', product: subset[0] };
-  if (subset.length > 1) return { kind: 'ambiguous', query, candidates: [...subset].sort(byName).slice(0, 5) };
+  if (subset.length === 1) return { kind: 'found', product: clean(subset[0]) };
+  if (subset.length > 1) return { kind: 'ambiguous', query: echo, candidates: [...subset].sort(byName).slice(0, 5).map(clean) };
   const typo = products.filter((product) => tokenMatch(queryTokens, tokensOf(product.name), true));
-  if (typo.length === 1) return { kind: 'found', product: typo[0] };
-  if (typo.length > 1) return { kind: 'ambiguous', query, candidates: [...typo].sort(byName).slice(0, 5) };
+  if (typo.length === 1) return { kind: 'found', product: clean(typo[0]) };
+  if (typo.length > 1) return { kind: 'ambiguous', query: echo, candidates: [...typo].sort(byName).slice(0, 5).map(clean) };
   const nearest = [...products]
     .map((product) => ({ product, score: distance(needle, normalize(product.name)) }))
     .sort((a, b) => a.score - b.score || byName(a.product, b.product))
     .slice(0, 3)
-    .map((entry) => entry.product);
-  return { kind: 'not_found', query, candidates: nearest };
+    .map((entry) => clean(entry.product));
+  return { kind: 'not_found', query: echo, candidates: nearest };
 }

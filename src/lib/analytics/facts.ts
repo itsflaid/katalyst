@@ -75,6 +75,11 @@ export function metricsOf(f: Facts): Metrics {
   };
 }
 
+// avgTicket = revenue / txCount   (0 bila txCount = 0)
+export function avgTicketOf(revenue: number, txCount: number): number {
+  return txCount === 0 ? 0 : revenue / txCount;
+}
+
 // lineNet = qty × price − discount   (discount null/undefined dianggap 0)
 export function lineNetOf(i: {
   quantity: number;
