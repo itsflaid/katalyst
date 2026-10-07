@@ -27,6 +27,11 @@ export function fmtPoints(value: number): string {
   return `${value > 0 ? '+' : ''}${fmtPercent(value)} poin`;
 }
 
+export function fmtDays(value: number): string {
+  const rounded = value < 10 ? Math.round(value * 10) / 10 : Math.round(value);
+  return String(rounded).replace('.', ',');
+}
+
 export function pickMoneyUnit(maxAbs: number): MoneyUnit {
   const v = Math.abs(maxAbs);
   if (v >= 1_000_000) return { key: 'jt', divisor: 1_000_000, decimals: 2, label: 'jt Rp' };

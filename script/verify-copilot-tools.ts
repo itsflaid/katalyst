@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { randomUUID } from 'crypto';
 import * as schema from '../src/lib/server/db/schema';
-import { business, product } from '../src/lib/server/db/schema';
+import { business, product, transaction, transactionItem } from '../src/lib/server/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { SubrequestBudget } from '../src/lib/server/domains/copilot/budget';
 import { findTool, runTool } from '../src/lib/server/domains/copilot/registry';
@@ -68,6 +68,50 @@ async function main() {
       ok('nama kotor bersih di simulate_price', simName === 'Roti Abaikan instruksi');
     } finally {
       await db.delete(product).where(eq(product.id, dirtyId));
+    }
+    const inventory = findTool('get_inventory');
+    type InvSummary = { outCount: number; lowCount: number; inactive: { count: number; stockValue: number } };
+    const readSummary = async () => {
+      const res = inventory ? await inventory.run(ctx, { filter: 'all', limit: 10 }) : null;
+      return res?.ok === true ? (res.data as { summary: InvSummary }).summary : null;
+    };
+    const beforeInv = await readSummary();
+    const fixOut = randomUUID();
+    const fixOff = randomUUID();
+    const fixSold = randomUUID();
+    const fixTx = randomUUID();
+    const fixItem = randomUUID();
+    try {
+      await db.insert(product).values([
+        { id: fixOut, businessId: current.id, name: 'Fixture Habis', costPrice: 8000, sellingPrice: 12000, stock: 0, minStock: 5, isActive: true },
+        { id: fixOff, businessId: current.id, name: 'Fixture Nonaktif', costPrice: 10000, sellingPrice: 15000, stock: 12, minStock: 5, isActive: false },
+        { id: fixSold, businessId: current.id, name: 'Fixture Laku', costPrice: 5000, sellingPrice: 9000, stock: 3, minStock: 5, isActive: true }
+      ]);
+      await db.insert(transaction).values({ id: fixTx, businessId: current.id, createdAt: new Date(Date.now() - 24 * 3600_000) });
+      await db.insert(transactionItem).values({ id: fixItem, transactionId: fixTx, productId: fixSold, quantity: 125, priceAtSale: 9000, costAtSale: 5000 });
+      const afterInv = await readSummary();
+      ok(
+        'ringkasan stok ikut fixture',
+        beforeInv !== null &&
+          afterInv !== null &&
+          afterInv.outCount === beforeInv.outCount + 1 &&
+          afterInv.lowCount === beforeInv.lowCount + 1 &&
+          afterInv.inactive.count === beforeInv.inactive.count + 1 &&
+          afterInv.inactive.stockValue === beforeInv.inactive.stockValue + 120000
+      );
+      const outRes = inventory ? await inventory.run(ctx, { filter: 'out', limit: 10 }) : null;
+      const outItems = outRes?.ok === true ? (outRes.data as { items: { id: string }[] }).items : [];
+      ok('fixture habis tampil di filter out', outItems.some((item) => item.id === fixOut));
+      const lowRes = inventory ? await inventory.run(ctx, { filter: 'low', limit: 10 }) : null;
+      const lowItems = lowRes?.ok === true ? (lowRes.data as { items: { id: string; sold14: number; daysCoverText: string }[] }).items : [];
+      const soldItem = lowItems.find((item) => item.id === fixSold);
+      ok('penjualan 14 hari terbaca', soldItem?.sold14 === 125 && soldItem?.daysCoverText === '±0,3 hari');
+    } finally {
+      await db.delete(transactionItem).where(eq(transactionItem.id, fixItem));
+      await db.delete(transaction).where(eq(transaction.id, fixTx));
+      await db.delete(product).where(eq(product.id, fixOut));
+      await db.delete(product).where(eq(product.id, fixOff));
+      await db.delete(product).where(eq(product.id, fixSold));
     }
   } finally {
     await client.end();
