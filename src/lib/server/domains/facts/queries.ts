@@ -3,7 +3,7 @@
 import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { transaction, transactionItem } from '../../db/schema';
+import { product, transaction, transactionItem } from '../../db/schema';
 import type * as schema from '../../db/schema';
 import { localDate, localHour } from '../../sql';
 import type { BizTz } from '../../../shared/time';
@@ -99,6 +99,28 @@ export async function queryFactsByDay(
     .where(and(...conds))
     .groupBy(dayExpr);
   return new Map(rows.map((r) => [r.day, { ...toFacts(r), txCount: Number(r.txCount) }]));
+}
+
+export interface NamedFactsRow extends FactsRow {
+  name: string;
+}
+
+// Agregat per produk beserta nama; satu query agar pemanggil hemat anggaran.
+export async function queryProductFacts(db: Db, businessId: string, range: Range): Promise<Map<string, NamedFactsRow>> {
+  const facts = factColumns();
+  const rows = await db
+    .select({
+      productId: transactionItem.productId,
+      name: product.name,
+      ...facts,
+      txCount: sql<string>`count(distinct ${transaction.id})::text`
+    })
+    .from(transactionItem)
+    .innerJoin(transaction, eq(transaction.id, transactionItem.transactionId))
+    .innerJoin(product, eq(product.id, transactionItem.productId))
+    .where(and(...rangeConds(businessId, range)))
+    .groupBy(transactionItem.productId, product.name);
+  return new Map(rows.map((r) => [r.productId, { ...toFacts(r), txCount: Number(r.txCount), name: r.name }]));
 }
 
 // Satu transaksi punya satu jam, jadi txCount aditif lintas jam.

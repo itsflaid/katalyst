@@ -4,6 +4,7 @@ import { comparePeriods } from './tools/compare-periods';
 import { getInventory } from './tools/inventory';
 import { explainChange } from './tools/explain-change';
 import { simulatePrice } from './tools/simulate-price';
+import { queryMetrics } from './tools/query-metrics';
 import type { ToolContext } from './context';
 import type { ToolResult } from './envelope';
 import { sanitizeText } from './sanitize';
@@ -56,6 +57,10 @@ export const TOOL_REGISTRY: RegisteredTool[] = [
   {
     name: 'simulate_price', description: 'Mensimulasikan harga, diskon, atau perubahan volume untuk satu produk aktif.', maxQueries: 2, enabled: true,
     parameters: { type: 'object', properties: { product: { type: 'string' }, period: PERIOD, from: { type: 'string' }, to: { type: 'string' }, priceDelta: { type: 'integer' }, price: { type: 'integer' }, discountPct: { type: 'integer' }, volumePct: { type: 'integer' } }, required: ['product'], additionalProperties: false }, run: simulatePrice
+  },
+  {
+    name: 'query_metrics', description: 'Menjawab pola waktu dan ukuran dari data: hari atau jam paling ramai dan sepi, omzet per hari, minggu, atau bulan, margin per hari, total diskon, rata-rata belanja per struk, dan pola per produk. Ukuran: omzet sama dengan revenue, untung atau laba sama dengan profit, margin, unit atau jumlah terjual sama dengan qty, jumlah struk atau transaksi sama dengan tx_count, total diskon sama dengan discount_total, rata-rata belanja per struk sama dengan avg_ticket. Kelompok: none total, product per produk, day per hari, week per minggu, month per bulan, weekday per nama hari, hour per jam; "paling ramai" berarti tx_count dengan weekday atau hour dan order desc.', maxQueries: 2, enabled: true,
+    parameters: { type: 'object', properties: { metric: { type: 'string', enum: ['revenue', 'profit', 'margin', 'qty', 'tx_count', 'discount_total', 'avg_ticket'] }, group_by: { type: 'string', enum: ['none', 'product', 'day', 'week', 'month', 'weekday', 'hour'] }, period: PERIOD, from: { type: 'string' }, to: { type: 'string' }, product: { type: 'string' }, order: { type: 'string', enum: ['chronological', 'desc', 'asc'] }, limit: { type: 'integer' } }, required: ['metric'], additionalProperties: false }, run: queryMetrics
   }
 ];
 

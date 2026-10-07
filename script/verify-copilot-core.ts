@@ -69,7 +69,7 @@ async function main() {
     const saran = resolveProduct('kerupuk lumba-lumba', products);
     ok('resolver tidak ketemu memberi saran', saran.kind === 'not_found' && saran.candidates.length > 0);
     ok('sanitasi membuang kontrol', sanitizeText(' Nama\u200b\nProduk\u0000 ') === 'Nama Produk');
-    ok('registri memuat enam tool aktif', TOOL_REGISTRY.length === 6 && TOOL_REGISTRY.every((tool) => tool.enabled));
+    ok('registri memuat tujuh tool aktif', TOOL_REGISTRY.length === 7 && TOOL_REGISTRY.every((tool) => tool.enabled));
     const modelView = JSON.stringify(toModelView({ revenue: 125000, revenueText: 'Rp125.000', nested: { margin: 0.2, marginText: '20,0%' } }));
     ok('proyeksi model hanya memuat teks angka', !modelView.includes('125000') && !modelView.includes('0.2') && modelView.includes('Rp125.000'));
   }
