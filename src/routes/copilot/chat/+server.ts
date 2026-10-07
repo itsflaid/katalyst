@@ -8,7 +8,7 @@ import type { ToolContext } from '$lib/server/domains/copilot/context';
 import { failure } from '$lib/server/domains/copilot/envelope';
 import { toModelView } from '$lib/server/domains/copilot/model-view';
 import { verifyGrounding } from '$lib/server/domains/copilot/grounding';
-import { canUseCopilot } from '$lib/server/domains/copilot/limits';
+import { canUseCopilot, dailyLimitFrom } from '$lib/server/domains/copilot/limits';
 import { copilotPrompt } from '$lib/server/domains/copilot/prompt';
 import {
   addMessage,
@@ -88,7 +88,6 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
 
   const apiKey = env.LLM_API_KEY ?? '';
   if (!apiKey) return Response.json({ error: 'LLM belum dikonfigurasi.' }, { status: 503 });
-  if (!canUseCopilot().ok) return Response.json({ error: 'Batas pemakaian Copilot tercapai.' }, { status: 429 });
   const models = (env.LLM_MODELS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 
   const business = locals.business;
@@ -98,6 +97,13 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
   const budget = new SubrequestBudget();
   const requestDb = countedDb(env.DATABASE_URL ?? '', budget);
   const ctx: ToolContext = { businessId: business.id, tz, now, db: requestDb, budget };
+  const limit = dailyLimitFrom(env.COPILOT_DAILY_LIMIT);
+  if (!(await canUseCopilot(requestDb, business.id, limit, now)).ok) {
+    return Response.json(
+      { code: 'DAILY_LIMIT', error: `Batas ${limit} pertanyaan per 24 jam tercapai. Coba lagi nanti.` },
+      { status: 429 }
+    );
+  }
   const tools = TOOL_REGISTRY.filter((tool) => tool.enabled);
   const client = createLlmClient(
     {
