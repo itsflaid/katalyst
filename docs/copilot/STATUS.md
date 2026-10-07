@@ -44,7 +44,7 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 | Subrequest terburuk per jawaban | 10 (ukur 8 query: budget 10 = 2 LLM + 8 DB; jawaban nyata `get_summary` budget 3) | T0.4, produksi 4 Okt 2026 |
 | Mekanisme penghitung query (§8.6) | instance drizzle per request dari `neon()` yang dibungkus: tiap pemanggilan `.query` spend(1); 1 query drizzle = 1 HTTP (drizzle memakai `.query`, bukan pemanggilan langsung); terverifikasi lokal (`get_summary` budget 3 = 2 LLM + 1 DB; `__measure` 5 query budget 7) | T0.4 |
 | Keputusan D8 (Free atau Paid) | Free (bersyarat: subrequest 10/45 lolos, token 700/6000 lolos, CPU belum terukur; final di T4.9; bila CPU > 8 ms pindah Paid sebelum Fase 3) | T0.4, 4 Okt 2026 |
-| Kolam model final (urutan) | belum | T3.6 |
+| Kolam model final (urutan) | `gpt-oss-120b` → `gpt-oss-20b` (tetap; qwen belum melayani dan belum diuji) | T3.6, 7 Okt 2026 |
 | Token sistem + spesifikasi tool (karakter ÷ 3) | 1168 → 1656 (batas 2000) | hitung 7 Okt 2026 sesudah tool ketujuh |
 
 ## Checklist tugas
@@ -82,7 +82,7 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 - [x] T3.3 grounding
 - [x] T3.4 `limits.ts` stub (batas harian DB dibuang dari scope demo)
 - [x] T3.5 log
-- [ ] T3.6 eval + pilih model (set 12 kasus siap; perlu eksekusi LLM nyata)
+- [x] T3.6 eval + pilih model (23 kasus E01–E23 dijalankan 7 Okt 2026 via model nyata; 20/23 benar; urutan kolam tetap; laporan `docs/copilot/LAPORAN-T36.md`)
 
 **Fase 4**
 - [x] T4.1 kartu
