@@ -9,7 +9,7 @@ import { failure, success, type ToolResult } from '../envelope';
 import { validateArgs } from '../validate';
 
 const TOOL = 'rank_products';
-const periods = ['today', 'this_week', 'this_month', 'last_30d', 'custom'] as const;
+const periods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'custom'] as const;
 const metrics = ['qty', 'revenue', 'profit', 'margin'] as const;
 
 export interface RankProductsData {
