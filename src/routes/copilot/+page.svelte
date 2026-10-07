@@ -140,7 +140,7 @@
   }
 
   function toolLabel(name: string) {
-    return ({ get_summary: 'Membaca ringkasan bisnis', rank_products: 'Menyusun ranking produk', compare_periods: 'Membandingkan periode', get_inventory: 'Memeriksa inventori', explain_change: 'Mengurai perubahan profit', simulate_price: 'Menjalankan simulasi harga' } as Record<string, string>)[name] ?? name;
+    return ({ get_summary: 'Membaca ringkasan bisnis', rank_products: 'Menyusun ranking produk', compare_periods: 'Membandingkan periode', get_inventory: 'Memeriksa inventori', explain_change: 'Mengurai perubahan profit', simulate_price: 'Menjalankan simulasi harga', query_metrics: 'Menjawab pola waktu dan ukuran' } as Record<string, string>)[name] ?? name;
   }
 
   async function ask(question = draft.trim()) {
