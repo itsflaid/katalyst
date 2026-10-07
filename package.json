@@ -27,6 +27,7 @@
     "verify:copilot-core": "tsx script/verify-copilot-core.ts",
     "verify:copilot-period": "tsx script/verify-copilot-period.ts",
     "verify:simulate-price": "tsx script/verify-simulate-price.ts",
+    "verify:limits": "tsx script/verify-limits.ts",
     "verify:copilot-tools": "tsx script/verify-copilot-tools.ts",
     "verify:history-db": "tsx script/verify-history-db.ts",
     "verify:decompose": "tsx script/verify-decompose.ts",
