@@ -45,6 +45,7 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 | Mekanisme penghitung query (§8.6) | instance drizzle per request dari `neon()` yang dibungkus: tiap pemanggilan `.query` spend(1); 1 query drizzle = 1 HTTP (drizzle memakai `.query`, bukan pemanggilan langsung); terverifikasi lokal (`get_summary` budget 3 = 2 LLM + 1 DB; `__measure` 5 query budget 7) | T0.4 |
 | Keputusan D8 (Free atau Paid) | Free (bersyarat: subrequest 10/45 lolos, token 700/6000 lolos, CPU belum terukur; final di T4.9; bila CPU > 8 ms pindah Paid sebelum Fase 3) | T0.4, 4 Okt 2026 |
 | Kolam model final (urutan) | belum | T3.6 |
+| Token sistem + spesifikasi tool (karakter ÷ 3) | 1168 → 1656 (batas 2000) | hitung 7 Okt 2026 sesudah tool ketujuh |
 
 ## Checklist tugas
 
@@ -125,6 +126,16 @@ Sumber kebenaran **kemajuan**. `PRD.md` (di folder yang sama) adalah sumber kebe
 | 4 Okt 2026 | OpenCode / Muse Spark | T5.1 | | migrasi 0013 + `history.ts` + 5 endpoint + chat pakai konteks server + UI server-state; `verify-history-db` 19/19; manual lulus (staff 303, asing 404, urutan conversation→done, judul dari pertanyaan pertama, lintas sesi, hapus 1/semuanya); budget jawaban 2-tool 15; jawab 6 pesan terakhir dari server |
 | 5 Okt 2026 | OpenCode / Muse Spark | Bug B1–B5 | | B1 sudah sembuh di HEAD, tambah uji regresi titik penutup; B2 `marginText` di `compare_periods`; B3 `enum` period di 4 skema tool; B4/B5 `custom` tak valid atau >366 hari ditolak; grounding 10/10, period 5/5, core 20/20, kontrak LLM 22/22, arch bersih |
 | 5 Okt 2026 | OpenCode / Muse Spark | Format jawaban | | Balon chat render subset markdown tanpa dependensi (`chat-markdown.ts`: tebal, daftar, tabel, judul, kode; HTML jawaban di-escape); instruksi format di prompt; `verify:chat-markdown` 10/10, check 0/0, arch bersih |
+| 7 Okt 2026 | — | Pemeriksa angka terima label dan satuan | 8e30883 | grounding: allow-set `*Text`+`label`+angka mentah, satuan longgar per bilangan, singkatan ditolak; `buildSummaryData`+`buildComparePeriodsData` murni; grounding 24/24 (10 lama + 14 baru) |
+| 7 Okt 2026 | — | Jendela pembanding jam-sejajar + periode kemarin/minggu lalu/bulan lalu | a8d579c | `comparableWindow` sejajar jam + `clamped`, `spanLabel` tanggal nyata, `windowLabel`+`baselineLabel` di 3 tool; `verify-copilot-period` 48/48 (7 kunci × 3 zona + clamp + Senin 00:00); `verify:period` lama utuh |
+| 7 Okt 2026 | — | Simulasi tampilkan skenario volume dan titik impas | f1a6319 | argumen `volumePct`, 5 skenario default, `buildSimulatePriceData`, teks 7 flag, `profitAtMaxDiscount` tetap impas; `verify-simulate-price` 14/14; `verify:sim` utuh |
+| 7 Okt 2026 | — | Batas pertanyaan harian per bisnis | 99332fb | `canUseCopilot(db, bisnis, limit, now)` hitung pesan user 24 jam rolling tanpa migrasi, 429 `DAILY_LIMIT` sebelum simpan pesan; UI sudah menampilkan error JSON; `verify-limits` 5/5 |
+| 7 Okt 2026 | — | Sanitasi teks hasil tool sebelum ke model | 77fcdf5 | `runTool`+`sanitizeResult` rekursif (maks 200, kunci teknis dikecuali), resolver bersihkan nama + kandidat + kueri, kalimat data-bukan-perintah di prompt; core 26/26; DB nama kotor bersih di rank + simulate |
+| 7 Okt 2026 | — | Ringkasan stok dengan estimasi hari dan nonaktif | 5af0a19 | `buildInventoryData` murni (out/low/dead/daysCover/urgent), filter 5 + `summary`+`lines`, `fmtDays`; `verify-inventory` 14/14; DB delta ringkasan + filter out + sold14 |
+| 7 Okt 2026 | — | Agregat fakta per jam dan filter produk harian | 25a9b76 | `queryFactsByHour` (Map jam 0–23) + `opts.productIds` di byDay, `avgTicketOf`; facts-db 29/29 (D7 byHour 3 zona + aditivitas + filter) |
+| 7 Okt 2026 | — | Engine baris metrik 7 ukuran × 7 kelompok | 29fb4ae | `metric-rows.ts` murni (rasio dari Facts gabungan, peringkat hari-pekan per rata-rata, nol hanya di antara jam aktif); `verify-metric-rows` 22/22 |
+| 7 Okt 2026 | — | Tool tanya metrik pola waktu dan produk | 1aa5246 | `query_metrics` (maks 2 query: nama gabung di query fakta), potong token 800, prompt +2 kalimat, token sistem+spesifikasi 1168→1656 (batas 2000); tools 39/39 (21 kombinasi + filter + 3 galat + grounding) |
+| 7 Okt 2026 | — | Eval pola waktu dan STATUS | | E13–E20 pola waktu + E21–E23 tolak jujur (daftar saja, tanpa panggil model); STATUS dicatat |
 
 ## Penyimpangan dari PRD dan temuan
 
@@ -135,3 +146,5 @@ Fase 2 demo mencakup TL-4 dan TL-5. Riwayat stok habis, penggunaan promo, preset
 
 Batas harian `copilot_usage` tidak dibuat untuk demo karena memerlukan migrasi dan jalur tulis khusus; anggaran per jawaban serta batas penyedia tetap berlaku. T3.6 baru ditutup setelah 12 kasus dijalankan melalui endpoint dengan model Groq yang dipilih.
 D6 kini ditegakkan di `resolveNamedPeriod`: `custom` tak valid atau lebih dari 366 hari dikembalikan tanpa `from`/`to` sehingga tool menjawab "Periode tidak valid."; halaman statistik/simulator tidak terpengaruh karena memakai `resolvePeriod` langsung.
+
+Sesi 7 Okt 2026 (10 commit di `feat/copilot`, dari `main` 1afabc5; branch baru di prompt asal diganti cabang yang sudah ada atas permintaan pemilik): T3.3 dan T3.4 tetap centang karena pemeriksa angka dan batas harian lulus verifikasi ulang. Pesan commit fokus fitur tanpa label tugas. `get_summary` ikut mengembalikan `baselineLabel` (dihitung tanpa query tambahan). Filter `low` inventori hanya status menipis karena `out` punya filter sendiri. `daysCoverText` selalu berbentuk "±X hari". `occurrences` mentah tetap diteruskan ke model (tanpa pasangan teks). Halaman chat tidak diubah untuk 429 karena pesan error JSON sudah tampil dan tombol kirim sudah aktif kembali. `COPILOT_DAILY_LIMIT` sudah ada di `.env.example`. Stash berisi kerja sesi lalu di `main` dibiarkan utuh. Belum dijalankan: 41 pertanyaan beruntun manual, eval lewat endpoint dengan model nyata (T3.6 tetap terbuka), `golden:check`.
