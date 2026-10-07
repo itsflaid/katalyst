@@ -6,6 +6,7 @@ import { explainChange } from './tools/explain-change';
 import { simulatePrice } from './tools/simulate-price';
 import type { ToolContext } from './context';
 import type { ToolResult } from './envelope';
+import { sanitizeText } from './sanitize';
 
 export interface RegisteredTool {
   name: string;
@@ -60,4 +61,26 @@ export const TOOL_REGISTRY: RegisteredTool[] = [
 
 export function findTool(name: string): RegisteredTool | undefined {
   return TOOL_REGISTRY.find((tool) => tool.enabled && tool.name === name);
+}
+
+// Kunci teknis yang bukan teks bebas; nilainya diteruskan apa adanya.
+const KEEP_KEYS = new Set(['id', 'productId', 'conversationId', 'key', 'code', 'simulatorLink']);
+
+// Teks dari database adalah data; baris baru dan karakter tak kasatmata dibuang
+// agar tidak lolos sebagai perintah ke model. Idempoten.
+export function sanitizeResult<T>(value: T): T {
+  if (typeof value === 'string') return sanitizeText(value, 200) as T;
+  if (Array.isArray(value)) return value.map(sanitizeResult) as T;
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [itemKey, item] of Object.entries(value as Record<string, unknown>)) {
+      out[itemKey] = KEEP_KEYS.has(itemKey) ? item : sanitizeResult(item);
+    }
+    return out as T;
+  }
+  return value;
+}
+
+export async function runTool(tool: RegisteredTool, ctx: ToolContext, args: unknown): Promise<ToolResult<unknown>> {
+  return sanitizeResult(await tool.run(ctx, args));
 }

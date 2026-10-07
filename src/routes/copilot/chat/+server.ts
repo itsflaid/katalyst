@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { createLlmClient } from '$lib/server/domains/copilot/llm/index';
 import { LlmHttpError, type LlmMessage } from '$lib/server/domains/copilot/llm/types';
 import { SubrequestBudget } from '$lib/server/domains/copilot/budget';
-import { TOOL_REGISTRY, findTool } from '$lib/server/domains/copilot/registry';
+import { TOOL_REGISTRY, findTool, runTool } from '$lib/server/domains/copilot/registry';
 import type { ToolContext } from '$lib/server/domains/copilot/context';
 import { failure } from '$lib/server/domains/copilot/envelope';
 import { toModelView } from '$lib/server/domains/copilot/model-view';
@@ -187,7 +187,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
                 ? failure(call.name, 'BUDGET_EXCEEDED', 'Terlalu banyak tool dipanggil, persempit pertanyaan.')
               : !budget.canAfford(tool.maxQueries)
                 ? failure(call.name, 'BUDGET_EXCEEDED', 'Anggaran komputasi habis, persempit pertanyaan.')
-                : await tool.run(ctx, args));
+                : await runTool(tool, ctx, args));
             toolCache.set(cacheKey, result);
             toolResults.push(result);
             send('tool_result', { id: call.id, name: call.name, result });
