@@ -8,7 +8,7 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import * as schema from '../src/lib/server/db/schema';
 import { business, product, transaction, transactionItem } from '../src/lib/server/db/schema';
-import { queryFactsByProduct, queryFactsByDay, type Range } from '../src/lib/server/domains/facts/queries';
+import { queryFactsByProduct, queryFactsByDay, queryFactsByHour, type Range } from '../src/lib/server/domains/facts/queries';
 import { factsOfItem, metricsOf, sumFacts, calculateRevenue, type Facts } from '../src/lib/analytics';
 import { makeTime, type BizTz } from '../src/lib/shared/time';
 
@@ -197,6 +197,33 @@ async function main() {
         const bizMap = await queryFactsByProduct(tx, biz, { from: null, to: null });
         const biz2Map = await queryFactsByProduct(tx, biz2, { from: null, to: null });
         ok('bisnis lain tak ikut', !bizMap.has(X) && biz2Map.size === 1 && biz2Map.has(X));
+      }
+
+      // D7: agregat per jam ≡ lipatan JS; aditif lintas jam.
+      console.log('\n== D7: byHour ==');
+      for (const tz of TZS) {
+        const T = makeTime(tz);
+        const byHour = await queryFactsByHour(tx, biz, { from: null, to: null }, tz);
+        const jsByHour = new Map<number, Facts>();
+        const jsTx = new Map<number, Set<string>>();
+        for (const r of raw) {
+          const h = T.toLocal(r.createdAt).getUTCHours();
+          const cur = jsByHour.get(h);
+          jsByHour.set(h, cur ? sumFacts([cur, factsOfItem(r)]) : factsOfItem(r));
+          if (!jsTx.has(h)) jsTx.set(h, new Set());
+          jsTx.get(h)!.add(r.txId);
+        }
+        const keysOk =
+          [...byHour.keys()].sort((a, b) => a - b).join(',') === [...jsByHour.keys()].sort((a, b) => a - b).join(',') &&
+          [...byHour.entries()].every(([h, v]) => eqFacts(v, jsByHour.get(h)!) && v.txCount === jsTx.get(h)!.size);
+        ok(`${tz}: byHour ≡ JS + txCount per jam`, keysOk);
+        const byDay = await queryFactsByDay(tx, biz, { from: null, to: null }, tz);
+        const sumHour = [...byHour.values()].reduce((s, r) => s + r.txCount, 0);
+        const sumDay = [...byDay.values()].reduce((s, r) => s + r.txCount, 0);
+        ok(`${tz}: Σ jam = Σ hari = distinct`, sumHour === sumDay && sumDay === new Set(raw.map((r) => r.txId)).size);
+        const onlyA = await queryFactsByHour(tx, biz, { from: null, to: null }, tz, { productIds: [A] });
+        const prodA = await queryFactsByProduct(tx, biz, { from: null, to: null }, { productIds: [A] });
+        ok(`${tz}: filter produk = byProduct`, eqFacts(sumFacts([...onlyA.values()]), sumFacts([...prodA.values()])));
       }
 
       throw ROLLBACK;
