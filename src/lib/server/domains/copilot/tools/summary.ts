@@ -1,4 +1,4 @@
-import { metricsOf, sumFacts } from '../../../../analytics/facts';
+import { metricsOf, sumFacts, type Facts } from '../../../../analytics/facts';
 import { fmtInt, fmtPercent, fmtRupiah } from '../../../../shared/format';
 import { resolveNamedPeriod, type NamedPeriodKey } from '../../../../shared/period';
 import { queryFactsByDay } from '../../facts/queries';
@@ -12,6 +12,7 @@ const periods = ['today', 'this_week', 'this_month', 'last_30d', 'custom'] as co
 export interface SummaryData {
   empty: boolean;
   window: { key: NamedPeriodKey; label: string };
+  windowLabel: string;
   revenue: number;
   revenueText: string;
   cost: number;
@@ -22,6 +23,31 @@ export interface SummaryData {
   marginText: string;
   txCount: number;
   txCountText: string;
+}
+
+export function buildSummaryData(input: {
+  facts: Facts;
+  txCount: number;
+  empty: boolean;
+  period: NamedPeriodKey;
+  windowLabel: string;
+}): SummaryData {
+  const metrics = metricsOf(input.facts);
+  return {
+    empty: input.empty,
+    window: { key: input.period, label: input.windowLabel },
+    windowLabel: input.windowLabel,
+    revenue: metrics.revenue,
+    revenueText: fmtRupiah(metrics.revenue),
+    cost: metrics.cost,
+    costText: fmtRupiah(metrics.cost),
+    profit: metrics.profit,
+    profitText: fmtRupiah(metrics.profit),
+    margin: metrics.margin,
+    marginText: fmtPercent(metrics.margin),
+    txCount: input.txCount,
+    txCountText: fmtInt(input.txCount)
+  };
 }
 
 export async function getSummary(ctx: ToolContext, input: unknown): Promise<ToolResult<SummaryData>> {
@@ -39,25 +65,8 @@ export async function getSummary(ctx: ToolContext, input: unknown): Promise<Tool
   if (!window.from || !window.to) return failure(TOOL, 'INVALID_ARGS', 'Periode tidak valid.');
   const rows = await queryFactsByDay(ctx.db, ctx.businessId, { from: window.from, to: window.to }, ctx.tz);
   const values = [...rows.values()];
-  const metrics = metricsOf(sumFacts(values));
   const txCount = values.reduce((total, row) => total + row.txCount, 0);
   const empty = txCount === 0;
-  return success(
-    TOOL,
-    {
-      empty,
-      window: { key: period, label: window.label },
-      revenue: metrics.revenue,
-      revenueText: fmtRupiah(metrics.revenue),
-      cost: metrics.cost,
-      costText: fmtRupiah(metrics.cost),
-      profit: metrics.profit,
-      profitText: fmtRupiah(metrics.profit),
-      margin: metrics.margin,
-      marginText: fmtPercent(metrics.margin),
-      txCount,
-      txCountText: fmtInt(txCount)
-    },
-    empty ? ['Belum ada transaksi pada periode ini.'] : []
-  );
+  const data = buildSummaryData({ facts: sumFacts(values), txCount, empty, period, windowLabel: window.label });
+  return success(TOOL, data, empty ? ['Belum ada transaksi pada periode ini.'] : []);
 }
