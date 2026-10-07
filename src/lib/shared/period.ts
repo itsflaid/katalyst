@@ -2,8 +2,8 @@
 // Murni: jam masuk lewat `now`; hanya import relatif.
 import { makeTime, type BizTz } from './time';
 
-export type PeriodKey = 'today' | 'week' | 'month' | '30d' | 'all' | 'custom';
-export type NamedPeriodKey = 'today' | 'this_week' | 'this_month' | 'last_30d' | 'custom';
+export type PeriodKey = 'today' | 'week' | 'month' | '30d' | 'all' | 'custom' | 'yesterday' | 'last_week' | 'last_month';
+export type NamedPeriodKey = 'today' | 'yesterday' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'last_30d' | 'custom';
 
 export interface Period {
   key: PeriodKey;
@@ -83,6 +83,26 @@ export function resolveNamedPeriod(
   now: Date,
   custom?: { from: string; to: string }
 ): Period {
+  const T = makeTime(tz);
+  const iso = (d: Date) => T.dayKey(d);
+  if (key === 'yesterday') {
+    const from = T.startOfDay(T.addDays(now, -1));
+    const to = T.endOfDay(T.addDays(now, -1));
+    return { key, from, to, label: 'Kemarin', fromISO: iso(from), toISO: iso(to) };
+  }
+  if (key === 'last_week') {
+    const dow = T.toLocal(now).getUTCDay();
+    const from = T.startOfDay(T.addDays(now, -((dow + 6) % 7) - 7));
+    const to = T.endOfDay(T.addDays(from, 6));
+    return { key, from, to, label: 'Minggu lalu (Senin–Minggu)', fromISO: iso(from), toISO: iso(to) };
+  }
+  if (key === 'last_month') {
+    const w = T.toLocal(now);
+    const from = new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth() - 1, 1) - T.offsetMs);
+    const last = new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), 0) - T.offsetMs);
+    const to = T.endOfDay(last);
+    return { key, from, to, label: 'Bulan lalu', fromISO: iso(from), toISO: iso(to) };
+  }
   const range = key === 'this_week' ? 'week' : key === 'this_month' ? 'month' : key === 'last_30d' ? '30d' : key;
   const url = new URL(`http://internal/?range=${range}`);
   if (custom) {
@@ -92,12 +112,81 @@ export function resolveNamedPeriod(
   const period = resolvePeriod(url, tz, now, { default: '30d', allow: ['today', 'week', 'month', 'custom'] });
   if (key !== 'custom') return period;
   // Custom tak valid atau lebih dari 366 hari dikembalikan tanpa from/to; pemanggil menolaknya.
-  const T = makeTime(tz);
   const valid = !!custom && !!T.parseDay(custom.from) && !!T.parseDay(custom.to);
   const tooLong = !!period.from && !!period.to && period.to.getTime() - period.from.getTime() > MAX_CUSTOM_DAYS * 86_400_000;
   return valid && !tooLong ? period : { ...period, from: null, to: null };
 }
 
-export function comparableWindow(period: Period & { from: Date; to: Date }): { from: Date; to: Date } {
-  return previousWindow(period);
+export interface BaselineWindow {
+  from: Date;
+  to: Date;
+  clamped: boolean;
+}
+
+// Pembanding sejajar jam dinding: durasi berjalan yang sama dari awal periode
+// sebelumnya (Senin untuk pekan, tanggal 1 untuk bulan). Periode penuh memakai
+// periode penuh sebelumnya; last_30d dan custom menempel seperti sebelumnya.
+export function comparableWindow(
+  window: { from: Date; to: Date; key: NamedPeriodKey },
+  tz: BizTz,
+  now: Date
+): BaselineWindow {
+  const T = makeTime(tz);
+  const { from, to, key } = window;
+  const dur = to.getTime() - from.getTime();
+  if (key === 'last_30d' || key === 'custom') {
+    return { from: new Date(from.getTime() - dur), to: new Date(from.getTime() - 1), clamped: false };
+  }
+  if (key === 'yesterday') {
+    const day = T.startOfDay(T.addDays(from, -1));
+    return { from: day, to: T.endOfDay(day), clamped: false };
+  }
+  if (key === 'last_week') {
+    const start = T.startOfDay(T.addDays(from, -7));
+    return { from: start, to: T.endOfDay(T.addDays(start, 6)), clamped: false };
+  }
+  if (key === 'last_month') {
+    const w = T.toLocal(from);
+    const first = new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth() - 1, 1) - T.offsetMs);
+    const last = new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), 0) - T.offsetMs);
+    return { from: first, to: T.endOfDay(last), clamped: false };
+  }
+  if (key === 'today') {
+    const base = T.startOfDay(T.addDays(now, -1));
+    return { from: base, to: new Date(base.getTime() + dur), clamped: false };
+  }
+  if (key === 'this_week') {
+    const dow = T.toLocal(now).getUTCDay();
+    const base = T.startOfDay(T.addDays(now, -(((dow + 6) % 7) + 7)));
+    return { from: base, to: new Date(base.getTime() + dur), clamped: false };
+  }
+  const w = T.toLocal(now);
+  const base = new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth() - 1, 1) - T.offsetMs);
+  const monthEnd = T.endOfDay(new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), 0) - T.offsetMs));
+  const rawTo = new Date(base.getTime() + dur);
+  if (rawTo.getTime() > monthEnd.getTime()) return { from: base, to: monthEnd, clamped: true };
+  return { from: base, to: rawTo, clamped: false };
+}
+
+const SHORT_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+// Label rentang tanggal nyata zona bisnis, mis. "1–4 Sep 2026 (sampai jam 08.19)".
+export function spanLabel(from: Date, to: Date, tz: BizTz): string {
+  const T = makeTime(tz);
+  const a = T.toLocal(from);
+  const b = T.toLocal(to);
+  const mon = (d: Date) => SHORT_MONTH[d.getUTCMonth()];
+  let span: string;
+  if (T.dayKey(from) === T.dayKey(to)) span = `${a.getUTCDate()} ${mon(a)} ${a.getUTCFullYear()}`;
+  else if (a.getUTCMonth() === b.getUTCMonth() && a.getUTCFullYear() === b.getUTCFullYear()) {
+    span = `${a.getUTCDate()}–${b.getUTCDate()} ${mon(b)} ${b.getUTCFullYear()}`;
+  } else if (a.getUTCFullYear() === b.getUTCFullYear()) {
+    span = `${a.getUTCDate()} ${mon(a)}–${b.getUTCDate()} ${mon(b)} ${b.getUTCFullYear()}`;
+  } else {
+    span = `${a.getUTCDate()} ${mon(a)} ${a.getUTCFullYear()}–${b.getUTCDate()} ${mon(b)} ${b.getUTCFullYear()}`;
+  }
+  if (to.getTime() < T.endOfDay(to).getTime()) {
+    return `${span} (sampai jam ${String(b.getUTCHours()).padStart(2, '0')}.${String(b.getUTCMinutes()).padStart(2, '0')})`;
+  }
+  return span;
 }
