@@ -178,7 +178,7 @@ export async function simulatePrice(ctx: ToolContext, input: unknown): Promise<T
   const volumePcts = volumePct === undefined ? DEFAULT_VOLUMES : [volumePct];
   try {
     const data = buildSimulatePriceData({
-      product: selected,
+      product: { ...selected, name: resolved.product.name },
       baseline,
       period,
       windowLabel: window.label,
