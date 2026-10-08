@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer, jsonb, pgEnum, index, check } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, integer, bigint, jsonb, pgEnum, index, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // Tabel autentikasi better-auth (user, session, account, verification).
@@ -265,4 +265,33 @@ export const copilotMessage = pgTable(
     createdAt: timestamp('created_at').notNull().defaultNow()
   },
   (t) => [index('copilot_message_conversation_created_idx').on(t.conversationId, t.createdAt)]
+);
+
+// Pengaturan zakat perdagangan: satu baris per bisnis. Kas, piutang,
+// dan utang input manual; null berarti belum diisi.
+export const zakatSetting = pgTable(
+  'zakat_setting',
+  {
+    businessId: text('business_id')
+      .primaryKey()
+      .references(() => business.id),
+    goldPricePerGram: integer('gold_price_per_gram'),
+    goldPriceUpdatedAt: timestamp('gold_price_updated_at'),
+    nisabGrams: integer('nisab_grams').notNull().default(85),
+    haulStartDate: text('haul_start_date'),
+    stockValuation: text('stock_valuation').notNull().default('SELLING'),
+    cash: bigint('cash', { mode: 'number' }),
+    receivable: bigint('receivable', { mode: 'number' }),
+    debt: bigint('debt', { mode: 'number' }),
+    balanceUpdatedAt: timestamp('balance_updated_at'),
+    updatedAt: timestamp('updated_at').notNull().defaultNow()
+  },
+  (t) => [
+    check('zakat_setting_valuation', sql`${t.stockValuation} in ('COST','SELLING')`),
+    check(
+      'zakat_setting_nonneg',
+      sql`coalesce(${t.goldPricePerGram},0) >= 0 and coalesce(${t.cash},0) >= 0 and coalesce(${t.receivable},0) >= 0 and coalesce(${t.debt},0) >= 0`
+    ),
+    check('zakat_setting_nisab_positive', sql`${t.nisabGrams} > 0`)
+  ]
 );

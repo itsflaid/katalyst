@@ -72,4 +72,17 @@ Komentar alasan yang baik:
 - Jalankan `npm run verify:arch`; ia memeriksa bentuk komentar (banner, rujukan dokumen, kata riwayat, panjang, TODO tanpa kondisi).
 - Baca ulang komentar yang baru ditulis: masih benar dan berguna bagi orang yang tidak ikut diskusinya?
 
+## Pesan commit
+
+Menjelaskan fitur, bukan proses. Format: `prefiks/fitur: apa yang berubah`.
+
+- Hanya prefiks dan fiturnya (`feat/`, `fix/`, `refactor/`, `chore/`). Contoh: `feat/zakat: halaman estimasi + kartu simulator`.
+- Tanpa label tugas: `T1`, `F1`, `B1`, `Fase`, nomor PR/tiket. Itu urusan prompt, bukan riwayat repo.
+- Satu commit = satu lingkup fitur; rincian per file cukup di badan pesan.
+
+| Jangan | Gunakan |
+|---|---|
+| `feat(copilot): T1.1 format + T1.2 periode` | `feat/copilot: format jawaban + periode bernama` |
+| `fix: B1 sembuh, tambah regresi` | `fix(copilot): margin di compare_periods` |
+
 Pekerjaan Copilot: baca docs/copilot/STATUS.md dan docs/copilot/PRD.md sebelum mulai.
