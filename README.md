@@ -12,6 +12,7 @@ Semua angka (omzet, modal, untung, margin) dihitung langsung dari data transaksi
 - **Statistik** — laporan per periode: tren revenue/profit (unit adaptif rb/jt), performa per produk (toggle Revenue/Profit/Margin), struk per hari, jam tersibuk & pola hari (WITA), penjualan per kasir, panel inventori (nilai stok, estimasi hari stok, stok mati), pergerakan stok mingguan, dan matriks Volume vs Margin.
 - **Simulator "what-if"** — lab satu produk: geser harga jual, diskon, modal, volume, langsung lihat dampak revenue/profit/margin, titik impas, dan diskon maksimum. Baseline bisa hari ini, minggu ini, bulan ini, atau custom.
 - **Copilot** — tanya jawab Owner berbasis data transaksi: ringkasan, ranking produk, perbandingan periode, penyebab perubahan profit, stok, dan simulasi harga. Angka ditahan bila tidak berasal dari hasil tool.
+- **Zakat perdagangan** — estimasi 2,5% dari aset bersih (stok + kas + piutang − utang) bila mencapai nisab emas dan genap 1 haul (±354 hari). Kas, piutang, utang, dan harga emas diisi manual; Simulator menampilkan dampak skenario ke zakat.
 - **Pengaturan** — identitas bisnis + kelola staff (tambah/hapus, role OWNER/STAFF). Riwayat struk staff yang sudah dihapus tetap menampilkan namanya.
 
 ## Preview

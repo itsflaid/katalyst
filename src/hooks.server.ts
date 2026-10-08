@@ -9,8 +9,8 @@ import { building } from '$app/environment';
 
 // Padanan proxy.ts di Next: hook ini harus ada di file bernama persis `src/hooks.server.ts` — nama lain diam-diam diabaikan tanpa build error.
 // Proteksi route dipusatkan di sini, bukan dicek manual di tiap +page.server.ts.
-const PROTECTED_PATHS = ['/dashboard', '/statistik', '/simulator', '/settings', '/transactions', '/products', '/diskon', '/bantuan', '/copilot', '/akun'];
-const OWNER_ONLY_PATHS = ['/dashboard', '/statistik', '/simulator', '/settings', '/copilot', '/diskon', '/products/stok'];
+const PROTECTED_PATHS = ['/dashboard', '/statistik', '/simulator', '/settings', '/transactions', '/products', '/diskon', '/bantuan', '/copilot', '/akun', '/zakat'];
+const OWNER_ONLY_PATHS = ['/dashboard', '/statistik', '/simulator', '/settings', '/copilot', '/diskon', '/products/stok', '/zakat'];
 
 export const handle: Handle = async ({ event, resolve }) => {
   const session = await auth.api.getSession({ headers: event.request.headers });
