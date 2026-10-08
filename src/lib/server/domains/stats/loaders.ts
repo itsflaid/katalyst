@@ -17,7 +17,7 @@ import {
 import { makeTime, type BizTz } from '$lib/shared/time';
 import { previousWindow, resolvePeriod } from '$lib/shared/period';
 import { queryFactsByDay, queryFactsByProduct } from '$lib/server/domains/facts/queries';
-import { queryRecentItems } from '$lib/server/domains/transactions/recent';
+import { queryRecentReceipts } from '$lib/server/domains/transactions/recent';
 import { metricsOf, ZERO_FACTS } from '$lib/analytics';
 import { queryCashiers, queryHourly, queryInventory, queryMovementWeekly, querySusut, INVENTORY_WINDOW_DAYS } from './queries';
 import { pickMoneyUnit, scaleMoney } from '$lib/shared/format';
@@ -319,8 +319,8 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
       .from(transaction)
       .where(eq(transaction.businessId, businessId)),
 
-    // 10 baris item terbaru dari lapisan transaksi.
-    queryRecentItems(businessId),
+    // 10 struk terbaru dari lapisan transaksi.
+    queryRecentReceipts(businessId),
 
     // Agregat harian 60 hari dari lapisan Facts.
     queryFactsByDay(db, businessId, { from: sixtyDaysAgo, to: null }, tz),
