@@ -7,7 +7,7 @@
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import { goto } from '$app/navigation';
   import { sanitizeLevers, simulate } from '$lib/simulation';
-  import { ZERO_FACTS } from '$lib/analytics';
+  import { ZERO_FACTS, zakatImpactOf } from '$lib/analytics';
   export let data;
 
   type BadgeTone = 'positive' | 'warning' | 'negative' | 'neutral';
@@ -169,7 +169,8 @@
     ...(result.flags.includes('BELOW_COST')
       ? ['Harga efektif di bawah modal — tiap unit menambah kerugian.']
       : []),
-    ...(base.txCount > 0 ? [`Baseline dari ${num(base.txCount)} transaksi tercatat.`] : [])
+    ...(base.txCount > 0 ? [`Baseline dari ${num(base.txCount)} transaksi tercatat.`] : []),
+    'Dampak zakat dihitung dari selisih profit produk ini pada rentang baseline, dengan asumsi selisih tersebut tertahan sebagai kas atau stok sampai haul; kas, piutang, dan utang diambil dari halaman Zakat.'
   ];
   $: driftNote =
     result.flags.includes('DRIFT_PRICE') || result.flags.includes('DRIFT_COST')
@@ -181,6 +182,12 @@
   $: sqRev = result.statusQuo.revenue;
   $: sqProfit = result.statusQuo.profit;
   $: sqMargin = result.statusQuo.margin;
+
+  // Dampak zakat dari selisih profit skenario (Rupiah, bukan rasio impact).
+  $: zakatImpact = data.zakat
+    ? zakatImpactOf(data.zakat, { statusQuo: result.statusQuo.profit, simulated: result.simulated.profit })
+    : null;
+  $: zakatPartial = (zakatImpact?.before.missing.length ?? 1) > 0;
   $: maxRev = Math.max(sqRev, result.simulated.revenue, 1);
   $: maxProfit = Math.max(sqProfit, result.simulated.profit, 1);
   $: maxQty = Math.max(histQty, simQty, 1);
@@ -613,6 +620,31 @@
           </div>
         </Card>
       </div>
+
+      <Card>
+        <h2 class="text-headline-sm text-ink mb-1">Dampak ke zakat</h2>
+        {#if zakatImpact && zakatImpact.before.status !== 'NEEDS_GOLD_PRICE'}
+          <p class="text-body-sm text-muted mb-3">Skenario {prod?.name ?? 'produk ini'} pada rentang {data.rangeLabel ?? 'baseline'}.</p>
+          <dl class="flex flex-col gap-2 text-body-md">
+            <div class="flex justify-between"><dt class="text-muted">Zakat sekarang</dt><dd class="tabular text-ink">{zakatPartial ? '~' : ''}{idr(zakatImpact.before.amount)}</dd></div>
+            <div class="flex justify-between"><dt class="text-muted">Zakat simulasi</dt><dd class="tabular text-ink">{zakatPartial ? '~' : ''}{idr(zakatImpact.after.amount)}</dd></div>
+            <div class="flex justify-between">
+              <dt class="text-muted">Selisih</dt>
+              <dd class="tabular font-semibold {zakatImpact.deltaAmount >= 0 ? 'text-status-positive' : 'text-status-negative'}">{zakatImpact.deltaAmount >= 0 ? '+' : ''}{idr(zakatImpact.deltaAmount)}</dd>
+            </div>
+          </dl>
+          {#if zakatImpact.crossesNisab}
+            <p class="text-body-sm text-status-warning mt-3">Skenario ini melewati batas nisab — status kewajiban zakat berubah.</p>
+          {/if}
+          {#if zakatPartial}
+            <p class="text-body-sm text-muted mt-2">Estimasi parsial: sebagian data zakat belum diisi.</p>
+          {/if}
+          <p class="text-body-sm text-muted mt-2">Estimasi berdasarkan data yang Anda isi, bukan fatwa. Konfirmasi ke BAZNAS atau lembaga amil zakat.</p>
+        {:else}
+          <p class="text-body-md text-muted mb-3">Isi data zakat dulu untuk melihat dampak skenario ini ke zakat.</p>
+          <a href="/zakat" class="text-body-md font-semibold text-ink-navy hover:underline no-underline">Buka halaman Zakat →</a>
+        {/if}
+      </Card>
     </div>
   </div>
 {/if}
