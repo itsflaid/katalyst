@@ -1,8 +1,10 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { onMount, tick } from 'svelte';
-  import { ChevronRight, Plus, Send, Trash2 } from 'lucide-svelte';
+  import { fade, fly } from 'svelte/transition';
+  import { History, Plus, Send, X } from 'lucide-svelte';
   import { renderChatMarkdown } from '$lib/shared/chat-markdown';
+  import HistoryPanel from '$lib/components/copilot/HistoryPanel.svelte';
 
   type Role = 'user' | 'assistant';
   type ToolResult = Record<string, unknown>;
@@ -32,6 +34,28 @@
   let loadingList = true;
   let listError = '';
   let deleting = '';
+  let historyOpen = false;
+  let historyButton: HTMLButtonElement;
+  let historyClose: HTMLButtonElement;
+
+  function openHistory() {
+    historyOpen = true;
+    void tick().then(() => historyClose?.focus());
+  }
+
+  function closeHistory() {
+    historyOpen = false;
+    historyButton?.focus();
+  }
+
+  function onWindowKeydown(event: KeyboardEvent) {
+    if (historyOpen && event.key === 'Escape') closeHistory();
+  }
+
+  async function chooseConversation(conversationId: string) {
+    await openConversation(conversationId);
+    closeHistory();
+  }
 
   function newId() {
     return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
@@ -229,63 +253,103 @@
   let scrollTarget: HTMLDivElement;
 </script>
 
-<div class="flex -m-8 h-screen min-h-[560px] overflow-hidden bg-[#F7F1E6]">
+<svelte:window on:keydown={onWindowKeydown} />
+
+<div class="copilot-shell flex overflow-hidden bg-[#F7F1E6]">
   <aside class="hidden w-72 shrink-0 flex-col border-r border-border-warm bg-[#F7F1E6] lg:flex">
-    <div class="flex items-center justify-between px-5 pb-4 pt-5">
-      <div><h1 class="text-headline-sm text-ink">Katalyst Copilot</h1><p class="mt-1 text-body-sm text-muted">Riwayat percakapan</p></div>
-      <button type="button" on:click={createConversation} disabled={sending} class="grid h-8 w-8 place-items-center rounded-panel border border-border-warm text-ink hover:bg-black/[0.04] disabled:opacity-50" aria-label="Percakapan baru"><Plus size={16} /></button>
-    </div>
-    <div class="flex-1 overflow-y-auto px-3">
-      {#if loadingList}
-        <p class="px-3 py-3 text-body-sm text-muted">Memuat riwayat…</p>
-      {:else if listError && conversations.length === 0}
-        <p class="px-3 py-3 text-body-sm text-muted">{listError}</p>
-      {:else}
-        {#each conversations as conversation}
-          <div class="group mb-1 flex items-center gap-1">
-            <button type="button" on:click={() => openConversation(conversation.id)} disabled={sending} class:active={conversation.id === activeId} class="history flex min-w-0 flex-1 items-center gap-2 border-l-2 border-transparent px-3 py-3 text-left hover:bg-black/[0.025] disabled:opacity-60">
-              <span class="min-w-0 flex-1 truncate text-body-sm text-ink">{conversation.title}</span><ChevronRight size={15} class="shrink-0 text-muted/50 group-hover:translate-x-0.5" />
-            </button>
-            <button type="button" on:click={() => deleteConversation(conversation.id)} disabled={sending || deleting !== ''} class="hidden h-7 w-7 shrink-0 place-items-center rounded text-muted hover:bg-black/[0.05] hover:text-ink group-hover:grid group-focus-within:grid disabled:opacity-50" aria-label={`Hapus ${conversation.title}`}><Trash2 size={14} /></button>
-          </div>
-        {/each}
-      {/if}
-    </div>
-    {#if conversations.length > 0}
-      <div class="border-t border-border-warm px-5 py-3">
-        <button type="button" on:click={deleteAll} disabled={sending || deleting !== ''} class="text-body-sm text-muted underline-offset-2 hover:text-ink hover:underline disabled:opacity-50">{deleting === 'all' ? 'Menghapus…' : 'Hapus semua riwayat'}</button>
-      </div>
-    {/if}
+    <HistoryPanel
+      {conversations}
+      {activeId}
+      loading={loadingList}
+      error={listError}
+      {sending}
+      {deleting}
+      on:select={(event) => openConversation(event.detail)}
+      on:remove={(event) => deleteConversation(event.detail)}
+      on:removeAll={deleteAll}
+      on:create={createConversation}
+    />
   </aside>
 
   <section class="flex min-w-0 flex-1 flex-col bg-ink-navy">
-    <header class="flex items-center justify-between border-b border-white/10 px-4 py-4 sm:px-6 lg:hidden"><h1 class="text-body-md font-medium text-white">Katalyst Copilot</h1><button type="button" on:click={createConversation} class="text-body-sm text-white/70">Percakapan baru</button></header>
+    <header class="flex max-h-12 items-center justify-between gap-2 border-b border-white/10 px-4 py-2 sm:px-6 lg:hidden">
+      <h1 class="text-body-md font-medium text-white">Copilot</h1>
+      <div class="flex items-center gap-1">
+        <button bind:this={historyButton} type="button" on:click={openHistory} disabled={sending} class="flex min-h-[44px] min-w-[44px] items-center gap-1.5 px-2 text-body-sm text-white/70 disabled:opacity-50" aria-label="Buka riwayat percakapan"><History size={16} aria-hidden="true" />Riwayat{#if conversations.length > 0}<span class="rounded-full bg-white/15 px-1.5 text-body-sm text-white">{conversations.length}</span>{/if}</button>
+        <button type="button" on:click={createConversation} disabled={sending} class="grid min-h-[44px] min-w-[44px] place-items-center rounded-panel text-white/70 disabled:opacity-50" aria-label="Percakapan baru"><Plus size={16} aria-hidden="true" /></button>
+      </div>
+    </header>
     <div class="min-h-0 flex-1 overflow-y-auto scroll-navy" bind:this={scrollTarget} aria-live="polite">
       <div class="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-5 sm:px-6">
         {#if messages.length === 0}
           <div class="border border-white/10 bg-white/[0.06] px-5 py-4">
             <div class="flex items-start gap-3"><img src="/logo/logo-copilot.png" alt="Katalyst Copilot" class="h-8 w-8 shrink-0 rounded object-cover" /><div><p class="text-body-md font-medium text-white">Mau menganalisis apa hari ini?</p><p class="mt-1 text-body-sm leading-relaxed text-white/50">Katalyst membantu membaca penjualan, profit, margin, stok, dan simulasi harga dari data bisnis Anda.</p></div></div>
             <div class="mt-4 grid gap-2 sm:grid-cols-2">{#each suggestions as suggestion}<button type="button" on:click={() => ask(suggestion)} class="border border-white/10 px-3 py-2.5 text-left text-body-sm text-white/70 hover:bg-white/[0.06]">{suggestion}</button>{/each}</div>
+            {#if conversations.length > 0}
+              <button type="button" on:click={openHistory} class="mt-3 text-left text-body-sm text-white/70 underline underline-offset-2 lg:hidden">Lihat riwayat ({conversations.length})</button>
+            {/if}
           </div>
         {/if}
         {#each messages as message}
           {#if message.toolName}
-            <div class="border border-white/10 bg-white/[0.06] px-4 py-3 text-body-sm text-white/80"><p class="font-medium text-white">{toolLabel(message.toolName)}</p>{#if message.loading}<p class="mt-1 text-white/55">Mengambil data…</p>{:else}<details class="mt-2"><summary class="cursor-pointer text-white/65">Lihat data</summary><pre class="mt-2 overflow-x-auto whitespace-pre-wrap text-xs text-white/70">{resultText(message.result)}</pre></details>{/if}</div>
+            <div class="border border-white/10 bg-white/[0.06] px-4 py-3 text-body-sm text-white/80"><p class="font-medium text-white">{toolLabel(message.toolName)}</p>{#if message.loading}<p class="mt-1 text-white/55">Mengambil data…</p>{:else}<details class="mt-2 min-w-0"><summary class="cursor-pointer text-white/65">Lihat data</summary><pre class="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all text-xs text-white/70">{resultText(message.result)}</pre></details>{/if}</div>
           {:else if message.role === 'user'}
-            <div class="flex justify-end"><p class="max-w-[84%] rounded-panel rounded-br-sm bg-status-positive px-4 py-3 text-body-md leading-relaxed text-white">{message.content}</p></div>
+            <div class="flex justify-end"><p class="wrap-anywhere max-w-[84%] break-words rounded-panel rounded-br-sm bg-status-positive px-4 py-3 text-body-md leading-relaxed text-white">{message.content}</p></div>
           {:else}
-            <div class="flex gap-3"><img src="/logo/logo-copilot.png" alt="" class="mt-1 h-7 w-7 shrink-0 rounded object-cover" /><div class="md max-w-[88%] rounded-panel rounded-tl-sm bg-[#F7F1E6] px-4 py-3 text-body-md leading-relaxed text-[#30343B]">{@html renderChatMarkdown(message.content)}</div></div>
+            <div class="flex min-w-0 gap-3"><img src="/logo/logo-copilot.png" alt="" class="mt-1 hidden h-7 w-7 shrink-0 rounded object-cover sm:block" /><div class="md wrap-anywhere min-w-0 max-w-[94%] break-words rounded-panel rounded-tl-sm bg-[#F7F1E6] px-4 py-3 text-body-md leading-relaxed text-[#30343B] sm:max-w-[88%]">{@html renderChatMarkdown(message.content)}</div></div>
           {/if}
         {/each}
       </div>
     </div>
-    <form class="shrink-0 border-t border-white/10 px-4 py-4 sm:px-6" on:submit|preventDefault={() => ask()}>
-      <div class="mx-auto flex max-w-4xl items-center gap-2 border border-white/15 bg-white/[0.06] p-1.5"><input bind:value={draft} disabled={sending} maxlength="800" placeholder="Tanyakan sesuatu tentang bisnis Anda..." class="min-w-0 flex-1 bg-transparent px-3 py-2 text-body-md text-white outline-none placeholder:text-white/35 disabled:opacity-60" aria-label="Pertanyaan untuk Copilot" /><button type="submit" disabled={sending || !draft.trim()} aria-label="Kirim" class="grid h-9 w-9 place-items-center rounded-panel bg-status-positive text-white disabled:opacity-50"><Send size={16} /></button></div>
+    <form class="copilot-form shrink-0 border-t border-white/10 px-4 py-4 sm:px-6" on:submit|preventDefault={() => ask()}>
+      <div class="mx-auto flex max-w-4xl items-center gap-2 border border-white/15 bg-white/[0.06] p-1.5"><input bind:value={draft} disabled={sending} maxlength="800" placeholder="Tanyakan sesuatu tentang bisnis Anda..." class="min-w-0 flex-1 bg-transparent px-3 py-2 text-base text-white outline-none placeholder:text-white/35 disabled:opacity-60 sm:text-body-md" aria-label="Pertanyaan untuk Copilot" /><button type="submit" disabled={sending || !draft.trim()} aria-label="Kirim" class="grid h-9 w-9 place-items-center rounded-panel bg-status-positive text-white disabled:opacity-50"><Send size={16} /></button></div>
     </form>
   </section>
+
+  {#if historyOpen}
+    <div class="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Riwayat percakapan">
+      <button type="button" class="absolute inset-0 cursor-default border-0 bg-slate-950/50 p-0" transition:fade={{ duration: 150 }} aria-label="Tutup riwayat" on:click={closeHistory}></button>
+      <div class="absolute bottom-0 left-0 top-0 flex w-72 flex-col bg-[#F7F1E6] shadow-level3" transition:fly={{ x: -48, duration: 200 }}>
+        <div class="flex justify-end px-3 pt-3">
+          <button bind:this={historyClose} type="button" on:click={closeHistory} class="grid min-h-[44px] min-w-[44px] place-items-center rounded-panel text-ink" aria-label="Tutup riwayat"><X size={18} aria-hidden="true" /></button>
+        </div>
+        <HistoryPanel
+          {conversations}
+          {activeId}
+          loading={loadingList}
+          error={listError}
+          {sending}
+          {deleting}
+          alwaysShowDelete
+          on:select={(event) => chooseConversation(event.detail)}
+          on:remove={(event) => deleteConversation(event.detail)}
+          on:removeAll={deleteAll}
+          on:create={() => { createConversation(); closeHistory(); }}
+        />
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
+  .copilot-shell {
+    margin: -1rem;
+    min-height: 360px;
+    height: calc(100vh - var(--mobile-bar-h, 3.75rem));
+    height: calc(100dvh - var(--mobile-bar-h, 3.75rem));
+  }
+  @media (min-width: 1024px) {
+    .copilot-shell {
+      margin: -2rem;
+      height: 100vh;
+    }
+  }
+  .copilot-form {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  .wrap-anywhere {
+    overflow-wrap: anywhere;
+  }
   .md :global(p) { margin: 0 0 0.5rem; }
   .md :global(p:last-child) { margin-bottom: 0; }
   .md :global(h3) { margin: 0.75rem 0 0.375rem; font-size: 1rem; font-weight: 600; }
@@ -295,11 +359,10 @@
   .md :global(ol) { list-style: decimal; }
   .md :global(li) { margin: 0.125rem 0; }
   .md :global(code) { padding: 0.05rem 0.3rem; border-radius: 0.25rem; background: rgba(23, 32, 51, 0.08); font-size: 0.875em; }
-  .md :global(.md-table) { margin: 0 0 0.5rem; overflow-x: auto; }
-  .md :global(table) { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
+  .md :global(.md-table) { margin: 0 0 0.5rem; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .md :global(table) { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 0.875rem; }
   .md :global(th), .md :global(td) { border: 1px solid rgba(23, 32, 51, 0.18); padding: 0.375rem 0.625rem; text-align: left; vertical-align: top; }
   .md :global(thead th) { background: rgba(23, 32, 51, 0.07); font-weight: 600; }
-  .history.active { border-left-color: #172033; background: rgba(0, 0, 0, 0.045); }
   .scroll-navy { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.25) transparent; }
   .scroll-navy::-webkit-scrollbar { width: 6px; }
   .scroll-navy::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.25); border-radius: 9999px; }
