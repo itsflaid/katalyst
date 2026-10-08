@@ -7,6 +7,8 @@ import { TOOL_REGISTRY, runTool, sanitizeResult, type RegisteredTool } from '../
 import { success } from '../src/lib/server/domains/copilot/envelope';
 import type { ToolContext } from '../src/lib/server/domains/copilot/context';
 import { toModelView } from '../src/lib/server/domains/copilot/model-view';
+import { buildRankProductsData } from '../src/lib/server/domains/copilot/tools/rank-products';
+import { verifyGrounding } from '../src/lib/server/domains/copilot/grounding';
 
 let passCount = 0;
 let failCount = 0;
@@ -115,6 +117,62 @@ async function main() {
       ambiguous.kind === 'ambiguous' &&
         ambiguous.candidates.every((c) => !/[\n\u200b\u2028]/.test(c.name)) &&
         ambiguous.candidates.length === 2
+    );
+  }
+
+  console.log('\n== rank_products H1 ==');
+  {
+    const products = [
+      { id: 'p1', name: 'Abon Ikan 150g', isActive: true },
+      { id: 'p2', name: 'Kerupuk Ikan Curah 500g', isActive: true },
+      { id: 'p3', name: 'Madu Kelulut Kaltim 250ml', isActive: true },
+      { id: 'p4', name: 'Terasi Udang 250g', isActive: true },
+      { id: 'p5', name: 'Sarung Samarinda', isActive: true },
+      { id: 'p6', name: 'Beras Kura-kura 25kg', isActive: true },
+      { id: 'p7', name: 'Beras Kura-kura 10kg', isActive: true },
+      { id: 'p8', name: 'Beras Kura-kura 5kg', isActive: true },
+      { id: 'p9', name: 'Kaos Pesut Mahakam', isActive: true },
+      { id: 'p10', name: 'Keripik Pisang Manis 200g', isActive: true }
+    ];
+    const profits: Record<string, number> = { p1: 5000, p2: 8000, p4: 12000, p5: 20000, p6: 25000, p7: 30000, p8: 35000, p9: 40000, p10: 45000 };
+    const sales = new Map<string, { qty: number; gross: number; discount: number; cost: number; discountedQty: number }>(
+      Object.entries(profits).map(([id, profit]) => [id, { qty: 10, gross: profit + 10000, discount: 0, cost: 10000, discountedQty: 0 }])
+    );
+    const lowest = buildRankProductsData(products, sales, { by: 'profit', order: 'asc', limit: 1 });
+    ok('terendah limit 1 bukan produk nol', lowest.items[0]?.name === 'Abon Ikan 150g' && lowest.empty === false);
+    ok('ringkasan unsold tercatat', lowest.summary.unsold === 1 && lowest.summary.unsoldNames[0] === 'Madu Kelulut Kaltim 250ml');
+    const withUnsold = buildRankProductsData(products, sales, { by: 'profit', order: 'asc', limit: 1, includeUnsold: true });
+    ok('include_unsold menaruh produk nol pertama', withUnsold.items[0]?.name === 'Madu Kelulut Kaltim 250ml' && withUnsold.empty === false);
+    const none = buildRankProductsData(products, new Map(), { by: 'profit', order: 'asc', limit: 5 });
+    ok('tanpa penjualan empty benar', none.items.length === 0 && none.empty === true && none.notes.some((n) => n.includes('Belum ada transaksi')));
+    const cut5 = buildRankProductsData(products, sales, { by: 'profit', order: 'asc', limit: 5 });
+    const cut10 = buildRankProductsData(products, sales, { by: 'profit', order: 'asc', limit: 10 });
+    ok('limit 5 terpotong dari 9', cut5.summary.truncated === true && cut5.summary.shown === 5 && cut5.summary.withSales === 9);
+    ok('limit 10 tidak terpotong', cut10.summary.truncated === false && cut10.summary.shown === 9);
+    const mixed = [...products, { id: 'p11', name: 'Produk Lama', isActive: false }, { id: 'p12', name: 'Produk Mati', isActive: false }];
+    const mixedSales = new Map([...sales, ['p11', { qty: 3, gross: 60000, discount: 0, cost: 10000, discountedQty: 0 }] as const]);
+    const mixedRes = buildRankProductsData(mixed, mixedSales, { by: 'profit', order: 'desc', limit: 10 });
+    const old = mixedRes.items.find((item) => item.id === 'p11');
+    ok('nonaktif terjual ikut dengan tanda', old?.inactive === true && (old?.inactiveText ?? '') === '(nonaktif)');
+    ok('nonaktif tanpa jual tidak dihitung unsold', mixedRes.summary.unsold === 1 && !mixedRes.items.some((item) => item.id === 'p12'));
+    const tie = buildRankProductsData(
+      [{ id: 'x', name: 'B Satu', isActive: true }, { id: 'y', name: 'A Dua', isActive: true }],
+      new Map([['x', { qty: 1, gross: 20000, discount: 0, cost: 10000, discountedQty: 0 }], ['y', { qty: 1, gross: 20000, discount: 0, cost: 10000, discountedQty: 0 }]]),
+      { by: 'profit', order: 'asc', limit: 2 }
+    );
+    ok('seri deterministik menurut nama', tie.items[0]?.name === 'A Dua' && tie.items[1]?.name === 'B Satu');
+    const finite = (value: unknown): boolean => {
+      if (typeof value === 'number') return Number.isFinite(value);
+      if (Array.isArray(value)) return value.every(finite);
+      if (value && typeof value === 'object') return Object.values(value).every(finite);
+      return true;
+    };
+    ok('angka hingga rekursif', finite(lowest.items) && finite(lowest.summary));
+    const view = JSON.stringify(toModelView({ data: { summary: lowest.summary, items: lowest.items } }));
+    ok('model-view tanpa angka mentah berpasangan', view.includes('Rp5.000') && view.includes('Abon Ikan 150g') && !view.includes('5000'));
+    ok(
+      'jawaban salinan lolos grounding',
+      verifyGrounding('Keuntungan terendah Abon Ikan 150g Rp5.000. 1 produk aktif belum terjual: Madu Kelulut Kaltim 250ml.', [{ data: { summary: lowest.summary, items: lowest.items } }]).ok
     );
   }
 

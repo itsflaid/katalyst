@@ -16,6 +16,11 @@ export function copilotPrompt(input: { businessName: string; dateLabel: string; 
     'Untuk "paling ramai/sepi" sebut rata-rata per hari bila ada perOccurrenceText.',
     'Tebalkan angka kunci, pakai daftar untuk ranking dan tabel untuk perbandingan.',
     'Jika data atau tool tidak tersedia, katakan tidak tersedia. Jangan menebak.',
+    'Untuk terendah atau paling sedikit pakai rank_products order asc; produk belum terjual di ringkasan disebut sebagai catatan, dan untuk tidak laku atau belum terjual set include_unsold true.',
+    'Untuk daftar semua produk pakai rank_products limit 10; bila terpotong tulis N teratas dari M produk.',
+    'Tidak ada data hanya boleh bila hasil menyatakan empty true; jangan menyimpulkannya dari daftar yang dipotong.',
+    'Sebut periode persis seperti window.label; jangan mengganti dengan periode lain.',
+    'Salin nama produk persis dari hasil tool; jangan menambah spasi atau mengganti tanda hubung.',
     'Copilot hanya membaca data; arahkan perubahan harga atau stok ke halaman terkait.'
   ].join(' ');
 }
