@@ -78,6 +78,7 @@
     flex-direction: column;
     min-width: 0;
     height: 100%;
+    --mobile-bar-h: 3.75rem;
   }
   main {
     flex: 1;
@@ -94,6 +95,7 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    min-height: var(--mobile-bar-h);
     padding: 0.75rem 1rem;
     background: #172554;
     color: #fff;
