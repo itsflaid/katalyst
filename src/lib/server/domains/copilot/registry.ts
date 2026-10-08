@@ -39,8 +39,8 @@ export const TOOL_REGISTRY: RegisteredTool[] = [
     run: getSummary
   },
   {
-    name: 'rank_products', description: 'Ranking produk aktif menurut unit, omzet, profit, atau margin.', maxQueries: 2, enabled: true,
-    parameters: { type: 'object', properties: { period: PERIOD, from: { type: 'string' }, to: { type: 'string' }, by: { type: 'string', enum: ['qty', 'revenue', 'profit', 'margin'] }, order: { type: 'string', enum: ['asc', 'desc'] }, limit: { type: 'integer' } }, additionalProperties: false }, run: rankProducts
+    name: 'rank_products', description: 'Ranking produk menurut unit, omzet, profit, atau margin; isi include_unsold true bila ditanya produk yang tidak laku atau belum terjual.', maxQueries: 2, enabled: true,
+    parameters: { type: 'object', properties: { period: PERIOD, from: { type: 'string' }, to: { type: 'string' }, by: { type: 'string', enum: ['qty', 'revenue', 'profit', 'margin'] }, order: { type: 'string', enum: ['asc', 'desc'] }, limit: { type: 'integer' }, include_unsold: { type: 'boolean' } }, additionalProperties: false }, run: rankProducts
   },
   {
     name: 'compare_periods', description: 'Membandingkan omzet, profit, dan margin periode dengan periode sebelumnya yang sepadan.', maxQueries: 2, enabled: true,

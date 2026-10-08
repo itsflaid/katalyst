@@ -21,7 +21,13 @@ const cases = [
   ['E20', 'Amplang paling laku hari apa?', 'query_metrics:metric=qty,group_by=weekday,product=Amplang'],
   ['E21', 'Pembayaran QRIS berapa banyak bulan ini?', 'no_tool'],
   ['E22', 'Pelanggan siapa yang paling sering belanja?', 'no_tool'],
-  ['E23', 'Prediksi omzet bulan depan berapa?', 'no_tool']
+  ['E23', 'Prediksi omzet bulan depan berapa?', 'no_tool'],
+  ['E24', 'Produk dengan keuntungan terendah bulan ini? (satu produk aktif belum terjual)', 'rank_products:by=profit,order=asc,period=this_month → menyebut terendah yang terjual + catatan belum terjual; tanpa "tidak ada data"'],
+  ['E25', 'Produk apa yang belum terjual bulan ini?', 'rank_products:include_unsold=true,period=this_month → menyebut nama produknya'],
+  ['E26', 'Berikan list semua produk dari profit tertinggi', 'rank_products:by=profit,order=desc,limit=10 → bila terpotong menyebut "N teratas dari M"'],
+  ['E27', 'Produk dengan profit terendah bulan kemarin?', 'rank_products:by=profit,order=asc,period=last_month → jawaban menyebut "Bulan lalu"'],
+  ['E28', 'Omzet hari ini (belum ada transaksi)', 'get_summary:period=today,empty=true → menyatakan belum ada transaksi; tanpa mengarang angka'],
+  ['E29', 'Sebutkan nama produk terlaris (cek ejaan "Abon Ikan 150g")', 'rank_products → nama disalin persis dari hasil tool']
 ] as const;
 
 console.log('== set evaluasi Copilot ==');

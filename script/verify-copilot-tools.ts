@@ -74,6 +74,30 @@ async function main() {
     } finally {
       await db.delete(product).where(eq(product.id, dirtyId));
     }
+    const rankLaku = randomUUID();
+    const rankSepi = randomUUID();
+    const rankTx = randomUUID();
+    const rankItem = randomUUID();
+    try {
+      await db.insert(product).values([
+        { id: rankLaku, businessId: current.id, name: 'Fixture Rank Laku', costPrice: 5000, sellingPrice: 9000, stock: 10, minStock: 2, isActive: true },
+        { id: rankSepi, businessId: current.id, name: 'Fixture Rank Sepi', costPrice: 5000, sellingPrice: 9000, stock: 10, minStock: 2, isActive: true }
+      ]);
+      await db.insert(transaction).values({ id: rankTx, businessId: current.id, createdAt: new Date() });
+      await db.insert(transactionItem).values({ id: rankItem, transactionId: rankTx, productId: rankLaku, quantity: 5, priceAtSale: 9000, costAtSale: 5000 });
+      const rankTool = findTool('rank_products');
+      const lowest = rankTool ? await rankTool.run(ctx, { period: 'last_30d', by: 'profit', order: 'asc', limit: 1 }) : null;
+      const lowestData = lowest?.ok === true ? (lowest.data as { empty: boolean; items: { id: string; qty: number }[] }) : null;
+      ok(
+        'terendah limit 1 bukan produk nol',
+        lowestData !== null && lowestData.empty === false && lowestData.items.length === 1 && lowestData.items[0].qty > 0 && lowestData.items[0].id !== rankSepi
+      );
+    } finally {
+      await db.delete(transactionItem).where(eq(transactionItem.id, rankItem));
+      await db.delete(transaction).where(eq(transaction.id, rankTx));
+      await db.delete(product).where(eq(product.id, rankLaku));
+      await db.delete(product).where(eq(product.id, rankSepi));
+    }
     const inventory = findTool('get_inventory');
     type InvSummary = { outCount: number; lowCount: number; inactive: { count: number; stockValue: number } };
     const readSummary = async () => {
