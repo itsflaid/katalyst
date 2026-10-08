@@ -98,11 +98,47 @@
     }
   ];
 
+  const zakat = [
+    {
+      t: 'Aset bersih',
+      d: 'Stok + kas + piutang lancar − utang jatuh tempo. Contoh: Rp80.000.000 + Rp10.000.000 + Rp5.000.000 − Rp3.000.000 = Rp92.000.000.'
+    },
+    {
+      t: 'Nisab',
+      d: '85 gram × harga emas per gram. Contoh: 85 × Rp1.350.000 = Rp114.750.000. Zakat hanya bila aset bersih mencapai angka ini.'
+    },
+    {
+      t: 'Zakat',
+      d: '2,5% × aset bersih. Contoh: 2,5% × Rp114.750.000 = Rp2.868.750. Di bawah nisab = Rp0.'
+    },
+    {
+      t: 'Haul',
+      d: 'Harta harus genap 1 haul (±354 hari) sejak tanggal mulai. Sisa hari ditulis "kira-kira" karena kalender Hijriah tidak dihitung.'
+    },
+    {
+      t: 'Estimasi parsial',
+      d: '"Belum diisi" berbeda dari 0: kolom kosong dihitung 0 tetapi hasilnya ditandai parsial (tanda ~). Isi semua kolom untuk angka final.'
+    },
+    {
+      t: 'Valuasi stok',
+      d: 'Pilih harga modal atau harga jual untuk menilai stok. Aplikasi tidak menentukan pendapat mana yang benar.'
+    },
+    {
+      t: 'Dampak simulator',
+      d: 'Simulator tidak menghitung zakat dari profit: selisih profit skenario ditambahkan ke aset bersih sekarang, lalu zakat sebelum dan sesudah dibandingkan.'
+    },
+    {
+      t: 'Bukan fatwa',
+      d: 'Estimasi berdasarkan data yang kamu isi — konfirmasi ke BAZNAS atau lembaga amil zakat.'
+    }
+  ];
+
   const sections = [
     { title: 'Keuangan', items: angka },
     { title: 'Transaksi', items: transaksi },
     { title: 'Stok', items: stok },
-    { title: 'Analisis', items: analisis }
+    { title: 'Analisis', items: analisis },
+    { title: 'Zakat', items: zakat }
   ];
 
   const pages = [
@@ -110,7 +146,8 @@
     { t: 'Statistik', d: 'Laporan lengkap per periode (harian/mingguan/bulanan/custom): komposisi untung, margin per produk, dan hari tersibuk.' },
     { t: 'Produk', d: 'Daftar barang dagangan: harga modal, harga jual, margin, stok, dan batas menipis per produk. Stok habis otomatis hilang dari kasir (tanpa menonaktifkan). Tab Riwayat Stok mencatat semua pergerakan.' },
     { t: 'Transaksi', d: 'Kasir: catat penjualan multi-produk per struk, lihat riwayat per hari, void struk yang salah catat.' },
-    { t: 'Simulator', d: 'Lab percobaan: geser harga, diskon, modal, atau volume untuk lihat dampaknya sebelum benar-benar diterapkan.' },
+    { t: 'Simulator', d: 'Lab percobaan: geser harga, diskon, modal, atau volume untuk lihat dampaknya sebelum benar-benar diterapkan. Ada kartu dampak ke zakat bila data zakat terisi.' },
+    { t: 'Zakat', d: 'Estimasi zakat perdagangan 2,5% dari aset bersih (stok + kas + piutang − utang) bila mencapai nisab dan haul genap. Kas, piutang, utang, dan harga emas diisi manual.' },
     { t: 'Copilot', d: 'Asisten tanya-jawab soal performa bisnismu, jawabannya dihitung dari data transaksimu sendiri.' },
     { t: 'Pengaturan', d: 'Nama bisnis dan kelola staff: undang akun baru, kirim ulang undangan, reset password yang lupa, dan hapus (khusus Owner).' },
     { t: 'Akun', d: 'Profil kamu: ganti nama tampil dan password sendiri.' }
