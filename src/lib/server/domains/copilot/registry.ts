@@ -18,7 +18,7 @@ export interface RegisteredTool {
   run: (ctx: ToolContext, args: unknown) => Promise<ToolResult<unknown>>;
 }
 
-const PERIOD = { type: 'string', enum: ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'custom'] };
+const PERIOD = { type: 'string', enum: ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'last_7d', 'last_90d', 'custom'] };
 
 export const TOOL_REGISTRY: RegisteredTool[] = [
   {
