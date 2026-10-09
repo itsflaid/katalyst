@@ -1,4 +1,5 @@
 import { daysBetween, zakatImpactOf, zakatOf, HAUL_DAYS, ZAKAT_RATE, type ZakatInput } from '../src/lib/analytics/zakat';
+import { parseBalanceForm, parseSettingForm } from '../src/lib/server/domains/zakat/validate';
 
 let passCount = 0;
 let failCount = 0;
@@ -34,6 +35,33 @@ console.log('\n== ambang nisab ==');
   const exact: ZakatInput = { ...base, stockSelling: 100_000_000, cash: 10_000_000, receivable: 4_750_000, debt: 0, haulStartDate: '2024-01-01' };
   const at = zakatOf(exact);
   ok('tepat sama dengan nisab dihitung tercapai', at.nisabReached === true && at.amount === Math.round(ZAKAT_RATE * 114_750_000) && at.status === 'DUE', `amount=${at.amount}`);
+}
+
+console.log('\n== harga emas nol ==');
+{
+  const zero = zakatOf({ ...base, goldPricePerGram: 0, stockSelling: 1_000, cash: 0, receivable: 0, debt: 0 });
+  ok('harga emas 0 dianggap belum diisi', zero.status === 'NEEDS_GOLD_PRICE' && zero.nisab === null && zero.amount === 0 && zero.missing.includes('goldPrice'));
+}
+
+console.log('\n== validasi form ==');
+{
+  const form = (fields: Record<string, string>) => {
+    const data = new FormData();
+    for (const [key, value] of Object.entries(fields)) data.set(key, value);
+    return data;
+  };
+  const setting = (fields: Record<string, string>) => parseSettingForm(form({ nisabGrams: '85', stockValuation: 'SELLING', ...fields }));
+  const balance = (cash: string) => parseBalanceForm(form({ cash, receivable: '', debt: '' }));
+  const cashOf = (r: ReturnType<typeof balance>) => ('data' in r ? r.data.cash : 'ditolak');
+
+  ok('harga emas 0 ditolak', 'error' in setting({ goldPrice: '0' }));
+  ok('harga emas kosong = belum diisi', 'data' in setting({ goldPrice: '' }) && (setting({ goldPrice: '' }) as { data: { goldPricePerGram: number | null } }).data.goldPricePerGram === null);
+  ok('harga emas di atas batas kolom integer ditolak', 'error' in setting({ goldPrice: '2147483648' }) && 'data' in setting({ goldPrice: '2147483647' }));
+  ok('nisab 0 dan di atas batas ditolak', 'error' in setting({ goldPrice: '1350000', nisabGrams: '0' }) && 'error' in setting({ goldPrice: '1350000', nisabGrams: '1000001' }));
+  ok('kas 0 sah, kosong = null', cashOf(balance('0')) === 0 && cashOf(balance('')) === null);
+  ok('titik ribuan dibuang', cashOf(balance('1.350.000')) === 1_350_000);
+  ok('desimal ditolak, bukan dibaca 10 kali lipat', cashOf(balance('1350000.5')) === 'ditolak' && cashOf(balance('1.5')) === 'ditolak');
+  ok('notasi ilmiah, negatif, dan koma ditolak', cashOf(balance('1e6')) === 'ditolak' && cashOf(balance('-5')) === 'ditolak' && cashOf(balance('1,5')) === 'ditolak');
 }
 
 console.log('\n== null lawan nol ==');

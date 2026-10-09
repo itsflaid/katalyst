@@ -1,12 +1,12 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
-  import { invalidateAll } from '$app/navigation';
   import type { SubmitFunction } from '@sveltejs/kit';
   import Badge from '$lib/components/ui/Badge.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import Input from '$lib/components/ui/Input.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
+  import { ZAKAT_RATE } from '$lib/analytics';
   import { fmtPercent, fmtRupiah } from '$lib/shared/format';
   export let data;
   export let form;
@@ -20,11 +20,11 @@
   let receivable = data.setting?.receivable?.toString() ?? '';
   let debt = data.setting?.debt?.toString() ?? '';
 
+  // reset: false menjaga isian tetap tampil; reset bawaan mengosongkan input tetapi tidak variabelnya, sehingga simpan ulang menimpa data dengan kosong.
   const refresh: SubmitFunction =
     () =>
     async ({ update }) => {
-      await update();
-      await invalidateAll();
+      await update({ reset: false });
     };
 
   const statusMeta = {
@@ -102,7 +102,7 @@
         <dd class="tabular text-ink">{result.nisab === null ? 'isi harga emas dulu' : fmtRupiah(result.nisab)}</dd>
       </div>
     </dl>
-    <p class="mt-2 text-body-sm text-muted">Tarif {fmtPercent(0.025)} × aset bersih, dibayar bila aset bersih mencapai nisab dan haul genap.</p>
+    <p class="mt-2 text-body-sm text-muted">Tarif {fmtPercent(ZAKAT_RATE)} × aset bersih, dibayar bila aset bersih mencapai nisab dan haul genap.</p>
   </Card>
 {:else}
   <Card class="mb-4">
@@ -118,7 +118,7 @@
     <form method="POST" action="?/saveSetting" use:enhance={refresh} class="flex flex-col gap-3">
       <label for="z-gold" class="flex flex-col gap-1 text-body-sm text-ink">
         Harga emas per gram (Rp)
-        <Input id="z-gold" type="number" name="goldPrice" min="0" bind:value={goldPrice} placeholder="cth. 1350000" />
+        <Input id="z-gold" type="number" name="goldPrice" min="1" bind:value={goldPrice} placeholder="cth. 1350000" />
       </label>
       {#if data.setting}
         <p class="text-body-sm text-muted">
