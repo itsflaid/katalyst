@@ -34,21 +34,25 @@
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Revenue</p>
     <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words ">{idr(data.summary.revenue)}</p>
+    <p class="text-body-sm text-muted mb-1.5">30 hari terakhir</p>
     <Badge tone={deltaTone(kpiDeltas.revenue)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.revenue)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge>
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Transaksi</p>
     <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{num(data.transactionCount)}</p>
+    <p class="text-body-sm text-muted mb-1.5">30 hari terakhir</p>
     <Badge tone={deltaTone(kpiDeltas.transactions)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.transactions)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge>
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Profit</p>
     <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words ">{idr(data.summary.profit)}</p>
+    <p class="text-body-sm text-muted mb-1.5">30 hari terakhir</p>
     <Badge tone={deltaTone(kpiDeltas.profit)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.profit)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge>
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Margin</p>
     <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{(data.summary.margin * 100).toFixed(1)}%</p>
+    <p class="text-body-sm text-muted mb-1.5">30 hari terakhir</p>
     <Badge tone={data.summary.margin >= 0.3 ? 'positive' : 'warning'} class="text-[11px] sm:text-label-md">
       {data.summary.margin >= 0.3 ? 'Sehat' : 'Perlu perhatian'}
     </Badge>
@@ -71,7 +75,8 @@
     />
   </Card>
   <Card>
-    <h2 class="text-headline-sm text-ink mb-3">Revenue per Produk (Top 5)</h2>
+    <h2 class="text-headline-sm text-ink mb-1">Revenue per Produk (Top 5)</h2>
+    <p class="text-body-sm text-muted mb-3">30 hari terakhir</p>
     <BarChart labels={topProductLabels} data={topProductRevenue} />
   </Card>
   </div>
