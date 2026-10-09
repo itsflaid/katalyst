@@ -249,7 +249,7 @@ const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
   await collect(pool, baseReq);
   tried.length = 0;
   const e2 = await collect(pool, baseReq);
-  const skipped = tried.join(',') === 'm2' && e2[0]?.type === 'model' && e2[0].failovers === 0;
+  const skipped = tried.join(',') === 'm2' && e2[0]?.type === 'model' && e2[0].failovers === 1;
   nowMs += 61_000;
   tried.length = 0;
   await collect(pool, baseReq);
@@ -328,8 +328,55 @@ const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
   const events = await collect(client, baseReq);
   ok(
     '(20) extraBody per model',
-    bodies.length === 2 && bodies[0]['reasoning_effort'] === 'low' && bodies[1]['reasoning_effort'] === undefined && events[0]?.type === 'model' && events[0].model === 'qwen/qwen3.8-27b',
+    bodies.length === 2 && bodies[0]['reasoning_effort'] === 'low' && bodies[1]['reasoning_effort'] === 'none' && bodies[1]['include_reasoning'] === undefined && events[0]?.type === 'model' && events[0].model === 'qwen/qwen3.8-27b',
     JSON.stringify(bodies.map((b) => ({ model: b['model'], reasoning_effort: b['reasoning_effort'] })))
+  );
+}
+
+{
+  const nowMs = 5_000_000;
+  const tried: string[] = [];
+  const pool = createPooledClient([member('m1', okChunks), member('m2', okChunks)], {
+    maxFailover: 2,
+    now: () => nowMs,
+    cooldowns: new Map([['m1', nowMs + 60_000]]),
+    onAttempt: (m) => tried.push(m)
+  });
+  const events = await collect(pool, baseReq);
+  const first = events[0];
+  ok('(21) cooldown dilewati terhitung failover', first?.type === 'model' && first.model === 'm2' && first.failovers === 1 && tried.join(',') === 'm2', JSON.stringify({ first, tried }));
+}
+
+{
+  const pool = createPooledClient([member('m1', [], 429, { 'retry-after': '5' }), member('m2', [], 429, { 'retry-after': '30' })], { maxFailover: 2, cooldowns: new Map() });
+  const err = await collectFails(pool, baseReq);
+  ok('(22) 429 memakai Retry-After terbesar', err instanceof LlmHttpError && err.status === 429 && err.retryAfterMs === 30000, String(err));
+}
+
+{
+  const bodies: Record<string, unknown>[] = [];
+  const qwenFetch = (async (_url: unknown, init: unknown) => {
+    bodies.push(JSON.parse((init as { body: string }).body) as Record<string, unknown>);
+    return sse([
+      chunk({ content: 'Siap', reasoning: 'pikir' }),
+      chunk({ tool_calls: [{ index: 0, id: 'c1', function: { name: 'get_summary', arguments: '{"period":"today"}' } }] }),
+      chunk({}, 'tool_calls'),
+      DONE
+    ]);
+  }) as typeof fetch;
+  const client = createLlmClient({ provider: 'groq', apiKey: 'k', models: ['qwen/qwen3.8-27b'] }, qwenFetch);
+  const events = await collect(client, baseReq);
+  const call = events.find((e) => e.type === 'tool_call');
+  ok(
+    '(23) kontrak qwen: body + tool_call',
+    bodies.length === 1 &&
+      bodies[0]['model'] === 'qwen/qwen3.8-27b' &&
+      bodies[0]['reasoning_effort'] === 'none' &&
+      !('include_reasoning' in bodies[0]) &&
+      call?.type === 'tool_call' &&
+      call.argsJson === '{"period":"today"}' &&
+      !JSON.stringify(events).includes('pikir'),
+    JSON.stringify(bodies)
   );
 }
 
@@ -339,17 +386,19 @@ if (process.argv.includes('--live')) {
   if (!key) {
     console.log('  SKIP: LLM_API_KEY kosong');
   } else {
-    const client = createLlmClient({ provider: 'groq', apiKey: key, models: ['openai/gpt-oss-20b'] });
-    const events = await collect(client, {
-      system: 'Panggil tool yang tersedia.',
-      messages: [{ role: 'user', content: 'Panggil tool get_test sekarang.' }],
-      tools: [{ name: 'get_test', description: 'Tool uji yang wajib dipanggil.', parameters: { type: 'object', properties: {} } }],
-      toolChoice: 'auto',
-      maxTokens: 600,
-      temperature: 0
-    });
-    ok('live: tool_call muncul', events.some((e) => e.type === 'tool_call'), JSON.stringify(events).slice(0, 400));
-    ok('live: usage muncul', events.some((e) => e.type === 'usage'), JSON.stringify(events).slice(0, 400));
+    for (const model of ['openai/gpt-oss-20b', 'qwen/qwen3.8-27b']) {
+      const liveClient = createLlmClient({ provider: 'groq', apiKey: key, models: [model] });
+      const liveEvents = await collect(liveClient, {
+        system: 'Panggil tool yang tersedia.',
+        messages: [{ role: 'user', content: 'Panggil tool get_test sekarang.' }],
+        tools: [{ name: 'get_test', description: 'Tool uji yang wajib dipanggil.', parameters: { type: 'object', properties: {} } }],
+        toolChoice: 'auto',
+        maxTokens: 600,
+        temperature: 0
+      });
+      ok(`live ${model}: tool_call muncul`, liveEvents.some((e) => e.type === 'tool_call'), JSON.stringify(liveEvents).slice(0, 400));
+      ok(`live ${model}: usage muncul`, liveEvents.some((e) => e.type === 'usage'), JSON.stringify(liveEvents).slice(0, 400));
+    }
   }
 }
 

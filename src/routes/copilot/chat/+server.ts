@@ -10,6 +10,7 @@ import type { ToolContext } from '$lib/server/domains/copilot/context';
 import { failure } from '$lib/server/domains/copilot/envelope';
 import { toModelView } from '$lib/server/domains/copilot/model-view';
 import { detectProductMention } from '$lib/server/domains/copilot/product-mention';
+import { rateLimitMessage } from '$lib/server/domains/copilot/rate-limit';
 import { sanitizeText } from '$lib/server/domains/copilot/sanitize';
 import { verifyGrounding } from '$lib/server/domains/copilot/grounding';
 import { canUseCopilot, dailyLimitFrom } from '$lib/server/domains/copilot/limits';
@@ -283,13 +284,13 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
         if ((e as Error)?.name === 'AbortError' || request.signal.aborted) return;
         console.log(JSON.stringify({ budgetUsed: budget.used, steps, wallMs: Date.now() - startMs }));
         const code = e instanceof LlmHttpError && e.status === 429 ? 'RATE_LIMITED' : 'PROVIDER';
-        const message =
-          code === 'RATE_LIMITED'
-            ? 'Lagi ramai, coba lagi sebentar.'
-            : e instanceof Error && e.message === 'BUDGET_EXCEEDED'
-              ? 'Anggaran komputasi habis, persempit pertanyaan.'
-              : 'Penyedia AI bermasalah, coba lagi sebentar.';
-        send('error', { code, message });
+        const limited = code === 'RATE_LIMITED' ? rateLimitMessage(e instanceof LlmHttpError ? e.retryAfterMs : null) : null;
+        const message = limited
+          ? limited.message
+          : e instanceof Error && e.message === 'BUDGET_EXCEEDED'
+            ? 'Anggaran komputasi habis, persempit pertanyaan.'
+            : 'Penyedia AI bermasalah, coba lagi sebentar.';
+        send('error', limited ? { code, message, retryAfterSec: limited.retryAfterSec } : { code, message });
       } finally {
         controller.close();
       }
