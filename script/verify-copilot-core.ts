@@ -8,6 +8,9 @@ import { success } from '../src/lib/server/domains/copilot/envelope';
 import type { ToolContext } from '../src/lib/server/domains/copilot/context';
 import { toModelView } from '../src/lib/server/domains/copilot/model-view';
 import { buildRankProductsData } from '../src/lib/server/domains/copilot/tools/rank-products';
+import { buildQueryMetricsData } from '../src/lib/server/domains/copilot/tools/query-metrics';
+import { detectProductMention } from '../src/lib/server/domains/copilot/product-mention';
+import { makeTime } from '../src/lib/shared/time';
 import { verifyGrounding } from '../src/lib/server/domains/copilot/grounding';
 
 let passCount = 0;
@@ -174,6 +177,34 @@ async function main() {
       'jawaban salinan lolos grounding',
       verifyGrounding('Keuntungan terendah Abon Ikan 150g Rp5.000. 1 produk aktif belum terjual: Madu Kelulut Kaltim 250ml.', [{ data: { summary: lowest.summary, items: lowest.items } }]).ok
     );
+  }
+
+  console.log('\n== sebutan produk ==');
+  {
+    const catalog = ['Amplang Ikan Tenggiri 250g', 'Amplang Udang 200g', 'Kaos Pesut Mahakam'];
+    const amplang = detectProductMention('Amplang paling laku hari apa?', catalog);
+    ok('Amplang cocok dua produk', amplang.length === 1 && amplang[0].phrase === 'Amplang' && amplang[0].productNames.length === 2);
+    const kaos = detectProductMention('Kaos Pesut paling laku kapan?', catalog);
+    ok('Kaos Pesut cocok nama lengkap sebagian', kaos.length === 1 && kaos[0].phrase === 'Kaos Pesut' && kaos[0].productNames.join() === 'Kaos Pesut Mahakam');
+    ok('tanpa produk tidak cocok', detectProductMention('hari apa paling ramai?', catalog).length === 0 && detectProductMention('omzet kemarin', catalog).length === 0);
+    ok('stopword tidak memicu', detectProductMention('paket produk apa yang besar?', catalog).length === 0);
+    ok('batas kata', detectProductMention('madura laku?', ['Madu Kelulut 250ml']).length === 0 && detectProductMention('madu kelulut laku?', ['Madu Kelulut 250ml']).length === 1);
+    const caps = detectProductMention('AMPLANG ikan apa?', catalog);
+    ok('frasa sama dengan teks pengguna', caps.some((m) => m.phrase === 'AMPLANG' && m.productNames.length === 2));
+  }
+
+  console.log('\n== cakupan query_metrics ==');
+  {
+    const T = makeTime('Asia/Makassar');
+    const from = T.parseDay('2026-09-01')!;
+    const to = T.endOfDay(T.parseDay('2026-09-30')!);
+    const now = new Date('2026-09-30T00:00:00Z');
+    const byDay = new Map([['2026-09-07', { qty: 4, gross: 200000, discount: 0, cost: 120000, discountedQty: 0, txCount: 4 }]]);
+    const shared = { metric: 'qty', groupBy: 'weekday', period: 'last_30d', windowLabel: '30 hari terakhir', window: { from, to }, now, T, byDay } as const;
+    const all = buildQueryMetricsData({ ...shared, metric: 'qty', groupBy: 'weekday', period: 'last_30d' });
+    const one = buildQueryMetricsData({ ...shared, metric: 'qty', groupBy: 'weekday', period: 'last_30d', product: { id: 'a', name: 'Amplang Ikan Tenggiri 250g' } });
+    ok('scope semua produk', all.ok && all.data.scope.kind === 'all' && all.data.scope.label === 'Semua produk');
+    ok('scope satu produk', one.ok && one.data.scope.kind === 'product' && one.data.scope.label === 'Amplang Ikan Tenggiri 250g');
   }
 
   console.log(`\n${passCount} passed, ${failCount} failed\n`);

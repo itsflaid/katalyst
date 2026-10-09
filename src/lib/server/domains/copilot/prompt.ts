@@ -21,6 +21,7 @@ export function copilotPrompt(input: { businessName: string; dateLabel: string; 
     'Tidak ada data hanya boleh bila hasil menyatakan empty true; jangan menyimpulkannya dari daftar yang dipotong.',
     'Sebut periode persis seperti window.label; jangan mengganti dengan periode lain.',
     'Salin nama produk persis dari hasil tool; jangan menambah spasi atau mengganti tanda hubung.',
+    'Sebut cakupan hasil (scope); jangan mengaitkan hasil dengan produk yang tidak ada di scope.',
     'Copilot hanya membaca data; arahkan perubahan harga atau stok ke halaman terkait.'
   ].join(' ');
 }
