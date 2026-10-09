@@ -56,7 +56,7 @@
 </div>
 
 <!-- Baris 2: 2 grafik 50-50. {#key} biar chart dibuat ulang + animasi
-     entrance tiap masuk halaman. -->
+      entrance tiap masuk halaman. -->
 {#key $page.url.pathname}
   <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
   <Card>

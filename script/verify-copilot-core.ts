@@ -9,6 +9,9 @@ import type { ToolContext } from '../src/lib/server/domains/copilot/context';
 import { toModelView } from '../src/lib/server/domains/copilot/model-view';
 import { buildRankProductsData } from '../src/lib/server/domains/copilot/tools/rank-products';
 import { buildQueryMetricsData } from '../src/lib/server/domains/copilot/tools/query-metrics';
+import { buildExplainChangeData } from '../src/lib/server/domains/copilot/tools/explain-change';
+import { buildComparePeriodsData } from '../src/lib/server/domains/copilot/tools/compare-periods';
+import { decomposeProfitMaps } from '../src/lib/analytics/decompose';
 import { detectProductMention } from '../src/lib/server/domains/copilot/product-mention';
 import { makeTime } from '../src/lib/shared/time';
 import { verifyGrounding } from '../src/lib/server/domains/copilot/grounding';
@@ -205,6 +208,29 @@ async function main() {
     const one = buildQueryMetricsData({ ...shared, metric: 'qty', groupBy: 'weekday', period: 'last_30d', product: { id: 'a', name: 'Amplang Ikan Tenggiri 250g' } });
     ok('scope semua produk', all.ok && all.data.scope.kind === 'all' && all.data.scope.label === 'Semua produk');
     ok('scope satu produk', one.ok && one.data.scope.kind === 'product' && one.data.scope.label === 'Amplang Ikan Tenggiri 250g');
+  }
+
+  console.log('\n== jendela kosong ==');
+  {
+    const emptyFacts = { qty: 0, gross: 0, discount: 0, cost: 0, discountedQty: 0 };
+    const fullFacts = { qty: 10, gross: 629000, discount: 0, cost: 300000, discountedQty: 0 };
+    const e1 = buildExplainChangeData({
+      factors: decomposeProfitMaps(new Map(), new Map([['p1', fullFacts]])),
+      profitDelta: -329000,
+      empty: true,
+      period: 'today',
+      windowLabel: 'Hari ini',
+      baselineLabel: 'Kemarin'
+    });
+    ok('explain current kosong tanpa faktor', e1.empty === true && e1.factors.length === 0);
+    const e2 = buildExplainChangeData({ factors: { volume: 0, price: 0, discount: 0, cost: 0 }, profitDelta: 0, empty: true, period: 'today', windowLabel: 'Hari ini', baselineLabel: 'Kemarin' });
+    ok('explain dua-dua kosong', e2.empty === true && e2.factors.length === 0);
+    const e3 = buildExplainChangeData({ factors: { volume: -100000, price: 51000, discount: 0, cost: -20000 }, profitDelta: -69000, empty: false, period: 'last_30d', windowLabel: '30 hari terakhir', baselineLabel: '30 hari sebelumnya' });
+    ok('explain berisi tak berubah', e3.empty === false && e3.factors.length === 4);
+    const c1 = buildComparePeriodsData({ current: emptyFacts, baseline: fullFacts, empty: true, period: 'today', windowLabel: 'Hari ini', baselineLabel: 'Kemarin' });
+    ok('compare kosong tanpa deret', c1.empty === true && c1.change.revenue === null && c1.change.profit === null);
+    const c2 = buildComparePeriodsData({ current: fullFacts, baseline: fullFacts, empty: false, period: 'last_30d', windowLabel: '30 hari terakhir', baselineLabel: '30 hari sebelumnya' });
+    ok('compare berisi tak berubah', c2.empty === false && c2.change.revenue === 0);
   }
 
   console.log(`\n${passCount} passed, ${failCount} failed\n`);
