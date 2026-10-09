@@ -5,12 +5,12 @@ import {
   calculateMargin,
   compareProductPeriods,
   deltaRatio,
-  estimateDaysCover,
   fillDailySeries,
   getBusinessInsights,
   getLowMarginProducts,
   getTopProducts,
   summarizeFacts,
+  summarizeInventoryRows,
   totalsOf,
   type ProductSummary
 } from '$lib/analytics';
@@ -186,34 +186,7 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
   const cashiers = [...cashierRows].sort((a, b) => b.revenue - a.revenue);
   const cashierStats = { list: cashiers, show: cashiers.length >= 2 };
 
-  // stockValue = Σ stock × costPrice   (Rupiah)
-  // out        = stock ≤ 0
-  // restock    = 0 < stock ≤ minStock   (minStock kosong dianggap 5)
-  // dead       = stock > 0 dan sold14 = 0
-  const invProducts = invData.products;
-  const stockValue = invProducts.reduce((s, p) => s + p.stock * p.costPrice, 0);
-  const invOut = invProducts.filter((p) => p.stock <= 0).length;
-  const invRestock = invProducts.filter((p) => p.stock > 0 && p.stock <= (p.minStock ?? 5)).length;
-  const deadFull = invProducts
-    .filter((p) => p.stock > 0 && p.sold14 === 0)
-    .map((p) => ({ id: p.id, name: p.name, stock: p.stock, value: p.stock * p.costPrice }))
-    .sort((a, b) => b.value - a.value);
-  const deadValue = deadFull.reduce((s, p) => s + p.value, 0);
-  const daysList = invProducts
-    .filter((p) => p.sold14 > 0)
-    .map((p) => ({ id: p.id, name: p.name, stock: p.stock, days: estimateDaysCover(p.stock, p.sold14, INVENTORY_WINDOW_DAYS) }))
-    .sort((a, b) => a.days - b.days)
-    .slice(0, 8);
-  const inventory = {
-    windowDays: INVENTORY_WINDOW_DAYS,
-    stockValue,
-    outCount: invOut,
-    restockCount: invRestock,
-    deadCount: deadFull.length,
-    deadValue,
-    daysList,
-    deadList: deadFull.slice(0, 5)
-  };
+  const inventory = summarizeInventoryRows(invData.products, INVENTORY_WINDOW_DAYS);
 
   // movement.sold = −(Σ qtyChange SALE per minggu)
   // movement.adjust = Σ qtyChange ADJUST per minggu
