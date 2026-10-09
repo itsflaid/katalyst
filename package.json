@@ -44,6 +44,7 @@
     "verify:stat-inventory": "tsx script/verify-stat-inventory.ts",
     "verify:http": "tsx script/verify-http.ts",
     "verify:invite-atomic": "tsx script/verify-invite-atomic.ts",
+    "verify:invite-accept": "tsx script/verify-invite-accept.ts",
     "verify:facts": "tsx script/verify-facts.ts",
     "verify:facts-db": "tsx script/verify-facts-db.ts",
     "verify:sim": "tsx script/verify-sim.ts",
