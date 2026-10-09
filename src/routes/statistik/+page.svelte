@@ -305,6 +305,9 @@
       <p class="text-body-sm text-muted tabular break-words [overflow-wrap:anywhere]">Modal tertahan {idr(data.inventory.deadValue)}</p>
     </Card>
   </div>
+  {#if data.inventory.inactiveStock.count > 0}
+    <p class="text-body-sm text-muted mb-4">Stok di produk nonaktif: {idr(data.inventory.inactiveStock.value)} ({num(data.inventory.inactiveStock.count)} produk)</p>
+  {/if}
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
     <Card>
       <h2 class="text-headline-sm text-ink mb-1">Estimasi Hari Stok</h2>
