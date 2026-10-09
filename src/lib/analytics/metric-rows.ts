@@ -30,6 +30,7 @@ export interface MetricRow {
   label: string;
   value: number;
   valueText: string;
+  defined: boolean;
   shareText?: string;
   occurrences?: number;
   perOccurrenceText?: string;
@@ -137,6 +138,13 @@ function orderBuckets(buckets: Bucket[], order: RowOrder, rank: (b: Bucket) => n
   if (order === 'chronological') return buckets;
   const dir = order === 'desc' ? -1 : 1;
   return [...buckets].sort((a, b) => (rank(a) - rank(b)) * dir || a.label.localeCompare(b.label, 'id-ID'));
+}
+
+// Rasio tanpa penjualan tidak terdefinisi: margin butuh revenue, rata-rata struk butuh struk.
+function isDefined(metric: Metric, facts: Facts, txCount: number): boolean {
+  if (metric === 'margin') return metricsOf(facts).revenue !== 0;
+  if (metric === 'avg_ticket') return txCount !== 0;
+  return true;
 }
 
 export function buildMetricRows(input: MetricRowsInput): MetricRowsResult {
@@ -330,10 +338,15 @@ function finish(args: {
 }): MetricRowsResult {
   const { metric, groupBy, total, buckets, order, limit, notes, additive, share, occurrences } = args;
   const rank = args.rank ?? ((b) => metricValue(metric, b.facts, b.txCount));
-  const ranked = order === 'chronological' ? buckets : orderBuckets(buckets, order, rank).slice(0, limit);
+  const ratio = metric === 'margin' || metric === 'avg_ticket';
+  const rankable = ratio ? buckets.filter((b) => isDefined(metric, b.facts, b.txCount)) : buckets;
+  const unranked = buckets.length - rankable.length;
+  if (unranked > 0) notes.push(`${unranked} baris tanpa penjualan tidak ikut peringkat.`);
+  const ranked = order === 'chronological' ? buckets : orderBuckets(rankable, order, rank).slice(0, limit);
   const rows: MetricRow[] = ranked.map((b) => {
     const value = metricValue(metric, b.facts, b.txCount);
-    const row: MetricRow = { key: b.key, label: b.label, value, valueText: formatValue(metric, value) };
+    const defined = isDefined(metric, b.facts, b.txCount);
+    const row: MetricRow = { key: b.key, label: b.label, value, valueText: defined ? formatValue(metric, value) : 'tidak ada penjualan', defined };
     if (share && total !== 0) row.shareText = fmtPercent(value / total);
     else if (share) row.shareText = fmtPercent(0);
     if (occurrences && additive) {
@@ -343,15 +356,16 @@ function finish(args: {
     }
     return row;
   });
-  const ordered = orderBuckets(buckets, 'desc', rank);
+  const ordered = orderBuckets(rankable, 'desc', rank);
   const pick = (b: Bucket) => ({ label: b.label, valueText: formatValue(metric, metricValue(metric, b.facts, b.txCount)) });
+  const hasSummary = ordered.length >= 2;
   return {
     ok: true,
     data: {
       metric, metricLabel: METRIC_LABEL[metric], groupBy, groupLabel: GROUP_LABEL[groupBy],
       total: { value: total, valueText: formatValue(metric, total) },
       rows,
-      summary: { best: rows.length >= 2 ? pick(ordered[0]) : null, worst: rows.length >= 2 ? pick(ordered[ordered.length - 1]) : null },
+      summary: { best: hasSummary ? pick(ordered[0]) : null, worst: hasSummary ? pick(ordered[ordered.length - 1]) : null },
       notes,
       shown: rows.length,
       totalGroups: buckets.length,

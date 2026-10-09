@@ -199,4 +199,87 @@ const results: unknown[] = [];
 
 ok('semua hasil finite', results.every(finiteDeep));
 
+{
+  const T = makeTime('Asia/Makassar');
+  const now = new Date('2026-09-29T00:00:00Z');
+  const thin = buildMetricRows({
+    metric: 'margin', groupBy: 'day',
+    window: { from: T.parseDay('2026-09-28')!, to: T.endOfDay(T.parseDay('2026-09-30')!) },
+    now, T,
+    byDay: new Map<string, GroupedFacts>([
+      ['2026-09-28', facts(10, 100000, 0, 60000, 5)],
+      ['2026-09-29', facts(10, 100000, 0, 90000, 5)]
+    ]),
+    order: 'asc', limit: 1
+  });
+  if (!thin.ok) ok('margin tertipis hanya dari hari berjualan', false);
+  else {
+    results.push(thin);
+    ok('margin tertipis hanya dari hari berjualan', thin.data.rows.length === 1 && thin.data.rows[0].key === '2026-09-29' && thin.data.rows[0].defined === true);
+    ok('baris tanpa penjualan tidak ikut peringkat', thin.data.notes.some((n) => n.includes('1 baris tanpa penjualan tidak ikut peringkat')));
+  }
+  const ticket = buildMetricRows({
+    metric: 'avg_ticket', groupBy: 'weekday',
+    window: { from: T.parseDay('2026-09-01')!, to: T.endOfDay(T.parseDay('2026-09-30')!) },
+    now, T,
+    byDay: new Map<string, GroupedFacts>([['2026-09-07', facts(4, 200000, 0, 120000, 4)]]),
+    order: 'desc', limit: 7
+  });
+  if (!ticket.ok) ok('Sabtu nol berlabel tidak ada penjualan', false);
+  else {
+    results.push(ticket);
+    const senin = ticket.data.rows.find((r) => r.label === 'Senin');
+    ok('peringkat desc hanya baris terdefinisi', ticket.data.rows.length === 1 && senin?.defined === true);
+    ok('Sabtu tidak masuk best/worst', ticket.data.summary.best === null && ticket.data.summary.worst === null);
+    ok('catatan enam baris tak terdefinisi', ticket.data.notes.some((n) => n.includes('6 baris tanpa penjualan tidak ikut peringkat')));
+  }
+  const ticketChrono = buildMetricRows({
+    metric: 'avg_ticket', groupBy: 'weekday',
+    window: { from: T.parseDay('2026-09-01')!, to: T.endOfDay(T.parseDay('2026-09-30')!) },
+    now, T,
+    byDay: new Map<string, GroupedFacts>([['2026-09-07', facts(4, 200000, 0, 120000, 4)]]),
+    order: 'chronological'
+  });
+  if (!ticketChrono.ok) ok('Sabtu kronologis berlabel tidak ada penjualan', false);
+  else {
+    results.push(ticketChrono);
+    const sabtu = ticketChrono.data.rows.find((r) => r.label === 'Sabtu');
+    ok('Sabtu kronologis berlabel tidak ada penjualan', sabtu?.valueText === 'tidak ada penjualan' && sabtu?.defined === false && sabtu?.value === 0);
+  }
+  const chrono = buildMetricRows({
+    metric: 'margin', groupBy: 'day',
+    window: { from: T.parseDay('2026-09-28')!, to: T.endOfDay(T.parseDay('2026-09-30')!) },
+    now, T,
+    byDay: new Map<string, GroupedFacts>([['2026-09-28', facts(10, 100000, 0, 60000, 5)]]),
+    order: 'chronological'
+  });
+  if (!chrono.ok) ok('kronologis menampilkan semua baris', false);
+  else {
+    results.push(chrono);
+    ok('kronologis menampilkan semua baris', chrono.data.rows.length === 3 && chrono.data.rows.filter((r) => !r.defined).length === 2);
+  }
+  const quiet = buildMetricRows({
+    metric: 'tx_count', groupBy: 'day',
+    window: { from: T.parseDay('2026-09-28')!, to: T.endOfDay(T.parseDay('2026-09-30')!) },
+    now, T,
+    byDay: new Map<string, GroupedFacts>([['2026-09-28', facts(10, 100000, 0, 60000, 5)]]),
+    order: 'asc', limit: 1
+  });
+  if (!quiet.ok) ok('sepi aditif boleh hari nol', false);
+  else {
+    results.push(quiet);
+    ok('sepi aditif boleh hari nol', quiet.data.rows.length === 1 && quiet.data.rows[0].value === 0 && quiet.data.rows[0].defined === true);
+  }
+  const allZero = buildMetricRows({
+    metric: 'margin', groupBy: 'day',
+    window: { from: T.parseDay('2026-09-28')!, to: T.endOfDay(T.parseDay('2026-09-30')!) },
+    now, T, byDay: new Map<string, GroupedFacts>(), order: 'desc', limit: 5
+  });
+  if (!allZero.ok) ok('semua nol ringkasan kosong', false);
+  else {
+    results.push(allZero);
+    ok('semua nol ringkasan kosong', allZero.data.rows.length === 0 && allZero.data.summary.best === null && allZero.data.summary.worst === null && allZero.data.notes.some((n) => n.includes('tidak ikut peringkat')) && finiteDeep(allZero));
+  }
+}
+
 if (failed) process.exit(1);
