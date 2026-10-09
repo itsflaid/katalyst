@@ -1,16 +1,27 @@
 <script lang="ts">
   export let headers: string[] = [];
+  export let headTone: 'navy' | 'light' = 'navy';
 </script>
 
 <div class="overflow-x-auto rounded-panel border border-border-cool">
   <table class="w-full text-body-md">
-    <thead class="bg-ink-navy border-b border-ink-navy">
-      <tr>
-        {#each headers as h}
-          <th class="px-3 py-2 text-left text-label-md uppercase text-white">{h}</th>
-        {/each}
-      </tr>
-    </thead>
+    {#if headTone === 'navy'}
+      <thead class="bg-ink-navy border-b border-ink-navy">
+        <tr>
+          {#each headers as h}
+            <th class="px-3 py-2 text-left text-label-md uppercase text-white">{h}</th>
+          {/each}
+        </tr>
+      </thead>
+    {:else}
+      <thead class="bg-table-header border-b border-border-cool">
+        <tr>
+          {#each headers as h}
+            <th class="px-3 py-2 text-left text-label-md uppercase text-ink">{h}</th>
+          {/each}
+        </tr>
+      </thead>
+    {/if}
     <!-- Body selang-seling putih standar: ganjil #FFFFFF, genap #F8FAFC -->
     <tbody class="divide-y divide-table-divider">
       <slot />
