@@ -8,7 +8,7 @@ import { failure, success, type ToolResult } from '../envelope';
 import { validateArgs } from '../validate';
 
 const TOOL = 'get_summary';
-const periods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'custom'] as const;
+const periods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'last_7d', 'last_90d', 'custom'] as const;
 
 export interface SummaryData {
   empty: boolean;

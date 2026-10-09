@@ -18,7 +18,7 @@ import { resolveProduct } from '../product-resolver';
 import { validateArgs } from '../validate';
 
 const TOOL = 'query_metrics';
-const periods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'custom'] as const;
+const periods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'last_7d', 'last_90d', 'custom'] as const;
 const metrics: Metric[] = ['revenue', 'profit', 'margin', 'qty', 'tx_count', 'discount_total', 'avg_ticket'];
 const groupBys: GroupBy[] = ['none', 'product', 'day', 'week', 'month', 'weekday', 'hour'];
 const orders: RowOrder[] = ['chronological', 'desc', 'asc'];

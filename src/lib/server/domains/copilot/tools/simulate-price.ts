@@ -11,7 +11,7 @@ import { resolveProduct } from '../product-resolver';
 import { validateArgs } from '../validate';
 
 const TOOL = 'simulate_price';
-const periods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'custom'] as const;
+const periods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'last_7d', 'last_90d', 'custom'] as const;
 const DEFAULT_VOLUMES = [-20, -10, 0, 10, 20];
 
 export function simFlagText(flag: SimFlag): string {
