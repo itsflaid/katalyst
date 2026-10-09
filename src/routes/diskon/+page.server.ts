@@ -4,7 +4,7 @@ import { and, eq } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { requireOwner } from '$lib/server/domains/auth/guards';
 import { denyUnlessOwner } from '$lib/server/domains/products';
-import { canDeleteDiscount, findOverlap, listDiscounts, parseDiscountForm } from '$lib/server/domains/discounts';
+import { canDeleteDiscount, findOverlap, listDiscounts, overlapDbMessage, parseDiscountForm } from '$lib/server/domains/discounts';
 import { getDiscountStatus } from '$lib/discount';
 import { DEFAULT_TZ, makeTime } from '$lib/shared/time';
 import type { Actions, PageServerLoad } from './$types';
@@ -78,17 +78,24 @@ export const actions: Actions = {
     if ('error' in parsed) return fail(400, { message: parsed.error, code: parsed.code, lossProducts: parsed.lossProducts });
 
     // crypto.randomUUID global (bukan import 'crypto') biar jalan di Workers.
-    await db.insert(discount).values({
-      id: crypto.randomUUID(),
-      businessId,
-      name: parsed.data.name,
-      scope: parsed.data.scope,
-      percent: parsed.data.percent,
-      productId: parsed.data.productId,
-      startsAt: parsed.data.startsAt,
-      endsAt: parsed.data.endsAt,
-      quota: parsed.data.quota
-    });
+    try {
+      await db.insert(discount).values({
+        id: crypto.randomUUID(),
+        businessId,
+        name: parsed.data.name,
+        scope: parsed.data.scope,
+        percent: parsed.data.percent,
+        productId: parsed.data.productId,
+        startsAt: parsed.data.startsAt,
+        endsAt: parsed.data.endsAt,
+        quota: parsed.data.quota
+      });
+    } catch (e) {
+      // Balapan dengan diskon lain di sela cek aplikasi: constraint DB yang menolak.
+      const message = overlapDbMessage(e, null);
+      if (message) return fail(400, { message });
+      throw e;
+    }
     return { success: true };
   },
 
@@ -109,16 +116,23 @@ export const actions: Actions = {
     if ('error' in parsed) return fail(400, { message: parsed.error, code: parsed.code, lossProducts: parsed.lossProducts });
 
     // Scope & produk tak tersentuh (divalidasi di parse); saklar via toggle.
-    await db
-      .update(discount)
-      .set({
-        name: parsed.data.name,
-        percent: parsed.data.percent,
-        startsAt: parsed.data.startsAt,
-        endsAt: parsed.data.endsAt,
-        quota: parsed.data.quota
-      })
-      .where(and(eq(discount.id, id), eq(discount.businessId, businessId)));
+    try {
+      await db
+        .update(discount)
+        .set({
+          name: parsed.data.name,
+          percent: parsed.data.percent,
+          startsAt: parsed.data.startsAt,
+          endsAt: parsed.data.endsAt,
+          quota: parsed.data.quota
+        })
+        .where(and(eq(discount.id, id), eq(discount.businessId, businessId)));
+    } catch (e) {
+      // Balapan dengan diskon lain di sela cek aplikasi: constraint DB yang menolak.
+      const message = overlapDbMessage(e, null);
+      if (message) return fail(400, { message });
+      throw e;
+    }
     return { success: true };
   },
 
@@ -142,10 +156,17 @@ export const actions: Actions = {
         return fail(400, { message: `Rentang waktu bertabrakan dengan diskon "${clash[0].name}".` });
       }
     }
-    await db
-      .update(discount)
-      .set({ isActive: !existing.isActive })
-      .where(and(eq(discount.id, id), eq(discount.businessId, businessId)));
+    try {
+      await db
+        .update(discount)
+        .set({ isActive: !existing.isActive })
+        .where(and(eq(discount.id, id), eq(discount.businessId, businessId)));
+    } catch (e) {
+      // Balapan dengan diskon lain di sela cek aplikasi: constraint DB yang menolak.
+      const message = overlapDbMessage(e, null);
+      if (message) return fail(400, { message });
+      throw e;
+    }
     return { success: true };
   },
 
@@ -160,7 +181,8 @@ export const actions: Actions = {
     try {
       await db.delete(discount).where(and(eq(discount.id, id), eq(discount.businessId, businessId)));
     } catch {
-      // FK yang menolak di sela (dipakai tepat bersamaan) menghasilkan pesan yang sama.
+      // Baris item menunjuk diskon lewat FK SET NULL: hapus tidak ditolak walau sudah dipakai.
+      // Penjaganya canDeleteDiscount di atas (quotaUsed > 0); tangkapan ini menyamakan pesan bila DB gagal di sela.
       return fail(400, { message: 'Sudah dipakai di transaksi — nonaktifkan saja.' });
     }
     return { success: true };
