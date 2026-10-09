@@ -18,12 +18,12 @@ export interface RegisteredTool {
   run: (ctx: ToolContext, args: unknown) => Promise<ToolResult<unknown>>;
 }
 
-const PERIOD = { type: 'string', enum: ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'custom'] };
+const PERIOD = { type: 'string', enum: ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'last_7d', 'last_90d', 'custom'] };
 
 export const TOOL_REGISTRY: RegisteredTool[] = [
   {
     name: 'get_summary',
-    description: 'Ringkasan omzet, modal, profit, margin, dan jumlah struk pada periode yang diminta.',
+    description: 'Ringkasan omzet, modal, profit, margin, struk.',
     maxQueries: 1,
     enabled: true,
     parameters: {
@@ -39,27 +39,27 @@ export const TOOL_REGISTRY: RegisteredTool[] = [
     run: getSummary
   },
   {
-    name: 'rank_products', description: 'Ranking produk menurut unit, omzet, profit, atau margin; isi include_unsold true bila ditanya produk yang tidak laku atau belum terjual.', maxQueries: 2, enabled: true,
+    name: 'rank_products', description: 'Ranking produk (unit, omzet, profit, margin); "tidak laku" atau belum terjual → include_unsold true.', maxQueries: 2, enabled: true,
     parameters: { type: 'object', properties: { period: PERIOD, from: { type: 'string' }, to: { type: 'string' }, by: { type: 'string', enum: ['qty', 'revenue', 'profit', 'margin'] }, order: { type: 'string', enum: ['asc', 'desc'] }, limit: { type: 'integer' }, include_unsold: { type: 'boolean' } }, additionalProperties: false }, run: rankProducts
   },
   {
-    name: 'compare_periods', description: 'Membandingkan omzet, profit, dan margin periode dengan periode sebelumnya yang sepadan.', maxQueries: 2, enabled: true,
+    name: 'compare_periods', description: 'Bandingkan omzet, profit, margin vs periode sebelumnya.', maxQueries: 2, enabled: true,
     parameters: { type: 'object', properties: { period: PERIOD, from: { type: 'string' }, to: { type: 'string' } }, required: ['period'], additionalProperties: false }, run: comparePeriods
   },
   {
-    name: 'get_inventory', description: 'Stok produk aktif: habis, menipis, hampir habis, mati; ringkasan, estimasi hari, dan nilai stok nonaktif terpisah.', maxQueries: 2, enabled: true,
+    name: 'get_inventory', description: 'Stok aktif: habis, menipis, hampir habis, mati; + estimasi hari; nonaktif terpisah.', maxQueries: 2, enabled: true,
     parameters: { type: 'object', properties: { filter: { type: 'string', enum: ['all', 'low', 'out', 'urgent', 'dead'] }, limit: { type: 'integer' } }, additionalProperties: false }, run: getInventory
   },
   {
-    name: 'explain_change', description: 'Menjelaskan perubahan profit dengan faktor volume, harga, diskon, dan modal.', maxQueries: 2, enabled: true,
+    name: 'explain_change', description: 'Uraian perubahan profit: volume, harga, diskon, modal.', maxQueries: 2, enabled: true,
     parameters: { type: 'object', properties: { period: PERIOD, from: { type: 'string' }, to: { type: 'string' } }, required: ['period'], additionalProperties: false }, run: explainChange
   },
   {
-    name: 'simulate_price', description: 'Mensimulasikan harga, diskon, atau perubahan volume untuk satu produk aktif.', maxQueries: 2, enabled: true,
+    name: 'simulate_price', description: 'Simulasi harga/diskon/volume satu produk aktif.', maxQueries: 2, enabled: true,
     parameters: { type: 'object', properties: { product: { type: 'string' }, period: PERIOD, from: { type: 'string' }, to: { type: 'string' }, priceDelta: { type: 'integer' }, price: { type: 'integer' }, discountPct: { type: 'integer' }, volumePct: { type: 'integer' } }, required: ['product'], additionalProperties: false }, run: simulatePrice
   },
   {
-    name: 'query_metrics', description: 'Menjawab pola waktu dan ukuran dari data: hari atau jam paling ramai dan sepi, omzet per hari, minggu, atau bulan, margin per hari, total diskon, rata-rata belanja per struk, dan pola per produk. Ukuran: omzet sama dengan revenue, untung atau laba sama dengan profit, margin, unit atau jumlah terjual sama dengan qty, jumlah struk atau transaksi sama dengan tx_count, total diskon sama dengan discount_total, rata-rata belanja per struk sama dengan avg_ticket. Kelompok: none total, product per produk, day per hari, week per minggu, month per bulan, weekday per nama hari, hour per jam; "paling ramai" berarti tx_count dengan weekday atau hour dan order desc.', maxQueries: 2, enabled: true,
+    name: 'query_metrics', description: 'Ukuran: omzet=revenue, untung=laba=profit, unit=qty, struk=tx_count, total diskon=discount_total, rata-rata per struk=avg_ticket. Kelompok: none total, product, day, week, month, weekday, hour; "paling ramai"=tx_count+weekday/hour+order desc.', maxQueries: 2, enabled: true,
     parameters: { type: 'object', properties: { metric: { type: 'string', enum: ['revenue', 'profit', 'margin', 'qty', 'tx_count', 'discount_total', 'avg_ticket'] }, group_by: { type: 'string', enum: ['none', 'product', 'day', 'week', 'month', 'weekday', 'hour'] }, period: PERIOD, from: { type: 'string' }, to: { type: 'string' }, product: { type: 'string' }, order: { type: 'string', enum: ['chronological', 'desc', 'asc'] }, limit: { type: 'integer' } }, required: ['metric'], additionalProperties: false }, run: queryMetrics
   }
 ];

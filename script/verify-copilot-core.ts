@@ -8,6 +8,13 @@ import { success } from '../src/lib/server/domains/copilot/envelope';
 import type { ToolContext } from '../src/lib/server/domains/copilot/context';
 import { toModelView } from '../src/lib/server/domains/copilot/model-view';
 import { buildRankProductsData } from '../src/lib/server/domains/copilot/tools/rank-products';
+import { buildQueryMetricsData } from '../src/lib/server/domains/copilot/tools/query-metrics';
+import { buildExplainChangeData } from '../src/lib/server/domains/copilot/tools/explain-change';
+import { buildComparePeriodsData } from '../src/lib/server/domains/copilot/tools/compare-periods';
+import { decomposeProfitMaps } from '../src/lib/analytics/decompose';
+import { detectProductMention } from '../src/lib/server/domains/copilot/product-mention';
+import { rateLimitMessage } from '../src/lib/server/domains/copilot/rate-limit';
+import { makeTime } from '../src/lib/shared/time';
 import { verifyGrounding } from '../src/lib/server/domains/copilot/grounding';
 
 let passCount = 0;
@@ -174,6 +181,66 @@ async function main() {
       'jawaban salinan lolos grounding',
       verifyGrounding('Keuntungan terendah Abon Ikan 150g Rp5.000. 1 produk aktif belum terjual: Madu Kelulut Kaltim 250ml.', [{ data: { summary: lowest.summary, items: lowest.items } }]).ok
     );
+  }
+
+  console.log('\n== sebutan produk ==');
+  {
+    const catalog = ['Amplang Ikan Tenggiri 250g', 'Amplang Udang 200g', 'Kaos Pesut Mahakam'];
+    const amplang = detectProductMention('Amplang paling laku hari apa?', catalog);
+    ok('Amplang cocok dua produk', amplang.length === 1 && amplang[0].phrase === 'Amplang' && amplang[0].productNames.length === 2);
+    const kaos = detectProductMention('Kaos Pesut paling laku kapan?', catalog);
+    ok('Kaos Pesut cocok nama lengkap sebagian', kaos.length === 1 && kaos[0].phrase === 'Kaos Pesut' && kaos[0].productNames.join() === 'Kaos Pesut Mahakam');
+    ok('tanpa produk tidak cocok', detectProductMention('hari apa paling ramai?', catalog).length === 0 && detectProductMention('omzet kemarin', catalog).length === 0);
+    ok('stopword tidak memicu', detectProductMention('paket produk apa yang besar?', catalog).length === 0);
+    ok('batas kata', detectProductMention('madura laku?', ['Madu Kelulut 250ml']).length === 0 && detectProductMention('madu kelulut laku?', ['Madu Kelulut 250ml']).length === 1);
+    const caps = detectProductMention('AMPLANG ikan apa?', catalog);
+    ok('frasa sama dengan teks pengguna', caps.some((m) => m.phrase === 'AMPLANG' && m.productNames.length === 2));
+  }
+
+  console.log('\n== cakupan query_metrics ==');
+  {
+    const T = makeTime('Asia/Makassar');
+    const from = T.parseDay('2026-09-01')!;
+    const to = T.endOfDay(T.parseDay('2026-09-30')!);
+    const now = new Date('2026-09-30T00:00:00Z');
+    const byDay = new Map([['2026-09-07', { qty: 4, gross: 200000, discount: 0, cost: 120000, discountedQty: 0, txCount: 4 }]]);
+    const shared = { metric: 'qty', groupBy: 'weekday', period: 'last_30d', windowLabel: '30 hari terakhir', window: { from, to }, now, T, byDay } as const;
+    const all = buildQueryMetricsData({ ...shared, metric: 'qty', groupBy: 'weekday', period: 'last_30d' });
+    const one = buildQueryMetricsData({ ...shared, metric: 'qty', groupBy: 'weekday', period: 'last_30d', product: { id: 'a', name: 'Amplang Ikan Tenggiri 250g' } });
+    ok('scope semua produk', all.ok && all.data.scope.kind === 'all' && all.data.scope.label === 'Semua produk');
+    ok('scope satu produk', one.ok && one.data.scope.kind === 'product' && one.data.scope.label === 'Amplang Ikan Tenggiri 250g');
+  }
+
+  console.log('\n== jendela kosong ==');
+  {
+    const emptyFacts = { qty: 0, gross: 0, discount: 0, cost: 0, discountedQty: 0 };
+    const fullFacts = { qty: 10, gross: 629000, discount: 0, cost: 300000, discountedQty: 0 };
+    const e1 = buildExplainChangeData({
+      factors: decomposeProfitMaps(new Map(), new Map([['p1', fullFacts]])),
+      profitDelta: -329000,
+      empty: true,
+      period: 'today',
+      windowLabel: 'Hari ini',
+      baselineLabel: 'Kemarin'
+    });
+    ok('explain current kosong tanpa faktor', e1.empty === true && e1.factors.length === 0);
+    const e2 = buildExplainChangeData({ factors: { volume: 0, price: 0, discount: 0, cost: 0 }, profitDelta: 0, empty: true, period: 'today', windowLabel: 'Hari ini', baselineLabel: 'Kemarin' });
+    ok('explain dua-dua kosong', e2.empty === true && e2.factors.length === 0);
+    const e3 = buildExplainChangeData({ factors: { volume: -100000, price: 51000, discount: 0, cost: -20000 }, profitDelta: -69000, empty: false, period: 'last_30d', windowLabel: '30 hari terakhir', baselineLabel: '30 hari sebelumnya' });
+    ok('explain berisi tak berubah', e3.empty === false && e3.factors.length === 4);
+    const c1 = buildComparePeriodsData({ current: emptyFacts, baseline: fullFacts, empty: true, period: 'today', windowLabel: 'Hari ini', baselineLabel: 'Kemarin' });
+    ok('compare kosong tanpa deret', c1.empty === true && c1.change.revenue === null && c1.change.profit === null);
+    const c2 = buildComparePeriodsData({ current: fullFacts, baseline: fullFacts, empty: false, period: 'last_30d', windowLabel: '30 hari terakhir', baselineLabel: '30 hari sebelumnya' });
+    ok('compare berisi tak berubah', c2.empty === false && c2.change.revenue === 0);
+  }
+
+  console.log('\n== pesan 429 ==');
+  {
+    const unknown = rateLimitMessage(null);
+    ok('tanpa Retry-After 60 detik', unknown.retryAfterSec === 60 && unknown.message === 'Lagi ramai, coba lagi dalam ±60 detik.');
+    ok('Retry-After dibulatkan ke atas', rateLimitMessage(2500).retryAfterSec === 3);
+    ok('maks 120 detik', rateLimitMessage(200000).retryAfterSec === 120);
+    ok('nol menjadi 1 detik', rateLimitMessage(0).retryAfterSec === 1);
   }
 
   console.log(`\n${passCount} passed, ${failCount} failed\n`);

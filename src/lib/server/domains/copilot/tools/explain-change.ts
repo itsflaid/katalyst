@@ -9,7 +9,7 @@ import { failure, success, type ToolResult } from '../envelope';
 import { validateArgs } from '../validate';
 
 const TOOL = 'explain_change';
-const periods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'custom'] as const;
+const periods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'last_7d', 'last_90d', 'custom'] as const;
 
 export interface ExplainChangeData {
   empty: boolean;
@@ -29,6 +29,18 @@ export function buildExplainChangeData(input: {
   windowLabel: string;
   baselineLabel: string;
 }): ExplainChangeData {
+  // Jendela kosong: tanpa faktor penyebab; perbandingan tidak bermakna.
+  if (input.empty) {
+    return {
+      empty: true,
+      window: { key: input.period, label: input.windowLabel },
+      windowLabel: input.windowLabel,
+      baselineLabel: input.baselineLabel,
+      profitDelta: input.profitDelta,
+      profitDeltaText: fmtRupiah(input.profitDelta),
+      factors: []
+    };
+  }
   const values = (Object.entries(input.factors) as [keyof ProfitFactor, number][]).map(([key, amount]) => ({
     key,
     amount,
@@ -74,7 +86,7 @@ export async function explainChange(ctx: ToolContext, input: unknown): Promise<T
     baselineLabel: spanLabel(previous.from, previous.to, ctx.tz)
   });
   const notes = empty
-    ? ['Belum ada transaksi pada periode ini.']
+    ? ['Belum ada transaksi pada periode ini; perbandingan tidak bermakna.']
     : [
         ...(previous.clamped ? ['Periode pembanding dipotong mengikuti panjang bulan lalu.'] : []),
         ...(window.to.getTime() < makeTime(ctx.tz).endOfDay(window.to).getTime() ? ['Periode berjalan belum penuh.'] : [])

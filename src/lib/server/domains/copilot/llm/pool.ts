@@ -46,6 +46,7 @@ export function createPooledClient(members: PoolMember[], opts: PoolOpts): LlmCl
   async function* run(req: LlmRequest, signal: AbortSignal): AsyncIterable<LlmEvent> {
     const tried = new Set<number>();
     let failures = 0;
+    let maxRetry: number | null = null;
     let lastError: unknown = new LlmHttpError(500, null, 'Semua model gagal.');
     for (let attempt = 0; attempt <= opts.maxFailover; attempt++) {
       const index = pickNext(tried);
@@ -56,7 +57,16 @@ export function createPooledClient(members: PoolMember[], opts: PoolOpts): LlmCl
       try {
         for await (const event of members[index].client.stream(req, signal)) {
           seenFirst = true;
-          yield event.type === 'model' ? { ...event, failovers: failures } : event;
+          if (event.type !== 'model') {
+            yield event;
+            continue;
+          }
+          // Anggota cooldown yang dilewati sebelum pelayan ikut dihitung.
+          let skipped = 0;
+          for (let j = 0; j < index; j++) {
+            if (!tried.has(j) && (cooling.get(members[j].model) ?? 0) > clock()) skipped++;
+          }
+          yield { ...event, failovers: failures + skipped };
         }
         return;
       } catch (error) {
@@ -67,8 +77,13 @@ export function createPooledClient(members: PoolMember[], opts: PoolOpts): LlmCl
           const wait = Math.min(error.retryAfterMs ?? fallbackCooldown, MAX_COOLDOWN_MS);
           cooling.set(members[index].model, clock() + wait);
         }
+        if (error instanceof LlmHttpError && error.status === 429 && error.retryAfterMs !== null) {
+          maxRetry = maxRetry === null ? error.retryAfterMs : Math.max(maxRetry, error.retryAfterMs);
+        }
       }
     }
+    // Pesan 429 memakai Retry-After terbesar yang diketahui.
+    if (lastError instanceof LlmHttpError && lastError.status === 429) lastError.retryAfterMs = maxRetry;
     throw lastError;
   }
 

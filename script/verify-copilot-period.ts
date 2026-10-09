@@ -93,4 +93,25 @@ for (const tz of TZS) {
   ok('custom tak valid ditolak', bad.from === null && bad.to === null);
 }
 
+for (const tz of TZS) {
+  const now = at(tz, '2026-10-04', '08:19');
+  const cases: { key: NamedPeriodKey; fromDay: string; label: string }[] = [
+    { key: 'last_7d', fromDay: '2026-09-28', label: '7 hari terakhir' },
+    { key: 'last_90d', fromDay: '2026-07-07', label: '90 hari terakhir' }
+  ];
+  for (const { key, fromDay, label } of cases) {
+    const w = resolveNamedPeriod(key, tz, now);
+    ok(
+      `${tz} ${key}: jendela berjalan`,
+      w.from?.getTime() === at(tz, fromDay, '00:00').getTime() && w.to?.getTime() === now.getTime() && w.label === label
+    );
+    const b = comparableWindow({ from: w.from!, to: w.to!, key }, tz, now);
+    const dur = w.to!.getTime() - w.from!.getTime();
+    ok(
+      `${tz} ${key}: pembanding menempel sama panjang`,
+      b.to.getTime() === w.from!.getTime() - 1 && b.from.getTime() === w.from!.getTime() - dur && b.clamped === false
+    );
+  }
+}
+
 if (failed) process.exit(1);

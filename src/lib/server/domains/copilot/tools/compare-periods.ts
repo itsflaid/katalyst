@@ -8,7 +8,7 @@ import { failure, success, type ToolResult } from '../envelope';
 import { validateArgs } from '../validate';
 
 const TOOL = 'compare_periods';
-const periods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'custom'] as const;
+const periods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'last_7d', 'last_90d', 'custom'] as const;
 
 export interface ComparePeriodsData {
   empty: boolean;
@@ -29,6 +29,21 @@ export function buildComparePeriodsData(input: {
   windowLabel: string;
   baselineLabel: string;
 }): ComparePeriodsData {
+  // Jendela kosong: tanpa deret perubahan; perbandingan tidak bermakna.
+  if (input.empty) {
+    const current = metricsOf(input.current);
+    const baseline = metricsOf(input.baseline);
+    return {
+      empty: true,
+      window: { key: input.period, label: input.windowLabel },
+      windowLabel: input.windowLabel,
+      baselineWindow: { label: input.baselineLabel },
+      baselineLabel: input.baselineLabel,
+      current: { revenue: current.revenue, revenueText: fmtRupiah(current.revenue), profit: current.profit, profitText: fmtRupiah(current.profit), margin: current.margin, marginText: fmtPercent(current.margin) },
+      baseline: { revenue: baseline.revenue, revenueText: fmtRupiah(baseline.revenue), profit: baseline.profit, profitText: fmtRupiah(baseline.profit), margin: baseline.margin, marginText: fmtPercent(baseline.margin) },
+      change: { revenue: null, revenueText: 'tidak bermakna', profit: null, profitText: 'tidak bermakna', marginPoints: 0, marginPointsText: 'tidak bermakna' }
+    };
+  }
   const current = metricsOf(input.current);
   const baseline = metricsOf(input.baseline);
   const revenueChange = deltaRatio(current.revenue, baseline.revenue);
@@ -70,7 +85,7 @@ export async function comparePeriods(ctx: ToolContext, input: unknown): Promise<
     baselineLabel: spanLabel(previous.from, previous.to, ctx.tz)
   });
   const notes = empty
-    ? ['Belum ada transaksi pada periode ini.']
+    ? ['Belum ada transaksi pada periode ini; perbandingan tidak bermakna.']
     : [
         ...(previous.clamped ? ['Periode pembanding dipotong mengikuti panjang bulan lalu.'] : []),
         ...(window.to.getTime() < makeTime(ctx.tz).endOfDay(window.to).getTime() ? ['Periode berjalan belum penuh.'] : [])
