@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { auth } from '$lib/server/domains/auth';
 import { db } from '$lib/server/db';
+import { readJsonObject } from '$lib/server/http';
 import { user } from '$lib/server/db/schema';
 import { generateTempPassword } from '$lib/server/domains/invites';
 import { and, eq } from 'drizzle-orm';
@@ -18,8 +19,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     throw error(400, 'Akun ini belum terhubung ke business manapun.');
   }
 
-  const body = await request.json().catch(() => ({}));
-  const id = typeof (body as { id?: unknown }).id === 'string' ? (body as { id: string }).id : '';
+  const parsed = await readJsonObject(request);
+  if (!parsed.ok) throw error(400, parsed.message);
+  const id = typeof (parsed.body as { id?: unknown }).id === 'string' ? (parsed.body as { id: string }).id : '';
   if (!id) throw error(400, 'Id staff wajib diisi.');
   if (id === locals.user.id) throw error(400, 'Ganti password sendiri lewat halaman Akun.');
 

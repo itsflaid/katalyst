@@ -112,7 +112,8 @@ export async function queryInventory(businessId: string, now: Date, tz: BizTz) {
         name: product.name,
         stock: product.stock,
         costPrice: product.costPrice,
-        minStock: product.minStock
+        minStock: product.minStock,
+        isActive: product.isActive
       })
       .from(product)
       .where(eq(product.businessId, businessId)),

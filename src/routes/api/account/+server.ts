@@ -1,5 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
+import { readJsonObject } from '$lib/server/http';
 import { user } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
@@ -11,8 +12,9 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
     throw error(401, 'Harus login dulu.');
   }
 
-  const body = await request.json().catch(() => ({}));
-  const name = typeof (body as { name?: unknown }).name === 'string' ? (body as { name: string }).name.trim() : '';
+  const parsed = await readJsonObject(request);
+  if (!parsed.ok) throw error(400, parsed.message);
+  const name = typeof (parsed.body as { name?: unknown }).name === 'string' ? (parsed.body as { name: string }).name.trim() : '';
   if (!name) {
     throw error(400, 'Nama tidak boleh kosong.');
   }

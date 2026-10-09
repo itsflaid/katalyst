@@ -1,5 +1,6 @@
 // Verifikasi modul src/lib/discount.ts — 17 kasus angka + properti 200 iterasi.
 import { calculateCart, type CartLineIn, type DiscountLike, unitDiscount, getDiscountStatus, remainingQuota, isBelowCost, resolveWindow, type WindowPreset, quotaDeltas } from '../src/lib/discount';
+import { EXCLUSION_VIOLATION, overlapDbMessage } from '../src/lib/server/domains/discounts/errors';
 import { makeTime, type BizTime } from '../src/lib/shared/time';
 
 let passCount = 0;
@@ -218,6 +219,13 @@ for (let i = 0; i < 200; i++) {
 }
 
 ok('properti 200 iterasi', propsPass === 200, `${propsPass}/200`);
+
+console.log('\n== overlap 23P01 ke pesan ==');
+
+ok('kode benar + nama', overlapDbMessage({ code: '23P01' }, 'Promo A') === 'Rentang waktu bertabrakan dengan diskon "Promo A".');
+ok('kode di cause + tanpa nama', overlapDbMessage({ cause: { code: '23P01' } }, null) === 'Rentang waktu bertabrakan dengan diskon lain untuk produk ini.');
+ok('kode lain terus', overlapDbMessage({ code: '23505' }, 'Promo A') === null && overlapDbMessage(new Error('x'), null) === null);
+ok('konstanta kode', EXCLUSION_VIOLATION === '23P01');
 
 console.log(`\n${passCount} passed, ${failCount} failed\n`);
 if (failCount > 0) process.exit(1);
