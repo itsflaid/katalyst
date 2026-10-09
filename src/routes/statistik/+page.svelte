@@ -9,6 +9,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import SlideOver from '$lib/components/ui/SlideOver.svelte';
+  import StatFilterBar from '$lib/components/statistik/StatFilterBar.svelte';
   import type { PeriodKey } from '$lib/shared/period';
   import { goto } from '$app/navigation';
   export let data;
@@ -70,24 +71,14 @@
 <PageHeader title="Statistik" subtitle="Laporan performa per periode — delta selalu dibanding periode sebelumnya yang sama panjang." />
 
 <Card class="mb-6">
-  <div class="hidden sm:flex flex-wrap items-center gap-2">
-    <button type="button" on:click={() => goWithRange('today')} class={btn(activeRange, 'today')}>Hari ini</button>
-    <button type="button" on:click={() => goWithRange('week')} class={btn(activeRange, 'week')}>Minggu ini</button>
-    <button type="button" on:click={() => goWithRange('30d')} class={btn(activeRange, '30d')}>30 hari</button>
-    <button type="button" on:click={() => goWithRange('month')} class={btn(activeRange, 'month')}>Bulan ini</button>
-    {#if activeRange === 'custom'}
-      <span class="rounded border border-ink-navy bg-ink-navy text-white font-semibold px-2.5 py-1.5 text-body-sm">Custom</span>
-    {/if}
-    <span class="flex items-center gap-1.5 ml-1">
-      <input type="date" bind:value={fromInput} class="h-9 rounded border border-border-input bg-white px-2 text-body-sm text-ink" aria-label="Dari tanggal" />
-      <span class="text-muted">–</span>
-      <input type="date" bind:value={toInput} min={fromInput || undefined} class="h-9 rounded border border-border-input bg-white px-2 text-body-sm text-ink" aria-label="Sampai tanggal" />
-      <Button size="compact" on:click={applyCustom}>Terapkan</Button>
-    </span>
-    {#if data.rangeLabel}
-      <span class="text-body-sm text-muted ml-auto">Dipakai: <strong class="text-ink">{data.rangeLabel}</strong></span>
-    {/if}
-  </div>
+  <StatFilterBar
+    {activeRange}
+    rangeLabel={data.rangeLabel}
+    bind:fromInput
+    bind:toInput
+    onSelect={(k) => goWithRange(k)}
+    onApply={applyCustom}
+  />
   <div class="sm:hidden flex flex-col gap-2">
     <button type="button" on:click={() => (showPeriodSheet = true)} class="inline-flex h-9 items-center justify-between rounded border border-border-input bg-white px-3 text-body-md text-ink">
       <span>Periode: <strong>{rangeNames[activeRange] ?? '30 hari'}</strong></span>
