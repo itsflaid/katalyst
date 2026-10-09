@@ -19,7 +19,8 @@ export default {
         border: {
           warm: '#E6E0D4', // border di atas canvas krem
           cool: '#E2E8F0', // border di dalam card putih
-          input: '#CBD5E1'
+          input: '#CBD5E1',
+          stat: '#C2C2C2' // border kartu statistik (dari Figma)
         },
         placeholder: '#94A3B8',
         status: {
@@ -64,7 +65,9 @@ export default {
       boxShadow: {
         level1: '0 1px 2px 0 rgba(15, 23, 42, 0.05)',
         level2: '0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04)',
-        level3: '0 10px 15px -3px rgba(15, 23, 42, 0.12)'
+        level3: '0 10px 15px -3px rgba(15, 23, 42, 0.12)',
+        'stat-card': '0 2px 1.5px 0 rgba(0, 0, 0, 0.25)',
+        'stat-bar': '0 6px 4px 0 rgba(0, 0, 0, 0.25)'
       }
     }
   },
