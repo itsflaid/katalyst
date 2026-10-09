@@ -122,7 +122,7 @@
 {/if}
 
 {#key [data.range, data.rangeFrom, data.rangeTo, data.trend.labels.join(',')].join('|')}
-  <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
     <Card>
       <h2 class="text-headline-sm text-ink mb-1">Tren Revenue & Profit</h2>
       <p class="text-body-sm text-muted mb-3">{data.trend.unitLabel} · {data.rangeLabel}</p>
@@ -179,7 +179,7 @@
     </Card>
   </div>
 
-  <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
     <Card>
       <h2 class="text-headline-sm text-ink mb-1">Struk per Hari</h2>
       <p class="text-body-sm text-muted mb-3">Jumlah struk · {data.rangeLabel}</p>
@@ -196,7 +196,7 @@
     </Card>
   </div>
 
-  <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
     <Card>
       <h2 class="text-headline-sm text-ink mb-1">Jam Tersibuk</h2>
       <p class="text-body-sm text-muted mb-3">Puncak: {data.hourly.peak} · {data.hourly.total} struk di periode ini</p>
@@ -213,7 +213,7 @@
     </Card>
   </div>
 
-  <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
     <Card>
       <h2 class="text-headline-sm text-ink mb-1">Tren Margin</h2>
       <p class="text-body-sm text-muted mb-3">% per hari · {data.rangeLabel}</p>
@@ -252,7 +252,7 @@
   {/if}
 
   {#if data.cashiers.show}
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
       <Card>
         <h2 class="text-headline-sm text-ink mb-1">Penjualan per Kasir</h2>
         <p class="text-body-sm text-muted mb-3">Revenue · {data.rangeLabel}</p>
@@ -305,7 +305,7 @@
       <p class="text-body-sm text-muted tabular break-words [overflow-wrap:anywhere]">Modal tertahan {idr(data.inventory.deadValue)}</p>
     </Card>
   </div>
-  <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
     <Card>
       <h2 class="text-headline-sm text-ink mb-1">Estimasi Hari Stok</h2>
       <p class="text-body-sm text-muted mb-3">8 produk paling mendesak · merah ≤3 hari, kuning ≤7 hari</p>
