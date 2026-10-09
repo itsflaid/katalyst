@@ -1,4 +1,5 @@
 import { db } from '$lib/server/db';
+import { requireOwner } from '$lib/server/domains/auth/guards';
 import { product, stockMovement, user } from '$lib/server/db/schema';
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { DEFAULT_TZ, makeTime } from '$lib/shared/time';
@@ -8,6 +9,7 @@ const PAGE_SIZE = 30;
 const REASONS = ['SALE', 'VOID_RESTORE', 'RESTOCK', 'ADJUST'] as const;
 
 export const load: PageServerLoad = async ({ locals, url }) => {
+  requireOwner(locals);
   const businessId = locals.user!.businessId as string;
   // Zona bisnis untuk parsing & label tanggal (bukan zona perangkat).
   const tz = locals.business?.timezone ?? DEFAULT_TZ;

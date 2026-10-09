@@ -5,12 +5,12 @@ import {
   calculateMargin,
   compareProductPeriods,
   deltaRatio,
-  estimateDaysCover,
   fillDailySeries,
   getBusinessInsights,
   getLowMarginProducts,
   getTopProducts,
   summarizeFacts,
+  summarizeInventoryRows,
   totalsOf,
   type ProductSummary
 } from '$lib/analytics';
@@ -186,34 +186,7 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
   const cashiers = [...cashierRows].sort((a, b) => b.revenue - a.revenue);
   const cashierStats = { list: cashiers, show: cashiers.length >= 2 };
 
-  // stockValue = Σ stock × costPrice   (Rupiah)
-  // out        = stock ≤ 0
-  // restock    = 0 < stock ≤ minStock   (minStock kosong dianggap 5)
-  // dead       = stock > 0 dan sold14 = 0
-  const invProducts = invData.products;
-  const stockValue = invProducts.reduce((s, p) => s + p.stock * p.costPrice, 0);
-  const invOut = invProducts.filter((p) => p.stock <= 0).length;
-  const invRestock = invProducts.filter((p) => p.stock > 0 && p.stock <= (p.minStock ?? 5)).length;
-  const deadFull = invProducts
-    .filter((p) => p.stock > 0 && p.sold14 === 0)
-    .map((p) => ({ id: p.id, name: p.name, stock: p.stock, value: p.stock * p.costPrice }))
-    .sort((a, b) => b.value - a.value);
-  const deadValue = deadFull.reduce((s, p) => s + p.value, 0);
-  const daysList = invProducts
-    .filter((p) => p.sold14 > 0)
-    .map((p) => ({ id: p.id, name: p.name, stock: p.stock, days: estimateDaysCover(p.stock, p.sold14, INVENTORY_WINDOW_DAYS) }))
-    .sort((a, b) => a.days - b.days)
-    .slice(0, 8);
-  const inventory = {
-    windowDays: INVENTORY_WINDOW_DAYS,
-    stockValue,
-    outCount: invOut,
-    restockCount: invRestock,
-    deadCount: deadFull.length,
-    deadValue,
-    daysList,
-    deadList: deadFull.slice(0, 5)
-  };
+  const inventory = summarizeInventoryRows(invData.products, INVENTORY_WINDOW_DAYS);
 
   // movement.sold = −(Σ qtyChange SALE per minggu)
   // movement.adjust = Σ qtyChange ADJUST per minggu
@@ -300,24 +273,19 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
 
 export async function getDashboardPageData(businessId: string, tz: BizTz) {
   const T = makeTime(tz);
-  // Query independen jalan paralel dalam satu Promise.all; agregasi KPI
-  // dihitung di SQL (GROUP BY + SUM) sehingga transfer hanya 1 baris per produk.
-  // Agregat harian 60 hari; semua batas hari pakai zona bisnis.
-  const sixtyDaysAgo = T.startOfDay(T.addDays(new Date(), -59));
-  const [products, grouped, countRows, recentTransactions, dailyRows, restockList, restockCounts] = await Promise.all([
+  // KPI, produk teratas, dan insight memakai jendela 30 hari terakhir
+  // yang sama dengan deret tren; semua batas hari pakai zona bisnis.
+  const now = new Date();
+  const sixtyDaysAgo = T.startOfDay(T.addDays(now, -59));
+  const curFrom = T.startOfDay(T.addDays(now, -29));
+  const [products, grouped, recentTransactions, dailyRows, restockList, restockCounts] = await Promise.all([
     db
       .select({ id: product.id, name: product.name })
       .from(product)
       .where(eq(product.businessId, businessId)),
 
-    // Agregat all-time per produk dari lapisan Facts.
-    queryFactsByProduct(db, businessId, { from: null, to: null }),
-
-    // Jumlah transaksi (bukan baris item) untuk KPI row, bukan card Cost.
-    db
-      .select({ value: count() })
-      .from(transaction)
-      .where(eq(transaction.businessId, businessId)),
+    // Agregat 30 hari terakhir per produk dari lapisan Facts.
+    queryFactsByProduct(db, businessId, { from: curFrom, to: now }),
 
     // 10 struk terbaru dari lapisan transaksi.
     queryRecentReceipts(businessId),
@@ -346,7 +314,7 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
         menipis: sql<string>`count(*) filter (where ${product.stock} > 0 and ${product.stock} <= ${product.minStock})::text`
       })
       .from(product)
-      .where(eq(product.businessId, businessId))
+      .where(and(eq(product.businessId, businessId), eq(product.isActive, true)))
   ]);
 
   const productNames = Object.fromEntries(products.map((p) => [p.id, p.name]));
@@ -360,11 +328,9 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
   const topByRevenue = getTopProducts(perProduct, 'revenue', 5);
   const insights = getBusinessInsights(perProduct).slice(0, 3);
 
-  const [{ value: transactionCount }] = countRows;
-
   // Deret harian 60 hari dari engine (isi 0 untuk hari tanpa transaksi).
-  // 30 hari terakhir → tren chart, 30 vs 30 sebelumnya → delta KPI.
-  const series60 = fillDailySeries(dailyRows, { from: sixtyDaysAgo, to: new Date(), T });
+  // 30 hari terakhir → tren chart sekaligus angka KPI, 30 vs 30 sebelumnya → delta KPI.
+  const series60 = fillDailySeries(dailyRows, { from: sixtyDaysAgo, to: now, T });
   const days = series60.map((d) => ({ key: d.key, label: d.label, revenue: d.revenue, profit: d.profit, tx: d.tx }));
   const prev = days.slice(0, 30);
   const cur = days.slice(30);
@@ -412,7 +378,7 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
     menipis: Number(menipis ?? 0)
   };
 
-  return { summary, topByRevenue, recentTransactions, transactionCount, trend, deltas, insights, restock };
+  return { summary, topByRevenue, recentTransactions, transactionCount: curTx, trend, deltas, insights, restock };
 }
 
 export async function getSimulatorPageData(businessId: string, url: URL, tz: BizTz) {

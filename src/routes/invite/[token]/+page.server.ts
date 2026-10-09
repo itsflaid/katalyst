@@ -68,12 +68,18 @@ export const actions: Actions = {
       return fail(409, { message: 'Username ini sudah dipakai. Silakan masuk.' });
     }
 
-    let signUpResult;
     try {
       // Kolom user.email NOT NULL (wajib struktural better-auth) tapi tak ada user yang wajib punya email beneran: pakai email sintetis (domain reserved).
       // Login selalu via username, email ini tak pernah ditampilkan.
-      signUpResult = await auth.api.signUpEmail({
-        body: { email: placeholderEmail(invite.username), password, name, username: invite.username }
+      // createUser tanpa sesi menulis role STAFF sejak awal: tanpa jendela OWNER tanpa bisnis.
+      await auth.api.createUser({
+        body: {
+          email: placeholderEmail(invite.username),
+          password,
+          name,
+          role: 'STAFF',
+          data: { username: invite.username, businessId: invite.businessId }
+        }
       });
     } catch {
       // Bedakan duplikat beneran (race: username dibuat di sela cek dan signup) dari kegagalan lain — pesan "dipakai" untuk error sembarang menutupi bug beneran.
@@ -83,7 +89,6 @@ export const actions: Actions = {
       return fail(500, { message: 'Gagal membuat akun, coba lagi.' });
     }
 
-    await db.update(user).set({ role: 'STAFF', businessId: invite.businessId }).where(eq(user.id, signUpResult.user.id));
     await db.update(staffInvitation).set({ acceptedAt: new Date() }).where(eq(staffInvitation.id, invite.id));
 
     // Idempotent: kalau link diklik/submit 2x, submit kedua jatuh ke

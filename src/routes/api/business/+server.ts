@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { business } from '$lib/server/db/schema';
+import { readJsonObject } from '$lib/server/http';
 import { eq } from 'drizzle-orm';
 import { isBizTz, DEFAULT_TZ, type BizTz } from '$lib/shared/time';
 import type { RequestHandler } from './$types';
@@ -11,7 +12,9 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
     throw error(403, 'Cuma Owner yang bisa mengubah profil bisnis.');
   }
 
-  const body = (await request.json()) as { name?: unknown; timezone?: unknown };
+  const parsed = await readJsonObject(request);
+  if (!parsed.ok) throw error(400, parsed.message);
+  const body = parsed.body as { name?: unknown; timezone?: unknown };
   const hasName = body.name !== undefined;
   const hasTz = body.timezone !== undefined;
   if (!hasName && !hasTz) {
@@ -22,6 +25,7 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
   if (hasName) {
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     if (!name) throw error(400, 'Nama bisnis tidak boleh kosong.');
+    if (name.length > 100) throw error(400, 'Nama bisnis maksimal 100 karakter.');
     patch.name = name;
   }
   if (hasTz) {
