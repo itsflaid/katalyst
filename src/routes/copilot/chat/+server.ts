@@ -1,5 +1,7 @@
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
+import { and, eq } from 'drizzle-orm';
+import { product } from '$lib/server/db/schema';
 import { createLlmClient } from '$lib/server/domains/copilot/llm/index';
 import { LlmHttpError, type LlmMessage } from '$lib/server/domains/copilot/llm/types';
 import { SubrequestBudget } from '$lib/server/domains/copilot/budget';
@@ -7,6 +9,8 @@ import { TOOL_REGISTRY, findTool, runTool } from '$lib/server/domains/copilot/re
 import type { ToolContext } from '$lib/server/domains/copilot/context';
 import { failure } from '$lib/server/domains/copilot/envelope';
 import { toModelView } from '$lib/server/domains/copilot/model-view';
+import { detectProductMention } from '$lib/server/domains/copilot/product-mention';
+import { sanitizeText } from '$lib/server/domains/copilot/sanitize';
 import { verifyGrounding } from '$lib/server/domains/copilot/grounding';
 import { canUseCopilot, dailyLimitFrom } from '$lib/server/domains/copilot/limits';
 import { copilotPrompt } from '$lib/server/domains/copilot/prompt';
@@ -25,6 +29,14 @@ const MAX_MESSAGES = 6;
 const MAX_CONTENT = 800;
 const MAX_STEPS = 5;
 const MAX_TOOL_CALLS = 6;
+
+// Argumen produk kosong padahal pesan menyebut produk katalog: tool daftar dikecualikan.
+function missingProductArgs(name: string, args: unknown): boolean {
+  if (typeof args !== 'object' || args === null) return false;
+  const a = args as Record<string, unknown>;
+  if (name === 'query_metrics') return a['group_by'] !== 'product' && !a['product'];
+  return (name === 'simulate_price' || name === 'get_product_detail') && !a['product'];
+}
 
 function parseMessages(body: unknown): { ok: true; messages: LlmMessage[] } | { ok: false; message: string } {
   const invalid = 'Isi pesan maksimal 6, tiap pesan maksimal 800 karakter, pesan terakhir harus dari pengguna.';
@@ -181,13 +193,26 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             send('tool_start', { id: call.id, name: call.name, args });
             called.push(call.name);
             const cacheKey = `${call.name}:${JSON.stringify(args)}`;
-            const result = toolCache.get(cacheKey) ?? (!tool
+            // Menyebut produk katalog tanpa argumen product: tolak sebelum tool berjalan agar model memanggil ulang.
+            let result = toolCache.get(cacheKey) as Awaited<ReturnType<typeof runTool>> | undefined;
+            if (result === undefined && tool && called.length <= MAX_TOOL_CALLS && budget.canAfford(tool.maxQueries) && missingProductArgs(call.name, args)) {
+              const lastUser = [...parsed.messages].reverse().find((m) => m.role === 'user');
+              const catalog = await ctx.db
+                .select({ name: product.name })
+                .from(product)
+                .where(and(eq(product.businessId, ctx.businessId), eq(product.isActive, true)));
+              const mentions = detectProductMention(lastUser?.content ?? '', catalog.map((c) => c.name));
+              if (mentions.length > 0) {
+                result = failure(call.name, 'INVALID_ARGS', `Pertanyaan menyebut produk '${sanitizeText(mentions[0].phrase, 80)}'; isi argumen product.`);
+              }
+            }
+            result ??= !tool
               ? failure(call.name, 'INVALID_ARGS', `Tool tak dikenal: ${call.name}`)
               : called.length > MAX_TOOL_CALLS
                 ? failure(call.name, 'BUDGET_EXCEEDED', 'Terlalu banyak tool dipanggil, persempit pertanyaan.')
               : !budget.canAfford(tool.maxQueries)
                 ? failure(call.name, 'BUDGET_EXCEEDED', 'Anggaran komputasi habis, persempit pertanyaan.')
-                : await runTool(tool, ctx, args));
+                : await runTool(tool, ctx, args);
             toolCache.set(cacheKey, result);
             toolResults.push(result);
             send('tool_result', { id: call.id, name: call.name, result });

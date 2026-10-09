@@ -27,7 +27,7 @@
   $: topProductRevenue = data.topByRevenue.map((p) => p.revenue);
 </script>
 
-<PageHeader title="Dashboard" />
+<PageHeader title="Dashboard" subtitle="Semoga Usaha Anda Terus Berkembang!" />
 
 <!-- Baris 1: 4 KPI full width — di HP tetap 4 sebaris versi kompak -->
 <div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4 mb-6">

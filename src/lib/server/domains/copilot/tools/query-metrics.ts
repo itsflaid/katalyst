@@ -29,6 +29,7 @@ export interface QueryMetricsData {
   groupBy: GroupBy;
   groupLabel: string;
   windowLabel: string;
+  scope: { kind: 'all' | 'product'; label: string };
   product?: { id: string; name: string };
   total: { value: number; valueText: string };
   rows: MetricRow[];
@@ -65,6 +66,7 @@ export function buildQueryMetricsData(input: {
   const data: QueryMetricsData = {
     ...built.data,
     windowLabel: input.windowLabel,
+    scope: input.product ? { kind: 'product', label: input.product.name } : { kind: 'all', label: 'Semua produk' },
     ...(input.product ? { product: input.product } : {})
   };
   while (JSON.stringify(data).length / 3 > 800 && data.rows.length > 1) {
