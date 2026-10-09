@@ -1,5 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
+import { readJsonObject } from '$lib/server/http';
 import { staffInvitation, user } from '$lib/server/db/schema';
 import { generateInviteToken, hashInviteToken, INVITE_TTL_MS } from '$lib/server/domains/invites';
 import { and, eq, isNull } from 'drizzle-orm';
@@ -31,8 +32,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   requireOwner(locals);
   const businessId = locals.user!.businessId as string;
 
-  const body = await request.json().catch(() => ({}));
-  const inviteId = typeof (body as { inviteId?: unknown }).inviteId === 'string' ? (body as { inviteId: string }).inviteId : '';
+  const parsed = await readJsonObject(request);
+  if (!parsed.ok) throw error(400, parsed.message);
+  const inviteId = typeof (parsed.body as { inviteId?: unknown }).inviteId === 'string' ? (parsed.body as { inviteId: string }).inviteId : '';
   if (!inviteId) throw error(400, 'inviteId wajib diisi.');
 
   const invite = await findPendingInvite(inviteId, businessId);
@@ -49,16 +51,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const id = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
 
-  await db.update(staffInvitation).set({ revokedAt: new Date() }).where(eq(staffInvitation.id, invite.id));
-  await db.insert(staffInvitation).values({
-    id,
-    businessId,
-    username: invite.username,
-    name: invite.name,
-    tokenHash,
-    expiresAt,
-    invitedBy: locals.user!.id as string
-  });
+  // Revoke lama + terbit baru dalam satu transaksi: gagal satu = batal semua.
+  await db.batch([
+    db.update(staffInvitation).set({ revokedAt: new Date() }).where(eq(staffInvitation.id, invite.id)),
+    db.insert(staffInvitation).values({
+      id,
+      businessId,
+      username: invite.username,
+      name: invite.name,
+      tokenHash,
+      expiresAt,
+      invitedBy: locals.user!.id as string
+    })
+  ]);
 
   return json({ id, username: invite.username, token: rawToken, expiresAt: expiresAt.toISOString() }, { status: 201 });
 };
@@ -68,8 +73,9 @@ export const DELETE: RequestHandler = async ({ request, locals }) => {
   requireOwner(locals);
   const businessId = locals.user!.businessId as string;
 
-  const body = await request.json().catch(() => ({}));
-  const inviteId = typeof (body as { inviteId?: unknown }).inviteId === 'string' ? (body as { inviteId: string }).inviteId : '';
+  const parsedDelete = await readJsonObject(request);
+  if (!parsedDelete.ok) throw error(400, parsedDelete.message);
+  const inviteId = typeof (parsedDelete.body as { inviteId?: unknown }).inviteId === 'string' ? (parsedDelete.body as { inviteId: string }).inviteId : '';
   if (!inviteId) throw error(400, 'inviteId wajib diisi.');
 
   const invite = await findPendingInvite(inviteId, businessId);

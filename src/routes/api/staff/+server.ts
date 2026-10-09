@@ -1,8 +1,10 @@
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
+import { readJsonObject } from '$lib/server/http';
 import { staffInvitation, transaction, user } from '$lib/server/db/schema';
 import { generateInviteToken, hashInviteToken, normalizeUsername, isValidUsername, INVITE_TTL_MS } from '$lib/server/domains/invites';
 import { and, eq, isNull, ne } from 'drizzle-orm';
+import type { BatchItem } from 'drizzle-orm/batch';
 import type { RequestHandler } from './$types';
 
 function requireOwner(locals: App.Locals) {
@@ -20,8 +22,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   requireOwner(locals);
   const businessId = locals.user!.businessId as string;
 
-  const body = await request.json().catch(() => ({}));
-  const { username: rawUsername, name: rawName } = body as { username?: string; name?: string };
+  const parsed = await readJsonObject(request);
+  if (!parsed.ok) throw error(400, parsed.message);
+  const { username: rawUsername, name: rawName } = parsed.body as { username?: string; name?: string };
 
   const username = typeof rawUsername === 'string' ? normalizeUsername(rawUsername) : '';
   const name = typeof rawName === 'string' ? rawName.trim() : '';
@@ -52,24 +55,25 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       )
     );
   const now = new Date();
-  for (const p of pending) {
-    await db.update(staffInvitation).set({ revokedAt: now }).where(eq(staffInvitation.id, p.id));
-  }
-
   const rawToken = generateInviteToken();
   const tokenHash = await hashInviteToken(rawToken);
   const id = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
 
-  await db.insert(staffInvitation).values({
-    id,
-    businessId,
-    username,
-    name: name || username,
-    tokenHash,
-    expiresAt,
-    invitedBy: locals.user!.id as string
-  });
+  // Revoke lama + terbit baru dalam satu transaksi: gagal satu = batal semua.
+  const stmts: BatchItem<'pg'>[] = [
+    ...pending.map((p) => db.update(staffInvitation).set({ revokedAt: now }).where(eq(staffInvitation.id, p.id))),
+    db.insert(staffInvitation).values({
+      id,
+      businessId,
+      username,
+      name: name || username,
+      tokenHash,
+      expiresAt,
+      invitedBy: locals.user!.id as string
+    })
+  ];
+  await db.batch(stmts as [BatchItem<'pg'>, ...BatchItem<'pg'>[]]);
 
   return json({ id, username, name: name || null, token: rawToken, expiresAt: expiresAt.toISOString() }, { status: 201 });
 };
@@ -79,8 +83,9 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
   requireOwner(locals);
   const businessId = locals.user!.businessId as string;
 
-  const body = await request.json().catch(() => ({}));
-  const { id, username: rawUsername } = body as { id?: unknown; username?: unknown };
+  const parsedPatch = await readJsonObject(request);
+  if (!parsedPatch.ok) throw error(400, parsedPatch.message);
+  const { id, username: rawUsername } = parsedPatch.body as { id?: unknown; username?: unknown };
   if (typeof id !== 'string' || !id) throw error(400, 'Id staff wajib diisi.');
   const username = typeof rawUsername === 'string' ? normalizeUsername(rawUsername) : '';
   if (!isValidUsername(username)) {
@@ -118,8 +123,9 @@ export const DELETE: RequestHandler = async ({ request, locals }) => {
   requireOwner(locals);
   const businessId = locals.user!.businessId as string;
 
-  const body = await request.json().catch(() => ({}));
-  const id = typeof (body as { id?: unknown }).id === 'string' ? (body as { id: string }).id : '';
+  const parsedDelete = await readJsonObject(request);
+  if (!parsedDelete.ok) throw error(400, parsedDelete.message);
+  const id = typeof (parsedDelete.body as { id?: unknown }).id === 'string' ? (parsedDelete.body as { id: string }).id : '';
   if (!id) throw error(400, 'Id staff wajib diisi.');
   if (id === locals.user!.id) throw error(400, 'Tidak bisa menghapus akun sendiri.');
 
