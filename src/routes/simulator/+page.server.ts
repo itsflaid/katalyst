@@ -1,9 +1,11 @@
 import { getSimulatorPageData } from '$lib/server/domains/stats';
+import { requireOwner } from '$lib/server/domains/auth/guards';
 import { getZakatInput } from '$lib/server/domains/zakat';
 import { DEFAULT_TZ } from '$lib/shared/time';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
+  requireOwner(locals);
   const tz = locals.business?.timezone ?? DEFAULT_TZ;
   const businessId = locals.user!.businessId as string;
   const data = await getSimulatorPageData(businessId, url, tz);

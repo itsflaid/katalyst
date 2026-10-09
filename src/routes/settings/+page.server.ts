@@ -1,10 +1,12 @@
 import { db } from '$lib/server/db';
+import { requireOwner } from '$lib/server/domains/auth/guards';
 import { business, staffInvitation, user } from '$lib/server/db/schema';
 import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import { DEFAULT_TZ, isBizTz } from '$lib/shared/time';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
+  requireOwner(locals);
   const businessId = locals.user!.businessId as string;
   const [b] = await db.select().from(business).where(eq(business.id, businessId));
   // Urutan tetap: Owner selalu paling atas, di bawahnya staff dari yang terlama ke terbaru (createdAt naik). CASE eksplisit biar tidak bergantung pada urutan alfabet nilai enum.

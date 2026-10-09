@@ -1,4 +1,5 @@
 import { fail } from '@sveltejs/kit';
+import { requireOwner } from '$lib/server/domains/auth/guards';
 import { denyUnlessOwner } from '$lib/server/domains/products';
 import { daysBetween, zakatOf } from '$lib/analytics';
 import { getZakatInput, getZakatSetting, parseBalanceForm, parseSettingForm, upsertZakatSetting } from '$lib/server/domains/zakat';
@@ -6,6 +7,7 @@ import { DEFAULT_TZ, makeTime } from '$lib/shared/time';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
+  requireOwner(locals);
   const businessId = locals.user!.businessId as string;
   const tz = locals.business?.timezone ?? DEFAULT_TZ;
   const now = new Date();

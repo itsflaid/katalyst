@@ -2,6 +2,7 @@ import { db } from '$lib/server/db';
 import { discount, product } from '$lib/server/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
+import { requireOwner } from '$lib/server/domains/auth/guards';
 import { denyUnlessOwner } from '$lib/server/domains/products';
 import { canDeleteDiscount, findOverlap, listDiscounts, parseDiscountForm } from '$lib/server/domains/discounts';
 import { getDiscountStatus } from '$lib/discount';
@@ -13,6 +14,7 @@ const TABS = ['aktif', 'terjadwal', 'selesai'] as const;
 type Tab = (typeof TABS)[number];
 
 export const load: PageServerLoad = async ({ locals, url }) => {
+  requireOwner(locals);
   const businessId = locals.user!.businessId as string;
   const tz = locals.business?.timezone ?? DEFAULT_TZ;
   const now = new Date();
