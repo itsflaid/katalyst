@@ -92,6 +92,12 @@
       : result.haul.daysLeft > 0
         ? `kira-kira ${result.haul.daysLeft} hari lagi`
         : 'Haul sudah genap.';
+  // selisih = asetBersih − nisab   (null bila harga emas belum diisi)
+  $: nisabGap = result && result.nisab !== null ? result.netAssets - result.nisab : null;
+  $: nisabPct =
+    result && result.nisab !== null && result.nisab > 0 ? Math.min(100, Math.max(0, (result.netAssets / result.nisab) * 100)) : 0;
+  $: nisabText =
+    nisabGap === null ? '' : nisabGap < 0 ? `Kurang ${partial ? '~' : ''}${fmtRupiah(-nisabGap)} lagi untuk mencapai nisab.` : `Sudah ${partial ? '~' : ''}${fmtRupiah(nisabGap)} di atas nisab.`;
 </script>
 
 <PageHeader title="Zakat Perdagangan" subtitle="Estimasi 2,5% dari aset bersih setelah 1 haul" />
@@ -109,6 +115,12 @@
     <p class="mt-3 text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular break-words [overflow-wrap:anywhere]">
       {partial ? '~' : ''}{fmtRupiah(result.amount)}
     </p>
+    {#if nisabGap !== null}
+      <p class="mt-2 text-body-sm text-muted">{nisabText}</p>
+      <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-status-neutral-bg" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(nisabPct)} aria-label="Posisi aset terhadap nisab">
+        <div class="h-full rounded-full {nisabGap >= 0 ? 'bg-status-positive' : 'bg-status-warning'}" style="width: {nisabPct}%"></div>
+      </div>
+    {/if}
     <p class="mt-1 text-body-sm text-muted">Sisa haul: {haulText}</p>
     {#if partial}
       <p class="mt-2 text-body-sm text-muted">Belum diisi: {result.missing.map((m) => missingLabel[m]).join(', ')} — angka di atas memakai 0 untuk yang kosong.</p>
