@@ -31,6 +31,8 @@
   let messages: ChatMessage[] = [];
   let draft = '';
   let sending = false;
+  let cooldownSec = 0;
+  let cooldownTimer: ReturnType<typeof setInterval> | null = null;
   let loadingList = true;
   let listError = '';
   let deleting = '';
@@ -168,7 +170,7 @@
   }
 
   async function ask(question = draft.trim()) {
-    if (!question || sending) return;
+    if (!question || sending || cooldownSec > 0) return;
     draft = '';
     const tempId = activeId;
     if (!tempId) {
@@ -247,7 +249,22 @@
       addLocal({ id: newId(), role: 'assistant', content: data.text });
     } else if ((event === 'notice' || event === 'error') && typeof data.message === 'string') {
       addLocal({ id: newId(), role: 'assistant', content: data.message });
+      if (event === 'error' && data.code === 'RATE_LIMITED' && typeof data.retryAfterSec === 'number') {
+        startCooldown(data.retryAfterSec);
+      }
     }
+  }
+
+  function startCooldown(sec: number) {
+    if (cooldownTimer) clearInterval(cooldownTimer);
+    cooldownSec = Math.max(1, Math.floor(sec));
+    cooldownTimer = setInterval(() => {
+      cooldownSec -= 1;
+      if (cooldownSec <= 0 && cooldownTimer) {
+        clearInterval(cooldownTimer);
+        cooldownTimer = null;
+      }
+    }, 1000);
   }
 
   let scrollTarget: HTMLDivElement;
@@ -302,7 +319,7 @@
       </div>
     </div>
     <form class="copilot-form shrink-0 border-t border-white/10 px-4 py-4 sm:px-6" on:submit|preventDefault={() => ask()}>
-      <div class="mx-auto flex max-w-4xl items-center gap-2 border border-white/15 bg-white/[0.06] p-1.5"><input bind:value={draft} disabled={sending} maxlength="800" placeholder="Tanyakan sesuatu tentang bisnis Anda..." class="min-w-0 flex-1 bg-transparent px-3 py-2 text-base text-white outline-none placeholder:text-white/35 disabled:opacity-60 sm:text-body-md" aria-label="Pertanyaan untuk Copilot" /><button type="submit" disabled={sending || !draft.trim()} aria-label="Kirim" class="grid h-9 w-9 place-items-center rounded-panel bg-status-positive text-white disabled:opacity-50"><Send size={16} /></button></div>
+      <div class="mx-auto flex max-w-4xl items-center gap-2 border border-white/15 bg-white/[0.06] p-1.5"><input bind:value={draft} disabled={sending} maxlength="800" placeholder="Tanyakan sesuatu tentang bisnis Anda..." class="min-w-0 flex-1 bg-transparent px-3 py-2 text-base text-white outline-none placeholder:text-white/35 disabled:opacity-60 sm:text-body-md" aria-label="Pertanyaan untuk Copilot" /><button type="submit" disabled={sending || !draft.trim() || cooldownSec > 0} aria-label="Kirim" title={cooldownSec > 0 ? `Tunggu ${cooldownSec} detik` : undefined} class="grid h-9 w-9 place-items-center rounded-panel bg-status-positive text-white disabled:opacity-50"><Send size={16} /></button></div>
     </form>
   </section>
 

@@ -18,7 +18,7 @@ import { resolveProduct } from '../product-resolver';
 import { validateArgs } from '../validate';
 
 const TOOL = 'query_metrics';
-const periods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'custom'] as const;
+const periods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'last_7d', 'last_90d', 'custom'] as const;
 const metrics: Metric[] = ['revenue', 'profit', 'margin', 'qty', 'tx_count', 'discount_total', 'avg_ticket'];
 const groupBys: GroupBy[] = ['none', 'product', 'day', 'week', 'month', 'weekday', 'hour'];
 const orders: RowOrder[] = ['chronological', 'desc', 'asc'];
@@ -29,6 +29,7 @@ export interface QueryMetricsData {
   groupBy: GroupBy;
   groupLabel: string;
   windowLabel: string;
+  scope: { kind: 'all' | 'product'; label: string };
   product?: { id: string; name: string };
   total: { value: number; valueText: string };
   rows: MetricRow[];
@@ -65,6 +66,7 @@ export function buildQueryMetricsData(input: {
   const data: QueryMetricsData = {
     ...built.data,
     windowLabel: input.windowLabel,
+    scope: input.product ? { kind: 'product', label: input.product.name } : { kind: 'all', label: 'Semua produk' },
     ...(input.product ? { product: input.product } : {})
   };
   while (JSON.stringify(data).length / 3 > 800 && data.rows.length > 1) {

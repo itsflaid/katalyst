@@ -2,8 +2,8 @@
 // Murni: jam masuk lewat `now`; hanya import relatif.
 import { makeTime, type BizTz } from './time';
 
-export type PeriodKey = 'today' | 'week' | 'month' | '30d' | 'all' | 'custom' | 'yesterday' | 'last_week' | 'last_month';
-export type NamedPeriodKey = 'today' | 'yesterday' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'last_30d' | 'custom';
+export type PeriodKey = 'today' | 'week' | 'month' | '30d' | 'all' | 'custom' | 'yesterday' | 'last_week' | 'last_month' | 'last_7d' | 'last_90d';
+export type NamedPeriodKey = 'today' | 'yesterday' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'last_30d' | 'last_7d' | 'last_90d' | 'custom';
 
 export interface Period {
   key: PeriodKey;
@@ -104,6 +104,11 @@ export function resolveNamedPeriod(
     return { key, from, to, label: 'Bulan lalu', fromISO: iso(from), toISO: iso(to) };
   }
   const range = key === 'this_week' ? 'week' : key === 'this_month' ? 'month' : key === 'last_30d' ? '30d' : key;
+  if (key === 'last_7d' || key === 'last_90d') {
+    const days = key === 'last_7d' ? 7 : 90;
+    const from = T.startOfDay(T.addDays(now, -(days - 1)));
+    return { key, from, to: now, label: key === 'last_7d' ? '7 hari terakhir' : '90 hari terakhir', fromISO: '', toISO: '' };
+  }
   const url = new URL(`http://internal/?range=${range}`);
   if (custom) {
     url.searchParams.set('from', custom.from);
@@ -134,7 +139,7 @@ export function comparableWindow(
   const T = makeTime(tz);
   const { from, to, key } = window;
   const dur = to.getTime() - from.getTime();
-  if (key === 'last_30d' || key === 'custom') {
+  if (key === 'last_30d' || key === 'last_7d' || key === 'last_90d' || key === 'custom') {
     return { from: new Date(from.getTime() - dur), to: new Date(from.getTime() - 1), clamped: false };
   }
   if (key === 'yesterday') {
