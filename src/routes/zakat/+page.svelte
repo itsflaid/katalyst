@@ -1,12 +1,13 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
-  import { invalidateAll } from '$app/navigation';
   import type { SubmitFunction } from '@sveltejs/kit';
   import Badge from '$lib/components/ui/Badge.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import Card from '$lib/components/ui/Card.svelte';
+  import FieldHelp from '$lib/components/ui/FieldHelp.svelte';
   import Input from '$lib/components/ui/Input.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
+  import { ZAKAT_RATE } from '$lib/analytics';
   import { fmtPercent, fmtRupiah } from '$lib/shared/format';
   export let data;
   export let form;
@@ -20,12 +21,52 @@
   let receivable = data.setting?.receivable?.toString() ?? '';
   let debt = data.setting?.debt?.toString() ?? '';
 
+  // reset: false menjaga isian tetap tampil; reset bawaan mengosongkan input tetapi tidak variabelnya, sehingga simpan ulang menimpa data dengan kosong.
   const refresh: SubmitFunction =
     () =>
     async ({ update }) => {
-      await update();
-      await invalidateAll();
+      await update({ reset: false });
     };
+
+  const moneyTip = 'Ketik angka saja, tanpa Rp, titik, atau koma. Kosong = belum diisi; ketik 0 bila memang tidak ada.';
+
+  const help = {
+    gold: {
+      about: 'Harga 1 gram emas, dipakai menghitung nisab (nisab gram × harga ini). Lihat di toko emas langganan atau situs harga emas harian.',
+      example: 'Harga Rp1.350.000 per gram → ketik 1350000. Angka ini hanya contoh; isi sesuai harga hari ini.',
+      tip: 'Ketik angka saja, tanpa Rp, titik, atau koma. Perbarui kira-kira sebulan sekali.'
+    },
+    nisab: {
+      about: 'Batas minimum harta, dalam gram emas, agar zakat wajib. Standarnya 85 gram; ubah hanya bila lembaga zakat yang diikuti menetapkan lain.',
+      example: 'Standar 85 gram → ketik 85. Nisab dalam rupiah = 85 × harga emas per gram, tampil di Rincian.',
+      tip: 'Isi bilangan bulat saja, tanpa koma.'
+    },
+    haul: {
+      about: 'Tanggal harta dagang pertama kali mencapai nisab. Zakat wajib setelah genap 1 haul (±354 hari) dihitung dari tanggal ini.',
+      example: 'Mulai 20 Oktober 2025 → jatuh tempo 9 Oktober 2026. Pilih lewat kalender atau ketik tanggalnya.',
+      tip: 'Belum yakin tanggalnya? Kosongkan dulu dan tanyakan ke BAZNAS atau amil zakat.'
+    },
+    valuation: {
+      about: 'Cara menilai barang dagangan yang masih ada di stok. Harga jual: stok dinilai harga jual × jumlah. Harga modal: harga beli × jumlah.',
+      example: 'Stok 10 unit, modal Rp7.000, jual Rp10.000 → harga jual = Rp100.000, harga modal = Rp70.000.',
+      tip: 'Aplikasi tidak menentukan metode mana yang benar; tanyakan ke amil zakat.'
+    },
+    cash: {
+      about: 'Uang tunai dan saldo rekening usaha saat ini. Bukan omzet dan bukan laba.',
+      example: 'Tunai Rp3.500.000 + rekening Rp6.500.000 → ketik 10000000.',
+      tip: moneyTip
+    },
+    receivable: {
+      about: 'Uang yang masih ditagih ke pelanggan dan diperkirakan bisa tertagih, misalnya kasbon pelanggan. Piutang yang macet tidak dimasukkan.',
+      example: 'Pelanggan A Rp500.000 + pelanggan B Rp750.000 → ketik 1250000.',
+      tip: moneyTip
+    },
+    debt: {
+      about: 'Utang usaha yang harus dilunasi dalam waktu dekat atau sudah jatuh tempo, misalnya tagihan supplier. Mengurangi aset bersih.',
+      example: 'Tagihan supplier Rp2.000.000 + cicilan jatuh tempo Rp1.000.000 → ketik 3000000.',
+      tip: moneyTip
+    }
+  };
 
   const statusMeta = {
     NEEDS_GOLD_PRICE: { tone: 'warning', label: 'Butuh harga emas' },
@@ -102,7 +143,7 @@
         <dd class="tabular text-ink">{result.nisab === null ? 'isi harga emas dulu' : fmtRupiah(result.nisab)}</dd>
       </div>
     </dl>
-    <p class="mt-2 text-body-sm text-muted">Tarif {fmtPercent(0.025)} × aset bersih, dibayar bila aset bersih mencapai nisab dan haul genap.</p>
+    <p class="mt-2 text-body-sm text-muted">Tarif {fmtPercent(ZAKAT_RATE)} × aset bersih, dibayar bila aset bersih mencapai nisab dan haul genap.</p>
   </Card>
 {:else}
   <Card class="mb-4">
@@ -116,10 +157,13 @@
     <h2 class="text-headline-sm text-ink mb-1">Pengaturan zakat</h2>
     <p class="text-body-sm text-muted mb-3">Harga emas diisi manual dari toko emas langganan — tanpa API eksternal.</p>
     <form method="POST" action="?/saveSetting" use:enhance={refresh} class="flex flex-col gap-3">
-      <label for="z-gold" class="flex flex-col gap-1 text-body-sm text-ink">
-        Harga emas per gram (Rp)
-        <Input id="z-gold" type="number" name="goldPrice" min="0" bind:value={goldPrice} placeholder="cth. 1350000" />
-      </label>
+      <div class="flex flex-col gap-1">
+        <div class="flex flex-wrap items-center gap-1.5 text-body-sm text-ink">
+          <label for="z-gold">Harga emas per gram (Rp)</label>
+          <FieldHelp id="help-z-gold" label="Harga emas per gram" {...help.gold} />
+        </div>
+        <Input id="z-gold" type="number" name="goldPrice" min="1" bind:value={goldPrice} placeholder="cth. 1350000" />
+      </div>
       {#if data.setting}
         <p class="text-body-sm text-muted">
           {data.setting.goldAgeDays === null ? 'Harga emas belum pernah diisi.' : `Diperbarui ${data.setting.goldAgeDays} hari lalu.`}
@@ -128,21 +172,30 @@
           {/if}
         </p>
       {/if}
-      <label for="z-nisab" class="flex flex-col gap-1 text-body-sm text-ink">
-        Nisab (gram)
+      <div class="flex flex-col gap-1">
+        <div class="flex flex-wrap items-center gap-1.5 text-body-sm text-ink">
+          <label for="z-nisab">Nisab (gram)</label>
+          <FieldHelp id="help-z-nisab" label="Nisab" {...help.nisab} />
+        </div>
         <Input id="z-nisab" type="number" name="nisabGrams" min="1" bind:value={nisabGrams} />
-      </label>
-      <label for="z-haul" class="flex flex-col gap-1 text-body-sm text-ink">
-        Tanggal mulai haul
+      </div>
+      <div class="flex flex-col gap-1">
+        <div class="flex flex-wrap items-center gap-1.5 text-body-sm text-ink">
+          <label for="z-haul">Tanggal mulai haul</label>
+          <FieldHelp id="help-z-haul" label="Tanggal mulai haul" {...help.haul} />
+        </div>
         <Input id="z-haul" type="date" name="haulStartDate" bind:value={haulStartDate} />
-      </label>
-      <label for="z-valuasi" class="flex flex-col gap-1 text-body-sm text-ink">
-        Metode valuasi stok
+      </div>
+      <div class="flex flex-col gap-1">
+        <div class="flex flex-wrap items-center gap-1.5 text-body-sm text-ink">
+          <label for="z-valuasi">Metode valuasi stok</label>
+          <FieldHelp id="help-z-valuasi" label="Metode valuasi stok" {...help.valuation} />
+        </div>
         <select id="z-valuasi" name="stockValuation" bind:value={stockValuation} class="flex h-9 w-full rounded border border-border-input bg-white px-3 py-1 text-body-md text-ink">
           <option value="SELLING">Harga jual</option>
           <option value="COST">Harga modal</option>
         </select>
-      </label>
+      </div>
       <Button type="submit">Simpan pengaturan</Button>
     </form>
   </Card>
@@ -151,18 +204,27 @@
     <h2 class="text-headline-sm text-ink mb-1">Posisi keuangan</h2>
     <p class="text-body-sm text-muted mb-3">Kas adalah saldo tunai + rekening — bukan omzet. Kosongkan bila belum tahu.</p>
     <form method="POST" action="?/saveBalance" use:enhance={refresh} class="flex flex-col gap-3">
-      <label for="z-cash" class="flex flex-col gap-1 text-body-sm text-ink">
-        Kas (Rp)
+      <div class="flex flex-col gap-1">
+        <div class="flex flex-wrap items-center gap-1.5 text-body-sm text-ink">
+          <label for="z-cash">Kas (Rp)</label>
+          <FieldHelp id="help-z-cash" label="Kas" {...help.cash} />
+        </div>
         <Input id="z-cash" type="number" name="cash" min="0" bind:value={cash} placeholder="belum diisi" />
-      </label>
-      <label for="z-receivable" class="flex flex-col gap-1 text-body-sm text-ink">
-        Piutang lancar (Rp)
+      </div>
+      <div class="flex flex-col gap-1">
+        <div class="flex flex-wrap items-center gap-1.5 text-body-sm text-ink">
+          <label for="z-receivable">Piutang lancar (Rp)</label>
+          <FieldHelp id="help-z-receivable" label="Piutang lancar" {...help.receivable} />
+        </div>
         <Input id="z-receivable" type="number" name="receivable" min="0" bind:value={receivable} placeholder="belum diisi" />
-      </label>
-      <label for="z-debt" class="flex flex-col gap-1 text-body-sm text-ink">
-        Utang jatuh tempo (Rp)
+      </div>
+      <div class="flex flex-col gap-1">
+        <div class="flex flex-wrap items-center gap-1.5 text-body-sm text-ink">
+          <label for="z-debt">Utang jatuh tempo (Rp)</label>
+          <FieldHelp id="help-z-debt" label="Utang jatuh tempo" {...help.debt} />
+        </div>
         <Input id="z-debt" type="number" name="debt" min="0" bind:value={debt} placeholder="belum diisi" />
-      </label>
+      </div>
       {#if data.setting?.balanceAgeDays !== null && data.setting?.balanceAgeDays !== undefined}
         <p class="text-body-sm text-muted">Diperbarui {data.setting.balanceAgeDays} hari lalu.</p>
       {/if}

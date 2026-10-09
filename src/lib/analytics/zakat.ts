@@ -54,7 +54,9 @@ export function daysBetween(a: string, b: string): number | null {
 
 export function zakatOf(input: ZakatInput, adjustment = 0): ZakatResult {
   const missing: ZakatMissing[] = [];
-  if (input.goldPricePerGram === null) missing.push('goldPrice');
+  // Harga emas ≤ 0 dianggap belum diisi: nisab 0 membuat semua aset wajib zakat.
+  const goldPrice = input.goldPricePerGram !== null && input.goldPricePerGram > 0 ? input.goldPricePerGram : null;
+  if (goldPrice === null) missing.push('goldPrice');
   if (input.cash === null) missing.push('cash');
   if (input.receivable === null) missing.push('receivable');
   if (input.debt === null) missing.push('debt');
@@ -65,7 +67,7 @@ export function zakatOf(input: ZakatInput, adjustment = 0): ZakatResult {
   const assets = stockValue + (input.cash ?? 0) + (input.receivable ?? 0);
   const netAssets = assets - (input.debt ?? 0) + adjustment;
   // nisab = gram × harga emas   (null bila harga belum diisi)
-  const nisab = input.goldPricePerGram === null ? null : input.nisabGrams * input.goldPricePerGram;
+  const nisab = goldPrice === null ? null : input.nisabGrams * goldPrice;
   const nisabReached = nisab === null ? null : netAssets >= nisab;
   const startDay = input.haulStartDate === null ? null : dayNum(input.haulStartDate);
   if (startDay === null) missing.push('haulStart');
@@ -76,7 +78,7 @@ export function zakatOf(input: ZakatInput, adjustment = 0): ZakatResult {
   const daysLeft = dueDay === null || todayDay === null ? null : dueDay - todayDay;
   const reached = daysLeft === null ? null : daysLeft <= 0;
   const status: ZakatStatus =
-    input.goldPricePerGram === null
+    goldPrice === null
       ? 'NEEDS_GOLD_PRICE'
       : nisabReached !== true
         ? 'BELOW_NISAB'
