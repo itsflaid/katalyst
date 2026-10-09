@@ -19,6 +19,7 @@
     "verify:time": "tsx script/verify-time.ts",
     "verify:tz-sql": "tsx script/verify-tz-sql.ts",
     "verify:discount-db": "tsx script/verify-discount-db.ts",
+    "verify:discount-overlap": "tsx script/verify-discount-overlap.ts",
     "verify:discount": "tsx script/verify-discount.ts",
     "verify:e2e-discount": "tsx script/e2e-discount.ts",
     "verify:arch": "tsx script/verify-arch.ts --enforce",

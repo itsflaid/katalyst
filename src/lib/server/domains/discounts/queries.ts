@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { discount, product } from '$lib/server/db/schema';
-import { and, desc, eq, inArray, isNull, lte, ne, or, gte } from 'drizzle-orm';
+import { and, desc, eq, gt, gte, inArray, isNull, lt, lte, ne, or } from 'drizzle-orm';
 
 // Daftar semua diskon satu bisnis + nama produk (untuk cakupan PRODUCT).
 // Status dihitung di load via getDiscountStatus (tidak disimpan di DB).
@@ -95,10 +95,10 @@ export async function findOverlap(
     eq(discount.scope, 'PRODUCT'),
     eq(discount.productId, productId),
     eq(discount.isActive, true),
-    // Bukan (existing berakhir sebelum mulai) dan bukan (baru berakhir sebelum existing mulai).
-    or(isNull(discount.endsAt), gte(discount.endsAt, startsAt))
+    // Rentang setengah terbuka '[)': yang berakhir tepat saat mulai tidak bertabrakan.
+    or(isNull(discount.endsAt), gt(discount.endsAt, startsAt))
   ];
-  if (endsAt !== null) conds.push(lte(discount.startsAt, endsAt));
+  if (endsAt !== null) conds.push(lt(discount.startsAt, endsAt));
   if (excludeId) conds.push(ne(discount.id, excludeId));
   const rows = await db
     .select({ id: discount.id, name: discount.name })
