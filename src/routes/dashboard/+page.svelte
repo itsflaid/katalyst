@@ -33,7 +33,7 @@
 <div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4 mb-6">
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Revenue</p>
-    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words [overflow-wrap:anywhere]">{idr(data.summary.revenue)}</p>
+    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words ">{idr(data.summary.revenue)}</p>
     <Badge tone={deltaTone(kpiDeltas.revenue)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.revenue)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge>
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
@@ -43,7 +43,7 @@
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Profit</p>
-    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words [overflow-wrap:anywhere]">{idr(data.summary.profit)}</p>
+    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words ">{idr(data.summary.profit)}</p>
     <Badge tone={deltaTone(kpiDeltas.profit)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.profit)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge>
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
@@ -78,8 +78,8 @@
 {/key}
 
 {#if data.insights.length > 0}
-  <Card class="mb-6">
-    <h2 class="text-headline-sm text-ink mb-3">Insight otomatis</h2>
+  <Card class="mb-6 bg-ink-navy">
+    <h2 class="text-headline-sm text-white mb-3">Insight otomatis</h2>
     <ul class="flex flex-col gap-2.5">
       {#each data.insights as ins}
         <li class="rounded border border-border-cool bg-table-header px-3 py-2.5 text-body-md text-ink">{ins.message}</li>

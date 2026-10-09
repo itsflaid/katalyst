@@ -13,6 +13,7 @@ import { buildExplainChangeData } from '../src/lib/server/domains/copilot/tools/
 import { buildComparePeriodsData } from '../src/lib/server/domains/copilot/tools/compare-periods';
 import { decomposeProfitMaps } from '../src/lib/analytics/decompose';
 import { detectProductMention } from '../src/lib/server/domains/copilot/product-mention';
+import { rateLimitMessage } from '../src/lib/server/domains/copilot/rate-limit';
 import { makeTime } from '../src/lib/shared/time';
 import { verifyGrounding } from '../src/lib/server/domains/copilot/grounding';
 
@@ -231,6 +232,15 @@ async function main() {
     ok('compare kosong tanpa deret', c1.empty === true && c1.change.revenue === null && c1.change.profit === null);
     const c2 = buildComparePeriodsData({ current: fullFacts, baseline: fullFacts, empty: false, period: 'last_30d', windowLabel: '30 hari terakhir', baselineLabel: '30 hari sebelumnya' });
     ok('compare berisi tak berubah', c2.empty === false && c2.change.revenue === 0);
+  }
+
+  console.log('\n== pesan 429 ==');
+  {
+    const unknown = rateLimitMessage(null);
+    ok('tanpa Retry-After 60 detik', unknown.retryAfterSec === 60 && unknown.message === 'Lagi ramai, coba lagi dalam ±60 detik.');
+    ok('Retry-After dibulatkan ke atas', rateLimitMessage(2500).retryAfterSec === 3);
+    ok('maks 120 detik', rateLimitMessage(200000).retryAfterSec === 120);
+    ok('nol menjadi 1 detik', rateLimitMessage(0).retryAfterSec === 1);
   }
 
   console.log(`\n${passCount} passed, ${failCount} failed\n`);
