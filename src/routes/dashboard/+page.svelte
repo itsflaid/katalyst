@@ -29,7 +29,7 @@
 
 <PageHeader title="Dashboard" subtitle="Semoga Usaha Anda Terus Berkembang!" />
 
-<!-- Baris 1: 4 KPI full width — di HP tetap 4 sebaris versi kompak -->
+<!-- Baris 1: 4 KPI full width, di HP tetap 4 sebaris versi kompak -->
 <div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4 mb-6">
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Revenue</p>
@@ -139,7 +139,7 @@
     </Card>
   </div>
 
-  <!-- Kolom kanan: Copilot — diisi teaser + quick prompts, bukan cuma judul kosong -->
+  <!-- Kolom kanan: Copilot, diisi teaser + quick prompts, bukan cuma judul kosong -->
   <div class="w-full lg:w-80 flex-shrink-0">
     <div class="relative overflow-hidden rounded-panel bg-ink-navy p-5 shadow-stat-card min-h-[280px] flex flex-col">
       <div class="flex items-center gap-2.5 mb-3">

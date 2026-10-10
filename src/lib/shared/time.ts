@@ -1,14 +1,14 @@
 // Helper zona waktu per bisnis (WIB/WITA/WIT, offset tetap tanpa DST).
-// Murni tanpa dependensi — dipakai server & komponen. Aturan: semua bucket
+// Murni tanpa dependensi, dipakai server & komponen. Aturan: semua bucket
 // waktu & tampilan memakai zona bisnis, bukan UTC / lokal browser.
 
 export const BIZ_TZS = ['Asia/Jakarta', 'Asia/Makassar', 'Asia/Jayapura'] as const;
 export type BizTz = (typeof BIZ_TZS)[number];
 export const DEFAULT_TZ: BizTz = 'Asia/Makassar';
 export const TZ_INFO: Record<BizTz, { short: 'WIB' | 'WITA' | 'WIT'; offsetHours: 7 | 8 | 9; label: string }> = {
-  'Asia/Jakarta': { short: 'WIB', offsetHours: 7, label: 'WIB — Waktu Indonesia Barat (UTC+7)' },
-  'Asia/Makassar': { short: 'WITA', offsetHours: 8, label: 'WITA — Waktu Indonesia Tengah (UTC+8)' },
-  'Asia/Jayapura': { short: 'WIT', offsetHours: 9, label: 'WIT — Waktu Indonesia Timur (UTC+9)' }
+  'Asia/Jakarta': { short: 'WIB', offsetHours: 7, label: 'WIB: Waktu Indonesia Barat (UTC+7)' },
+  'Asia/Makassar': { short: 'WITA', offsetHours: 8, label: 'WITA: Waktu Indonesia Tengah (UTC+8)' },
+  'Asia/Jayapura': { short: 'WIT', offsetHours: 9, label: 'WIT: Waktu Indonesia Timur (UTC+9)' }
 };
 export const isBizTz = (v: unknown): v is BizTz =>
   typeof v === 'string' && (BIZ_TZS as readonly string[]).includes(v);

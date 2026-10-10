@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { stockMovement, transaction, transactionItem, product, user, discount } from '$lib/server/db/schema';
-import { eq, desc, and, asc, inArray, gte, or, sql } from 'drizzle-orm';
-import { DEFAULT_TZ } from '$lib/shared/time';
+import { eq, desc, and, asc, inArray, gte, lt, or, sql } from 'drizzle-orm';
+import { DEFAULT_TZ, isBizTz, makeTime } from '$lib/shared/time';
 import { calculateCart, getDiscountStatus, quotaDeltas } from '$lib/discount';
 import { receiptTotals } from '$lib/analytics';
 import { getActiveProductDiscounts, getGlobalDiscount } from '$lib/server/domains/discounts';
@@ -15,7 +15,7 @@ const PAGE_SIZE = 20;
 const idr = (n: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
 
-// CHECK ..._nonneg / ..._not_exceeded (SQLSTATE 23514) meledak kalau stok terpotong minus atau kuota diskon terlampaui — ada kasir lain yang menghabiskan stok/kuota di sela validasi dan penyimpanan.
+// CHECK ..._nonneg / ..._not_exceeded (SQLSTATE 23514) meledak kalau stok terpotong minus atau kuota diskon terlampaui, ada kasir lain yang menghabiskan stok/kuota di sela validasi dan penyimpanan.
 // Bentuk error beda antar driver/versi (kode di error langsung atau di `cause`), jadi nama constraint dicari di keduanya.
 function checkViolationName(e: unknown): string | null {
   const err = e as {
@@ -43,17 +43,32 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     .from(user)
     .where(eq(user.businessId, businessId))
     .orderBy(sql`CASE WHEN ${user.role} = 'OWNER' THEN 0 ELSE 1 END`, asc(user.createdAt));
-  const staffOptions = staffRows.map((s) => ({ id: s.id, name: s.name ?? s.username ?? '—' }));
+  const staffOptions = staffRows.map((s) => ({ id: s.id, name: s.name ?? s.username ?? '-' }));
 
-  // Filter kasir berbasis userId — bukan nama. Struk lama staff yang sudah
+  // Filter kasir berbasis userId, bukan nama. Struk lama staff yang sudah
   // ganti nama tetap keikut karena transaction.userId tidak berubah-ubah
   // (yang berubah cuma snapshot cashier_name buat tampilan).
   const kasirParam = url.searchParams.get('kasir') ?? '';
   const kasir = staffRows.some((s) => s.id === kasirParam) ? kasirParam : null;
 
-  // Header struk diproses lebih awal (paginasi per struk, bukan per item) — leftJoin user biar struk staff yang sudah dihapus tetap tampil via cashier_name.
+  // Header struk diproses lebih awal (paginasi per struk, bukan per item); leftJoin user biar struk staff yang sudah dihapus tetap tampil via cashier_name.
   const conditions = [eq(transaction.businessId, businessId)];
   if (kasir) conditions.push(eq(transaction.userId, kasir));
+  // Filter rentang memakai tanggal zona bisnis, bukan UTC. Tiap ujung valid
+  // jadi batas kueri; ujung rusak diabaikan. Dari > sampai otomatis ditukar.
+  const tzRaw = locals.business?.timezone;
+  const T = makeTime(isBizTz(tzRaw) ? tzRaw : DEFAULT_TZ);
+  let fromStart = T.parseDay((url.searchParams.get('from') ?? '').trim());
+  let toStart = T.parseDay((url.searchParams.get('to') ?? '').trim());
+  if (fromStart && toStart && fromStart.getTime() > toStart.getTime()) {
+    const t = fromStart;
+    fromStart = toStart;
+    toStart = t;
+  }
+  const rangeFrom = fromStart ? T.dayKey(fromStart) : null;
+  const rangeTo = toStart ? T.dayKey(toStart) : null;
+  if (fromStart) conditions.push(gte(transaction.createdAt, fromStart));
+  if (toStart) conditions.push(lt(transaction.createdAt, T.addDays(toStart, 1)));
   const headers = await db
     .select({
       id: transaction.id,
@@ -117,7 +132,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       return {
         txId: h.id,
         createdAt: h.createdAt,
-        cashier: h.cashierName ?? h.userName ?? '—',
+        cashier: h.cashierName ?? h.userName ?? '-',
         ...totals,
         items: items.map((i) => ({
           productId: i.productId,
@@ -132,7 +147,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     });
   }
 
-  // Produk habis ikut dikirim supaya tampil abu-abu dan tidak bisa di-tap. costPrice sengaja tidak dipilih — halaman ini bisa dibuka STAFF.
+  // Produk habis ikut dikirim supaya tampil abu-abu dan tidak bisa di-tap. costPrice sengaja tidak dipilih, halaman ini bisa dibuka STAFF.
   const products = await db
     .select({ id: product.id, name: product.name, sellingPrice: product.sellingPrice, stock: product.stock, minStock: product.minStock })
     .from(product)
@@ -170,7 +185,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     createdAt: d.createdAt.toISOString()
   }));
 
-  return { receipts, products, page, hasMore, staffOptions, kasir, timezone: locals.business?.timezone ?? DEFAULT_TZ, serverNow: Date.now(), discounts };
+  return { receipts, products, page, hasMore, staffOptions, kasir, rangeFrom, rangeTo, timezone: locals.business?.timezone ?? DEFAULT_TZ, serverNow: Date.now(), discounts };
 };
 
 export const actions: Actions = {
@@ -215,7 +230,7 @@ export const actions: Actions = {
     }
     const productIds = Array.from(merged.keys());
 
-    // Harga tidak dipercaya dari client — ambil fresh dari DB + pastikan
+    // Harga tidak dipercaya dari client, ambil fresh dari DB + pastikan
     // produk aktif milik bisnis ini.
     const dbProducts = await db
       .select({
@@ -234,7 +249,7 @@ export const actions: Actions = {
     }
     const inactive = dbProducts.find((p) => !p.isActive);
     if (inactive) return fail(400, { message: 'Ada produk nonaktif di keranjang.' });
-    // Tolak seluruh struk kalau satu item pun stoknya kurang — jangan simpan sebagian sebelum kasir betulkan.
+    // Tolak seluruh struk kalau satu item pun stoknya kurang, jangan simpan sebagian sebelum kasir betulkan.
     const short = dbProducts.find((p) => merged.get(p.id)! > p.stock);
     if (short) return fail(400, { message: `Stok ${short.name} kurang (sisa ${short.stock}).` });
 
@@ -275,7 +290,7 @@ export const actions: Actions = {
     if (cart.total !== expectedTotal) {
       return fail(409, {
         code: 'PRICE_CHANGED',
-        message: `Harga berubah — total sekarang ${idr(cart.total)}. Periksa keranjang lalu catat ulang.`,
+        message: `Harga berubah, total sekarang ${idr(cart.total)}. Periksa keranjang lalu catat ulang.`,
         newTotal: cart.total
       });
     }
@@ -323,7 +338,7 @@ export const actions: Actions = {
           createdBy: userId
         }))
       ),
-      // quotaUsed naik per unit terdiskon — juga saat quota null (jadi data "unit terjual dengan diskon ini").
+      // quotaUsed naik per unit terdiskon, juga saat quota null (jadi data "unit terjual dengan diskon ini").
       // CHECK quota_not_exceeded yang menjaga race: batch kedua yang kelebihan kuota gagal total.
       ...deltas.map((d) =>
         db
@@ -338,12 +353,12 @@ export const actions: Actions = {
     } catch (e) {
       const violation = checkViolationName(e);
       if (violation === 'product_stock_nonneg') {
-        return fail(409, { message: 'Stok berubah — ada produk yang sudah terjual habis oleh kasir lain. Muat ulang lalu coba lagi.' });
+        return fail(409, { message: 'Stok berubah, ada produk yang sudah terjual habis oleh kasir lain. Muat ulang lalu coba lagi.' });
       }
       if (violation === 'discount_quota_not_exceeded') {
         return fail(409, {
           code: 'QUOTA_CHANGED',
-          message: 'Kuota diskon berubah — dipakai kasir lain. Muat ulang lalu coba lagi.'
+          message: 'Kuota diskon berubah, dipakai kasir lain. Muat ulang lalu coba lagi.'
         });
       }
       return fail(500, { message: 'Gagal menyimpan transaksi, coba lagi.' });
@@ -352,7 +367,7 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  // Void struk: hapus header + items atomik berurutan. OWNER-only — kasir
+  // Void struk: hapus header + items atomik berurutan. OWNER-only, kasir
   // yang salah catat lapor ke owner, owner yang melakukan void lalu buat struk
   // koreksi baru. Tidak ada edit qty in-place biar histori teraudit.
   deleteTx: async ({ request, locals }) => {

@@ -15,7 +15,7 @@ async function lookup(token: string) {
 }
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-  // Staff yang sudah login tidak perlu aktivasi — lempar ke rute peran.
+  // Staff yang sudah login tidak perlu aktivasi, lempar ke rute peran.
   if (locals.user) throw redirect(303, '/');
 
   const invite = await lookup(params.token);
@@ -42,7 +42,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 export const actions: Actions = {
   accept: async ({ params, request }) => {
     const invite = await lookup(params.token);
-    // Pesan generik untuk semua link mati — jangan bocorkan alasan
+    // Pesan generik untuk semua link mati, jangan bocorkan alasan
     // (expired vs dicabut vs sudah dipakai) ke pemegang link.
     if (!invite || invite.acceptedAt || invite.revokedAt) {
       return fail(400, { invalid: true, message: 'Undangan tidak berlaku. Minta link baru ke owner.' });
@@ -82,7 +82,7 @@ export const actions: Actions = {
         }
       });
     } catch {
-      // Bedakan duplikat beneran (race: username dibuat di sela cek dan signup) dari kegagalan lain — pesan "dipakai" untuk error sembarang menutupi bug beneran.
+      // Bedakan duplikat beneran (race: username dibuat di sela cek dan signup) dari kegagalan lain; pesan "dipakai" untuk error sembarang menutupi bug beneran.
       // Kasus nyata: default role plugin "user" bukan anggota enum PG sehingga semua signup gagal.
       const [raced] = await db.select({ id: user.id }).from(user).where(eq(user.username, invite.username));
       if (raced) return fail(409, { message: 'Username ini sudah dipakai. Silakan masuk.' });

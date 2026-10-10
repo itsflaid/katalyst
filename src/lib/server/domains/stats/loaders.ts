@@ -90,7 +90,7 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
   const txRaw = series.map((s) => s.tx);
   const dowRaw = series.map((s) => s.isoDow);
   const marginTrend = series.map((s) => (s.revenue === 0 ? 0 : Math.round((s.profit / s.revenue) * 1000) / 10));
-  let bestDayLabel = '—';
+  let bestDayLabel = '-';
   let bestDayRevenue = 0;
   for (const s of series) {
     if (s.revenue > bestDayRevenue) {

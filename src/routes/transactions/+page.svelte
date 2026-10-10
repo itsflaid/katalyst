@@ -11,7 +11,7 @@
   import { calculateCart, getDiscountStatus, unitDiscount } from '$lib/discount';
   import { lineNetOf } from '$lib/analytics';
   import { makeTime, DEFAULT_TZ, type BizTime } from '$lib/shared/time';
-  import { Search, ChevronDown, Minus, Plus, Trash2, Check, Pencil } from 'lucide-svelte';
+  import { Search, ChevronDown, Minus, Plus, Trash2, Check, Pencil, X } from 'lucide-svelte';
   export let data;
   export let form;
 
@@ -49,28 +49,45 @@
     return Array.from(map.values());
   })(T);
 
-  // Navigasi hari — filter client-side dari struk yang sudah di-load server.
-  // Default 'all' biar riwayat tetap kelihatan.
-  let selectedDayKey = 'all';
-  $: visibleGroups = selectedDayKey === 'all' ? dayGroups : dayGroups.filter((g) => g.key === selectedDayKey);
-  $: if (selectedDayKey !== 'all' && dayGroups.length > 0 && !dayGroups.some((g) => g.key === selectedDayKey)) {
-    selectedDayKey = 'all';
-  }
+  // Kelompok tampilan sama dengan kelompok hari; filter hari jalan server-side
+  // (?hari=) biar bisa menjangkau tanggal lama, bukan cuma yang ke-load.
+  $: visibleGroups = dayGroups;
 
-  // Filter kasir — server-side via ?kasir=<userId> (bukan nama) biar pagination tetap benar. Value userId stabil: staff ganti nama pun struk lamanya tetap keikut.
+  // Filter kasir, server-side via ?kasir=<userId> (bukan nama) biar pagination tetap benar. Value userId stabil: staff ganti nama pun struk lamanya tetap keikut.
   // Satu sumber kebenaran = URL/server (data.kasir). Select pakai value satu arah (bukan bind) biar tidak berantem dengan statement reaktif di bawah.
   $: selectedKasir = data.kasir ?? 'all';
   function goKasir(e: Event) {
     const value = (e.currentTarget as HTMLSelectElement).value;
     const params = new URLSearchParams();
     if (value !== 'all') params.set('kasir', value);
+    if (data.rangeFrom) params.set('from', data.rangeFrom);
+    if (data.rangeTo) params.set('to', data.rangeTo);
     const qs = params.toString();
     goto(`/transactions${qs ? `?${qs}` : ''}`, { keepFocus: true });
   }
-  $: moreHref = `/transactions?page=${data.page + 1}${data.kasir ? `&kasir=${data.kasir}` : ''}`;
+  let fromEl: HTMLInputElement | null = null;
+  let toEl: HTMLInputElement | null = null;
+  function goRange() {
+    const params = new URLSearchParams();
+    if (data.kasir) params.set('kasir', data.kasir);
+    const from = fromEl?.value ?? '';
+    const to = toEl?.value ?? '';
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    const qs = params.toString();
+    goto(`/transactions${qs ? `?${qs}` : ''}`, { keepFocus: true });
+  }
+  function resetRange() {
+    const params = new URLSearchParams();
+    if (data.kasir) params.set('kasir', data.kasir);
+    const qs = params.toString();
+    goto(`/transactions${qs ? `?${qs}` : ''}`, { keepFocus: true });
+  }
+  $: rangeActive = !!(data.rangeFrom || data.rangeTo);
+  $: moreHref = `/transactions?page=${data.page + 1}${data.kasir ? `&kasir=${data.kasir}` : ''}${data.rangeFrom ? `&from=${data.rangeFrom}` : ''}${data.rangeTo ? `&to=${data.rangeTo}` : ''}`;
 
   // Keranjang multi-produk di client, disimpan sebagai 1 struk (1 transaction + N item) lewat actions.create.
-  // State keranjang hanya { productId, qty }; nama & harga diturunkan reaktif dari data.products — bukan snapshot saat ditambahkan (snapshot bikin expectedTotal basi setelah harga berubah → 409 berulang).
+  // State keranjang hanya { productId, qty }; nama & harga diturunkan reaktif dari data.products, bukan snapshot saat ditambahkan (snapshot bikin expectedTotal basi setelah harga berubah → 409 berulang).
   // Produk habis (stok 0) tidak bisa di-tap; tambah dibatasi sisa stok (server memvalidasi ulang).
   let lines: { productId: string; qty: number }[] = [];
   let selectedGlobalId = '';
@@ -135,7 +152,7 @@
   $: missingLines = lines.filter((l) => unavailable(l.productId));
   $: cartInputs = validLines.map((l) => ({ productId: l.productId, qty: l.qty, price: prodMap.get(l.productId)!.sellingPrice }));
   $: cart = ((inputs, pd, g, now) => calculateCart(inputs, { productDiscounts: pd, global: g, now }))(cartInputs, productDiscountPool, selectedGlobal, now);
-  $: cartRows = cart.lines.map((l) => ({ ...l, name: prodMap.get(l.productId)?.name ?? '—' }));
+  $: cartRows = cart.lines.map((l) => ({ ...l, name: prodMap.get(l.productId)?.name ?? '-' }));
   $: discountRows = ((cart) => {
     const m = new Map<string, { name: string; amount: number }>();
     for (const l of cart.lines) {
@@ -209,7 +226,7 @@
     savedMsgTimer = setTimeout(() => (showSavedMsg = false), 5000);
   }
 
-  // Void struk (OWNER-only di server): pola audit POS — struk salah catat
+  // Void struk (OWNER-only di server): pola audit POS, struk salah catat
   // dibatalkan utuh lalu buat struk koreksi baru, tanpa edit qty in-place.
   $: isOwner = data.user?.role === 'OWNER';
   let pendingVoid: { txId: string; total: number; cashier: string } | null = null;
@@ -389,7 +406,7 @@
           <select id="t-global" bind:value={selectedGlobalId} class="h-9 w-full rounded border border-border-input bg-white px-3 text-body-md text-ink">
             <option value="">Tanpa diskon</option>
             {#each globalList as g}
-              <option value={g.id}>{g.name} — {g.percent}% · s.d. {g.endsAt ? T.fmt(g.endsAt, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'tanpa batas'}</option>
+              <option value={g.id}>{g.name}: {g.percent}% · s.d. {g.endsAt ? T.fmt(g.endsAt, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'tanpa batas'}</option>
             {/each}
           </select>
         </label>
@@ -464,30 +481,48 @@
             </span>
           </span>
         {/if}
-        {#if dayGroups.length > 0}
-          <span class="flex h-9 items-center gap-2 rounded border border-white/25 bg-white/10 px-3 text-white">
-            <span class="text-label-sm uppercase text-white/60">Hari</span>
-            <span class="relative flex items-center">
-              <select
-                aria-label="Filter hari"
-                bind:value={selectedDayKey}
-                class="appearance-none border-none bg-transparent py-1 pl-0 pr-5 text-body-md text-white focus:outline-none"
-              >
-                <option value="all" class="text-ink">Semua hari</option>
-                {#each dayGroups as g}
-                  <option value={g.key} class="text-ink">{g.label}</option>
-                {/each}
-              </select>
-              <ChevronDown size={14} class="pointer-events-none absolute right-0 text-white/70" />
-            </span>
-          </span>
-        {/if}
+        <span class="flex h-9 items-center gap-2 rounded border border-white/25 bg-white/10 px-3 text-white">
+          <span class="text-label-sm uppercase text-white/60">Dari</span>
+          <input
+            type="date"
+            aria-label="Tanggal awal"
+            bind:this={fromEl}
+            value={data.rangeFrom ?? ''}
+            on:change={goRange}
+            class="w-[8.5rem] border-none bg-transparent py-1 pl-0 pr-1 text-body-md text-white focus:outline-none [color-scheme:dark]"
+          />
+          <span class="text-label-sm uppercase text-white/60">s.d.</span>
+          <input
+            type="date"
+            aria-label="Tanggal akhir"
+            bind:this={toEl}
+            value={data.rangeTo ?? ''}
+            on:change={goRange}
+            class="w-[8.5rem] border-none bg-transparent py-1 pl-0 pr-1 text-body-md text-white focus:outline-none [color-scheme:dark]"
+          />
+          {#if rangeActive}
+            <button
+              type="button"
+              on:click={resetRange}
+              aria-label="Hapus filter tanggal"
+              title="Hapus filter tanggal"
+              class="grid h-6 w-6 shrink-0 place-items-center rounded border-none bg-transparent text-white/70 hover:bg-white/10 hover:text-white"
+            >
+              <X size={14} />
+            </button>
+          {/if}
+        </span>
       </div>
     </div>
 
     {#if dayGroups.length === 0}
       <Card class="!rounded-t-none !border-t-0 text-center py-10">
-        <p class="text-body-md text-muted">Belum ada transaksi.</p>
+        {#if rangeActive}
+          <p class="text-body-md text-muted">Tidak ada transaksi pada rentang ini.</p>
+          <button type="button" on:click={resetRange} class="mt-2 text-body-sm font-semibold text-ink-navy hover:underline bg-transparent border-none cursor-pointer p-0">Tampilkan semua tanggal</button>
+        {:else}
+          <p class="text-body-md text-muted">Belum ada transaksi.</p>
+        {/if}
       </Card>
     {:else if visibleGroups.length === 0}
       <Card class="!rounded-t-none !border-t-0 text-center py-10">

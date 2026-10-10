@@ -32,7 +32,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     throw error(400, 'Username 3–20 karakter: huruf kecil, angka, titik, underscore, strip.');
   }
 
-  // Username unik global (kolom user.username unique) — cegah konflik sejak invite.
+  // Username unik global (kolom user.username unique), cegah konflik sejak invite.
   const [existingUser] = await db
     .select({ id: user.id })
     .from(user)
@@ -141,7 +141,7 @@ export const DELETE: RequestHandler = async ({ request, locals }) => {
   // ini menutup race struk yang dibuat di antara migrate dan hapus).
   await db
     .update(transaction)
-    .set({ cashierName: target.name ?? target.username ?? '—' })
+    .set({ cashierName: target.name ?? target.username ?? '-' })
     .where(and(eq(transaction.userId, id), isNull(transaction.cashierName)));
   await db.delete(user).where(eq(user.id, id));
 

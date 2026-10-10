@@ -56,7 +56,7 @@ export const TOOL_REGISTRY: RegisteredTool[] = [
   },
   {
     name: 'simulate_price', description: 'Simulasi harga/diskon/volume satu produk aktif.', maxQueries: 2, enabled: true,
-    parameters: { type: 'object', properties: { product: { type: 'string' }, period: PERIOD, from: { type: 'string' }, to: { type: 'string' }, priceDelta: { type: 'integer' }, price: { type: 'integer' }, discountPct: { type: 'integer' }, volumePct: { type: 'integer' } }, required: ['product'], additionalProperties: false }, run: simulatePrice
+    parameters: { type: 'object', properties: { product: { type: 'string' }, period: PERIOD, from: { type: 'string' }, to: { type: 'string' }, priceDelta: { type: 'integer' }, price: { type: 'integer' }, discountPct: { type: 'integer' }, volumePct: { type: 'integer' }, sensitivity: { type: 'string', enum: ['low', 'medium', 'high'] } }, required: ['product'], additionalProperties: false }, run: simulatePrice
   },
   {
     name: 'query_metrics', description: 'Ukuran: omzet=revenue, untung=laba=profit, unit=qty, struk=tx_count, total diskon=discount_total, rata-rata per struk=avg_ticket. Kelompok: none total, product, day, week, month, weekday, hour; "paling ramai"=tx_count+weekday/hour+order desc.', maxQueries: 2, enabled: true,

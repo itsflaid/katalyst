@@ -183,7 +183,7 @@ export const actions: Actions = {
     } catch {
       // Baris item menunjuk diskon lewat FK SET NULL: hapus tidak ditolak walau sudah dipakai.
       // Penjaganya canDeleteDiscount di atas (quotaUsed > 0); tangkapan ini menyamakan pesan bila DB gagal di sela.
-      return fail(400, { message: 'Sudah dipakai di transaksi — nonaktifkan saja.' });
+      return fail(400, { message: 'Sudah dipakai di transaksi, nonaktifkan saja.' });
     }
     return { success: true };
   }

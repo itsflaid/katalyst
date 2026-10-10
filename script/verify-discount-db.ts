@@ -167,7 +167,7 @@ async function main() {
       }
 
       // 12. Paritas: selama semua discount_amount = 0, sum(lineNet) harus
-      // sama dengan sum(qty×price) — di seluruh data (termasuk fixture
+      // sama dengan sum(qty×price): di seluruh data (termasuk fixture
       // di atas yang semuanya berdikon-nol).
       {
         const [par] = await tx

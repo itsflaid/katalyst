@@ -74,9 +74,9 @@
         <td class="px-3 py-2 whitespace-nowrap"><a href={`/products/${m.productId}`} class="text-ink-navy font-semibold hover:underline">{m.productName}</a></td>
         <td class="px-3 py-2 tabular font-semibold whitespace-nowrap {m.qtyChange >= 0 ? 'text-status-positive' : 'text-status-negative'}">{m.qtyChange >= 0 ? `+${m.qtyChange}` : m.qtyChange}</td>
         <td class="px-3 py-2 whitespace-nowrap"><Badge size="sm" tone={reasonTone(m.reason)}>{reasonLabel[m.reason] ?? m.reason}</Badge></td>
-        <td class="px-3 py-2 text-muted">{m.note ?? '—'}</td>
-        <td class="px-3 py-2 text-muted whitespace-nowrap">{m.createdByName ?? '—'}</td>
-        <td class="px-3 py-2 text-body-sm text-muted whitespace-nowrap">{m.refTxId ? `#${m.refTxId.slice(0, 8)}` : '—'}</td>
+        <td class="px-3 py-2 text-muted">{m.note ?? '-'}</td>
+        <td class="px-3 py-2 text-muted whitespace-nowrap">{m.createdByName ?? '-'}</td>
+        <td class="px-3 py-2 text-body-sm text-muted whitespace-nowrap">{m.refTxId ? `#${m.refTxId.slice(0, 8)}` : '-'}</td>
       </tr>
     {/each}
   </Table>

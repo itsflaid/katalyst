@@ -83,7 +83,7 @@ const PRODUCTS: SeedProduct[] = [
 ];
 
 const HISTORY_DAYS = 90;
-const SPIKE_MONTH = 7; // Agustus (0-indexed) — window HUT RI, dalam range 90 hari dari 16 Sep 2026
+const SPIKE_MONTH = 7; // Agustus (0-indexed): window HUT RI, dalam range 90 hari dari 16 Sep 2026
 const SPIKE_DAY_START = 10;
 const SPIKE_DAY_END = 20;
 
@@ -341,7 +341,7 @@ async function main() {
     const p = PRODUCTS[pi];
     const totalSold = dailySales[pi].reduce((s, q) => s + q, 0);
     const initial = p.stock + totalSold - weeklyRestockTotal[pi] - adjustTotal[pi];
-    if (initial < 0) throw new Error(`Stok awal negatif untuk ${p.name} — kecilkan restock mingguan.`);
+    if (initial < 0) throw new Error(`Stok awal negatif untuk ${p.name}, kecilkan restock mingguan.`);
     if (initial === 0) continue;
     otherLedger.push({
       id: randomUUID(),

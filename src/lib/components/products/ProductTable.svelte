@@ -46,7 +46,7 @@
       <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{idr(p.costPrice)}</td>
       <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(p.sellingPrice)}</td>
       <td class="px-3 py-2">
-        <Badge size="sm" tone={marginTone(m)}>{m === null ? "—" : `${m}%`}</Badge>
+        <Badge size="sm" tone={marginTone(m)}>{m === null ? "-" : `${m}%`}</Badge>
       </td>
       <td class="px-3 py-2 whitespace-nowrap">
         <StockBadge stock={p.stock} minStock={p.minStock ?? 5} />

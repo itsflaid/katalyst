@@ -35,7 +35,7 @@ function ok(label: string, cond: boolean, detail = '') {
   }
 }
 
-// PRNG ber-seed (mulberry32) — pola sama seperti seed-demo.
+// PRNG ber-seed (mulberry32), pola sama seperti seed-demo.
 function mulberry32(seed: number) {
   return function () {
     seed |= 0;
@@ -56,7 +56,7 @@ function randomItem(pid: string): TransactionItemLike {
   return { productId: pid, quantity, priceAtSale, costAtSale, discountAmount };
 }
 
-// F1: aditif — revenue/cost/profit total = jumlah per-partisi (tepat).
+// F1: aditif, revenue/cost/profit total = jumlah per-partisi (tepat).
 console.log('\n== F1: addFacts/sumFacts aditif ==');
 {
   let good = true;
@@ -108,7 +108,7 @@ console.log('\n== F3: kontrak lama tanpa diskon ==');
   ok('lineNetOf tanpa discountAmount', lineNetOf({ quantity: 3, priceAtSale: 15000 }) === 45000);
 }
 
-// F4: struk — receiptTotals ≡ calculateCart; Σ lineNetOf = cart.total.
+// F4: struk, receiptTotals ≡ calculateCart; Σ lineNetOf = cart.total.
 console.log('\n== F4: paritas struk dengan kasir ==');
 {
   let good = true;
@@ -147,7 +147,7 @@ console.log('\n== F5: deltaRatio ==');
   ok('(−150,−100)→−0.5 (basis negatif memburuk)', deltaRatio(-150, -100) === -0.5);
 }
 
-// F6: ZERO_FACTS — semua 0, tanpa NaN.
+// F6: ZERO_FACTS, semua 0, tanpa NaN.
 console.log('\n== F6: ZERO_FACTS ==');
 {
   const m = metricsOf(ZERO_FACTS);
@@ -156,7 +156,7 @@ console.log('\n== F6: ZERO_FACTS ==');
   ok('addFacts identitas', JSON.stringify(addFacts(ZERO_FACTS, ZERO_FACTS)) === JSON.stringify(ZERO_FACTS));
 }
 
-// F7: fillDailySeries — inklusif, hari kosong 0, batas hari 3 zona.
+// F7: fillDailySeries, inklusif, hari kosong 0, batas hari 3 zona.
 console.log('\n== F7: fillDailySeries ==');
 {
   const T = makeTime('Asia/Makassar');

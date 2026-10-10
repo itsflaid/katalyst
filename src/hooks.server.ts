@@ -8,7 +8,7 @@ import { redirect, type Handle } from '@sveltejs/kit';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
 
-// Padanan proxy.ts di Next: hook ini harus ada di file bernama persis `src/hooks.server.ts` — nama lain diam-diam diabaikan tanpa build error.
+// Padanan proxy.ts di Next: hook ini harus ada di file bernama persis `src/hooks.server.ts`; nama lain diam-diam diabaikan tanpa build error.
 // Proteksi route dipusatkan di sini, bukan dicek manual di tiap +page.server.ts.
 
 export const handle: Handle = async ({ event, resolve }) => {

@@ -15,7 +15,7 @@ import { placeholderEmail, normalizeUsername, isValidUsername } from '../domains
 const required = ['DATABASE_URL', 'ADMIN_USERNAME', 'ADMIN_PASSWORD', 'BUSINESS_NAME'] as const;
 for (const key of required) {
   if (!process.env[key]) {
-    throw new Error(`${key} belum di-set. Cek .env — lihat .env.example untuk daftar variabel seed-real.`);
+    throw new Error(`${key} belum di-set. Cek .env, lihat .env.example untuk daftar variabel seed-real.`);
   }
 }
 

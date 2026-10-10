@@ -11,7 +11,7 @@
 </script>
 
 <!-- Mirror dari /login: hero navy di KIRI, form di KANAN (pindah halaman
-     biasa, tanpa animasi geser — sesuai keputusan). Token visual sama:
+     biasa, tanpa animasi geser, sesuai keputusan). Token visual sama:
      canvas krem + dots + Card putih, hero navy + copilot-sheen. -->
 <div class="flex min-h-screen bg-canvas">
   <!-- KIRI: hero branding (di /login ini di kanan) -->
