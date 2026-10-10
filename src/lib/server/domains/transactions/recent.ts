@@ -53,7 +53,7 @@ export async function queryRecentReceipts(businessId: string, limit = 10): Promi
     return {
       txId: h.id,
       createdAt: h.createdAt,
-      cashier: h.cashierName ?? h.userName ?? '—',
+      cashier: h.cashierName ?? h.userName ?? '-',
       kinds: items.length,
       qty: items.reduce((sum, i) => sum + i.quantity, 0),
       total: receiptTotals(items).total

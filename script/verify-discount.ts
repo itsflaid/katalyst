@@ -1,4 +1,4 @@
-// Verifikasi modul src/lib/discount.ts — 17 kasus angka + properti 200 iterasi.
+// Verifikasi modul src/lib/discount.ts: 17 kasus angka + properti 200 iterasi.
 import { calculateCart, type CartLineIn, type DiscountLike, unitDiscount, getDiscountStatus, remainingQuota, isBelowCost, resolveWindow, type WindowPreset, quotaDeltas } from '../src/lib/discount';
 import { EXCLUSION_VIOLATION, overlapDbMessage } from '../src/lib/server/domains/discounts/errors';
 import { makeTime, type BizTime } from '../src/lib/shared/time';

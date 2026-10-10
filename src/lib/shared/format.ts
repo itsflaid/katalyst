@@ -11,6 +11,13 @@ export function fmtInt(value: number): string {
   return `${value < 0 ? '-' : ''}${groupInt(value)}`;
 }
 
+// Qty simulasi pecahan: bulat tampil utuh, pecahan 1 desimal.
+export function fmtQty(value: number): string {
+  if (!Number.isFinite(value)) return '-';
+  if (Number.isInteger(value)) return fmtInt(value);
+  return (Math.round(value * 10) / 10).toFixed(1).replace('.', ',');
+}
+
 export function fmtRupiah(value: number): string {
   return `${value < 0 ? '-Rp' : 'Rp'}${groupInt(value)}`;
 }

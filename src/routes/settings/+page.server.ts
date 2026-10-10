@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ locals }) => {
     .from(user)
     .where(eq(user.businessId, businessId))
     .orderBy(sql`CASE WHEN ${user.role} = 'OWNER' THEN 0 ELSE 1 END`, asc(user.createdAt));
-  // Undangan yang masih pending (belum diterima/dicabut, termasuk yang kedaluwarsa — frontend yang memberi badge + tombol kirim ulang).
+  // Undangan yang masih pending (belum diterima/dicabut, termasuk yang kedaluwarsa; frontend yang memberi badge + tombol kirim ulang).
   const pendingInvites = await db
     .select({
       id: staffInvitation.id,

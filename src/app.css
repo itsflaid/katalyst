@@ -4,12 +4,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Plus Jakarta Sans — satu-satunya typeface; hanya bobot yang dipakai yang di-load.
-   @import CSS harus di baris paling atas file — spec dan Vite nolak @import setelah statement lain. */
+/* Plus Jakarta Sans: satu-satunya typeface; hanya bobot yang dipakai yang di-load.
+   @import CSS harus di baris paling atas file, spec dan Vite nolak @import setelah statement lain. */
 
 body {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  background-color: #F7F3EA; /* canvas — krem hangat, bukan putih polos */
+  background-color: #F7F3EA; /* canvas krem hangat, bukan putih polos */
   color: #0F172A;
 }
 
@@ -18,7 +18,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Scrollbar global ramping selaras tema — Firefox + Chromium.
+/* Scrollbar global ramping selaras tema: Firefox + Chromium.
    Track transparan biar menyatu sama canvas krem / card putih. */
 * {
   scrollbar-width: thin;

@@ -116,11 +116,11 @@ export const actions: Actions = {
     const hasSalesHistory = () =>
       fail(400, {
         for: 'delete',
-        message: 'Produk sudah punya riwayat penjualan — nonaktifkan saja.'
+        message: 'Produk sudah punya riwayat penjualan, nonaktifkan saja.'
       });
 
     // Riwayat penjualan (item struk atau ledger SALE/VOID_RESTORE) tidak boleh hilang.
-    // Ledger RESTOCK/ADJUST milik produk yang belum pernah terjual ikut dibersihkan — kalau tidak, stok awal di ledger bikin produk salah input tak bisa dihapus karena FK.
+    // Ledger RESTOCK/ADJUST milik produk yang belum pernah terjual ikut dibersihkan; kalau tidak, stok awal di ledger bikin produk salah input tak bisa dihapus karena FK.
     const [sold] = await db
       .select({ id: transactionItem.id })
       .from(transactionItem)

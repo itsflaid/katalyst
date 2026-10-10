@@ -29,20 +29,20 @@
   class="relative flex h-28 flex-col justify-between rounded-panel border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-navy focus-visible:ring-offset-1 {status === 'habis'
     ? 'cursor-not-allowed border-border-cool bg-status-neutral-bg opacity-60'
     : inCart > 0
-      ? 'border-status-positive bg-status-positive-bg'
+      ? 'border-ink-navy bg-ink-navy/5'
       : 'border-border-input bg-white hover:border-ink-navy'} {maxed && status !== 'habis' ? 'cursor-not-allowed' : ''}"
 >
   {#if inCart > 0}
-    <span class="absolute -left-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded bg-status-positive px-1 text-label-sm tabular text-white">{inCart}</span>
+    <span class="absolute -left-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded bg-ink-navy px-1 text-label-sm tabular text-white">{inCart}</span>
   {/if}
   <span class="flex items-start justify-between gap-2">
-    <span class="grid h-7 w-7 shrink-0 place-items-center rounded text-label-md {inCart > 0 && status !== 'habis' ? 'bg-status-positive text-white' : 'bg-status-neutral-bg text-ink-navy'}">{initials}</span>
+    <span class="grid h-7 w-7 shrink-0 place-items-center rounded text-label-md {inCart > 0 && status !== 'habis' ? 'bg-ink-navy text-white' : 'bg-status-neutral-bg text-ink-navy'}">{initials}</span>
     {#if status === 'habis'}
       <Badge size="sm" tone="negative">Habis</Badge>
     {:else if status === 'menipis'}
       <Badge size="sm" tone="warning">Sisa {stock}</Badge>
     {:else}
-      <span class="inline-flex items-center whitespace-nowrap rounded border border-ink-navy bg-ink-navy/10 px-1.5 py-px text-[10px] font-semibold leading-[14px] tracking-wide text-ink-navy">Sisa {stock}</span>
+      <span class="inline-flex items-center whitespace-nowrap rounded border border-status-positive-border bg-status-positive-bg px-1.5 py-px text-[10px] font-semibold leading-[14px] tracking-wide text-status-positive">Sisa {stock}</span>
     {/if}
   </span>
   <span class="flex min-h-0 flex-col gap-0.5">

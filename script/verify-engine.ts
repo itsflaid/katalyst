@@ -28,7 +28,7 @@ function check(label: string, actual: number, expected: number, tolerance = 0.5)
     }
 }
 
-// 1. Analytics — sanity check dasar
+// 1. Analytics: sanity check dasar
 console.log("\n== Analytics: perhitungan dasar ==");
 
 const items: TransactionItemLike[] = [
@@ -51,7 +51,7 @@ if (top1ByRevenue.length === 1) {
     failCount++;
 }
 
-// 2. Analytics — insight rules
+// 2. Analytics: insight rules
 console.log("\n== Analytics: insight rules ==");
 
 // 4 produk: A laris+margin rendah, B laris+margin oke, C margin tinggi+jarang laku, D biasa saja

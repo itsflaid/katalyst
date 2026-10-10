@@ -166,6 +166,6 @@ export async function canDeleteDiscount(id: string, businessId: string) {
     .from(discount)
     .where(and(eq(discount.id, id), eq(discount.businessId, businessId)));
   if (!row) return { error: 'Diskon tidak ditemukan.' };
-  if (row.quotaUsed > 0) return { error: 'Sudah dipakai di transaksi — nonaktifkan saja.' };
+  if (row.quotaUsed > 0) return { error: 'Sudah dipakai di transaksi, nonaktifkan saja.' };
   return { data: row };
 }

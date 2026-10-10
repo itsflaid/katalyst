@@ -71,7 +71,7 @@
   );
 </script>
 
-<PageHeader title="Statistik" subtitle="Laporan performa per periode — delta selalu dibanding periode sebelumnya yang sama panjang." />
+<PageHeader title="Statistik" subtitle="Laporan performa per periode, delta selalu dibanding periode sebelumnya yang sama panjang." />
 
 <StatCard class="mb-6 p-0">
   <StatFilterBar
@@ -164,14 +164,14 @@
     </StatCard>
     <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
       <p class="text-label-md uppercase text-white mb-1 truncate">Margin tertinggi</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">{data.highlights.topMargin ? data.highlights.topMargin.name : '—'}</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">{data.highlights.topMargin ? data.highlights.topMargin.name : '-'}</p>
       {#if data.highlights.topMargin}
         <p class="text-body-sm tabular break-words"><Badge tone="positive" class="rounded-full">{`${(data.highlights.topMargin.margin * 100).toFixed(1)}%`}</Badge></p>
       {/if}
     </StatCard>
     <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
       <p class="text-label-md uppercase text-white mb-1 truncate">Margin terendah</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">{data.highlights.lowMargin ? data.highlights.lowMargin.name : '—'}</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">{data.highlights.lowMargin ? data.highlights.lowMargin.name : '-'}</p>
       {#if data.highlights.lowMargin}
         <p class="text-body-sm tabular break-words"><Badge tone="warning" class="rounded-full">{`${(data.highlights.lowMargin.margin * 100).toFixed(1)}%`}</Badge></p>
       {/if}
@@ -239,7 +239,7 @@
         yLine={data.matrix.yLine}
       />
       <div class="grid grid-cols-1 sm:grid-cols-2 sm:grid-flow-col sm:grid-rows-2 gap-2 mt-3 text-body-sm text-muted">
-        <p><strong class="text-ink">Bintang</strong> (kanan atas): laku & margin baik — jaga stok.</p>
+        <p><strong class="text-ink">Bintang</strong> (kanan atas): laku & margin baik, jaga stok.</p>
         <p><strong class="text-ink">Margin bagus, kurang laku</strong> (kiri atas): butuh promosi.</p>
         <p><strong class="text-ink">Laris tapi margin tipis</strong> (kanan bawah): kandidat naik harga.</p>
         <p><strong class="text-ink">Evaluasi</strong> (kiri bawah): pertimbangkan hentikan.</p>
@@ -351,7 +351,7 @@
           {/each}
         </Table>
       {:else}
-        <p class="text-body-md text-muted">Tidak ada stok mati — semua produk bergerak.</p>
+        <p class="text-body-md text-muted">Tidak ada stok mati, semua produk bergerak.</p>
       {/if}
     </StatCard>
   </div>

@@ -1,11 +1,11 @@
-// Helper SQL zona bisnis — AT TIME ZONE wajib literal.
+// Helper SQL zona bisnis: AT TIME ZONE wajib literal.
 // Ekspresi sama di SELECT dan GROUP BY butuh objek ekspresi yang sama
 // agar Postgres tidak melempar error "must appear in the GROUP BY clause".
 import { sql, type SQLWrapper } from 'drizzle-orm';
 import type { BizTz } from '../shared/time';
 import { transactionItem } from './db/schema';
 
-// Literal zona dari tabel tetap, bukan dari input mentah — anti SQL injection.
+// Literal zona dari tabel tetap, bukan dari input mentah, anti SQL injection.
 const TZ_LITERAL: Record<BizTz, string> = {
   'Asia/Jakarta': `'Asia/Jakarta'`,
   'Asia/Makassar': `'Asia/Makassar'`,

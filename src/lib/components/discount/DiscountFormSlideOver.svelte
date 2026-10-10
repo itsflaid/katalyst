@@ -128,14 +128,14 @@
         </label>
       </fieldset>
     {:else}
-      <p class="text-body-md text-ink">Cakupan: <strong>{e?.scope === 'PRODUCT' ? `Produk (${e?.productId ? (products.find((p) => p.id === e?.productId)?.name ?? '—') : '—'})` : 'Global / semua produk'}</strong> <span class="text-body-sm text-muted">(tidak bisa diubah)</span></p>
+      <p class="text-body-md text-ink">Cakupan: <strong>{e?.scope === 'PRODUCT' ? `Produk (${e?.productId ? (products.find((p) => p.id === e?.productId)?.name ?? '-') : '-'})` : 'Global / semua produk'}</strong> <span class="text-body-sm text-muted">(tidak bisa diubah)</span></p>
     {/if}
 
     {#if scope === 'PRODUCT' && isCreate}
       <label for="d-product" class="flex flex-col gap-1 text-body-md text-ink">
         Produk
         <select id="d-product" name="productId" bind:value={cProductId} class="h-9 w-full rounded border border-border-input bg-white px-3 text-body-md text-ink" required>
-          <option value="">— Pilih produk —</option>
+          <option value="">- Pilih produk -</option>
           {#each products as p}
             <option value={p.id}>{p.name} · jual {idr(p.sellingPrice)} · modal {idr(p.costPrice)}{p.isActive ? '' : ' (nonaktif)'}</option>
           {/each}

@@ -7,7 +7,7 @@
   export let data;
 
   // <main> adalah scroll container (bukan document); layout tidak dihancurkan saat navigasi client-side.
-  // scrollTop halaman A kebawa ke halaman B — reset manual tiap pathname berubah.
+  // scrollTop halaman A kebawa ke halaman B, reset manual tiap pathname berubah.
   let mainEl: HTMLElement | null = null;
 
   // Drawer mobile: sidebar disembunyikan di <lg, dibuka via hamburger.
