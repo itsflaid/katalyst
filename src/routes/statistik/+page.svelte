@@ -73,7 +73,7 @@
 
 <PageHeader title="Statistik" subtitle="Laporan performa per periode — delta selalu dibanding periode sebelumnya yang sama panjang." />
 
-<StatCard class="mb-6 p-0 shadow-stat-bar">
+<StatCard class="mb-6 p-0">
   <StatFilterBar
     {activeRange}
     rangeLabel={data.rangeLabel}
