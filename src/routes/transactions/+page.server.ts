@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db';
 import { stockMovement, transaction, transactionItem, product, user, discount } from '$lib/server/db/schema';
-import { eq, desc, and, asc, inArray, gt, gte, or, sql } from 'drizzle-orm';
+import { eq, desc, and, asc, inArray, gte, or, sql } from 'drizzle-orm';
 import { DEFAULT_TZ } from '$lib/shared/time';
 import { calculateCart, getDiscountStatus, quotaDeltas } from '$lib/discount';
 import { receiptTotals } from '$lib/analytics';
@@ -132,12 +132,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     });
   }
 
-  // Buat dropdown produk di panel "Transaksi Baru" — hanya produk aktif yang stoknya masih ada.
-  // Produk habis tersembunyi dari kasir (turunan stok; isActive sendiri tidak disentuh). costPrice sengaja tidak dipilih — halaman ini bisa dibuka STAFF.
+  // Produk habis ikut dikirim supaya tampil abu-abu dan tidak bisa di-tap. costPrice sengaja tidak dipilih — halaman ini bisa dibuka STAFF.
   const products = await db
-    .select({ id: product.id, name: product.name, sellingPrice: product.sellingPrice, stock: product.stock })
+    .select({ id: product.id, name: product.name, sellingPrice: product.sellingPrice, stock: product.stock, minStock: product.minStock })
     .from(product)
-    .where(and(eq(product.businessId, businessId), eq(product.isActive, true), gt(product.stock, 0)));
+    .where(and(eq(product.businessId, businessId), eq(product.isActive, true)));
 
   // Diskon untuk preview client: yang isActive dan belum berakhir.
   // Status final tetap dihitung server saat create (jam server).
