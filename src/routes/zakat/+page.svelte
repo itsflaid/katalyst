@@ -184,16 +184,16 @@
           <h2
             class="text-[32px] font-extrabold leading-[1.1] tracking-tight text-white sm:text-[40px] lg:text-[48px]"
           >
-            Hitung zakat usahamu
+            Zakat perdagangan,
             <span class="text-[#4ADE80]">
-              dengan data yang kamu isi sendiri
+              terhitung dari datamu sendiri
             </span>
           </h2>
 
           <p class="mt-4 text-base leading-relaxed text-white/75 lg:text-lg">
-            Harga emas diisi manual dari toko emas langganan,
-            tanpa API eksternal. Estimasi {fmtPercent(ZAKAT_RATE)}
-            dari aset bersih setelah 1 haul.
+            Nisab ikut harga emas hari ini.
+            Estimasi {fmtPercent(ZAKAT_RATE)}
+            × aset bersih setelah genap 1 haul.
           </p>
         </div>
 
@@ -411,7 +411,7 @@
 {/if}
 
 <!-- FORM PENGATURAN DAN KEUANGAN -->
-<div class="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-2">
+<div class="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
   <!-- Pengaturan zakat -->
   <StatCard>
     <h2 class="mb-1 text-headline-sm text-ink">
@@ -651,7 +651,7 @@
 </div>
 
 <!-- CATATAN -->
-<StatCard class="mt-4">
+<StatCard class="mt-4 w-fit mx-auto">
   <p class="flex items-start gap-2.5 text-body-md text-ink">
     <ShieldCheck
       size={20}
@@ -659,7 +659,9 @@
     />
 
     <span>
-      Estimasi berdasarkan data yang Anda isi, bukan fatwa.
+      <strong>
+        Estimasi berdasarkan data yang Anda isi, bukan fatwa.
+      </strong>
       Konfirmasi ke BAZNAS atau lembaga amil zakat.
     </span>
   </p>
