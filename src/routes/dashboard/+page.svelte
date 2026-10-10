@@ -114,30 +114,34 @@
 <!-- Baris 3: kiri Transaksi Terbaru (flex-1) + kanan Copilot (lg:w-80) -->
 <div class="flex flex-col lg:flex-row gap-6 items-start">
   <div class="flex-1 min-w-0 w-full">
-    <h2 class="text-headline-sm text-ink mb-3">Transaksi Terbaru</h2>
-    {#if data.recentTransactions.length === 0}
-      <Card class="text-center py-8">
-        <p class="text-body-md text-muted">Belum ada transaksi.</p>
-      </Card>
-    {:else}
-      <Table headers={['Struk', 'Item', 'Total']}>
-        {#each data.recentTransactions as t}
-          <tr>
-            <td class="px-3 py-2 text-ink">Struk · {fmtDate(t.createdAt)} · {t.cashier}</td>
-            <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{t.kinds} jenis · {num(t.qty)} pcs</td>
-            <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(t.total)}</td>
-          </tr>
-        {/each}
-      </Table>
-      <div class="text-right mt-2">
-        <a href="/transactions" class="text-body-md font-semibold text-status-positive hover:underline no-underline">Lihat lainnya →</a>
+    <Card class="p-0 overflow-hidden">
+      <div class="flex items-center justify-between gap-3 border-b border-white bg-ink-navy px-5 py-3">
+        <h2 class="text-headline-sm text-white">Transaksi Terbaru</h2>
+        {#if data.recentTransactions.length > 0}
+          <a href="/transactions" class="shrink-0 text-body-sm font-semibold text-white/85 hover:text-white hover:underline no-underline">Lihat lainnya →</a>
+        {/if}
       </div>
-    {/if}
+      {#if data.recentTransactions.length === 0}
+        <p class="px-5 py-4 text-body-md text-muted">Belum ada transaksi.</p>
+      {:else}
+        <div class="[&>div]:!rounded-none [&>div]:!border-0">
+          <Table headers={['Struk', 'Item', 'Total']}>
+            {#each data.recentTransactions as t}
+              <tr>
+                <td class="px-3 py-2 text-ink">Struk · {fmtDate(t.createdAt)} · {t.cashier}</td>
+                <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{t.kinds} jenis · {num(t.qty)} pcs</td>
+                <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(t.total)}</td>
+              </tr>
+            {/each}
+          </Table>
+        </div>
+      {/if}
+    </Card>
   </div>
 
   <!-- Kolom kanan: Copilot — diisi teaser + quick prompts, bukan cuma judul kosong -->
   <div class="w-full lg:w-80 flex-shrink-0">
-    <div class="relative overflow-hidden rounded-panel bg-ink-navy p-5 shadow-level1 min-h-[280px] flex flex-col">
+    <div class="relative overflow-hidden rounded-panel bg-ink-navy p-5 shadow-stat-card min-h-[280px] flex flex-col">
       <div class="flex items-center gap-2.5 mb-3">
         <img src="/logo/logo-copilot.png" alt="Copilot AI" class="h-8 w-8 flex-shrink-0 rounded object-cover" />
         <h2 class="text-headline-sm text-white">Katalyst Copilot</h2>
