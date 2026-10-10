@@ -82,9 +82,15 @@
 
 <PageHeader title="Produk" subtitle={`${data.products.length} produk terdaftar · ${activeCount} aktif`} />
 
-<ProductTabs {isOwner} />
+<ProductTabs {isOwner}>
+  <svelte:fragment slot="actions">
+    {#if isOwner}
+      <Button on:click={() => (showCreate = true)}>+ Tambah</Button>
+    {/if}
+  </svelte:fragment>
+</ProductTabs>
 
-<ProductToolbar bind:query bind:statusFilter bind:stockFilter {restockCount} {outCount} {isOwner} onAdd={() => (showCreate = true)} />
+<ProductToolbar bind:query bind:statusFilter bind:stockFilter {restockCount} {outCount} />
 
 {#if data.products.length === 0}
   <div class="rounded-panel border-2 border-dashed border-border-input text-center py-12 px-4">
