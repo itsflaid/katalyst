@@ -12,7 +12,7 @@
   import StatFilterBar from '$lib/components/statistik/StatFilterBar.svelte';
   import StatCard from '$lib/components/statistik/StatCard.svelte';
   import DonutLegendCard from '$lib/components/statistik/DonutLegendCard.svelte';
-  import { Receipt } from 'lucide-svelte';
+  import { ShoppingCart } from 'lucide-svelte';
   import type { PeriodKey } from '$lib/shared/period';
   import { goto } from '$app/navigation';
   export let data;
@@ -263,7 +263,7 @@
       </StatCard>
       <StatCard class="p-0 overflow-hidden">
         <div class="flex items-center gap-2 bg-ink-navy text-white px-4 h-[44px]">
-          <Receipt size={18} class="shrink-0" />
+          <ShoppingCart size={18} class="shrink-0" />
           <h2 class="text-headline-sm">Ringkasan Transaksi</h2>
         </div>
         <div class="p-5">
