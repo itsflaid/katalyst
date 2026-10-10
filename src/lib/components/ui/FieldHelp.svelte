@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { CircleHelp } from 'lucide-svelte';
+  import { CircleHelp, Info } from 'lucide-svelte';
 
   export let id: string;
   export let label: string;
@@ -29,14 +29,17 @@
     <CircleHelp class="h-4 w-4" />
   </button>
   {#if open}
-    <div {id} role="note" class="flex w-full basis-full flex-col gap-1 rounded border border-status-neutral-border bg-status-neutral-bg px-3 py-2 text-body-sm text-muted">
-      <p>{about}</p>
-      {#if example}
-        <p><strong class="text-ink">Contoh:</strong> {example}</p>
-      {/if}
-      {#if tip}
-        <p><strong class="text-ink">Tips:</strong> {tip}</p>
-      {/if}
+    <div {id} role="note" class="flex w-full basis-full items-start gap-2 rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2.5 text-body-sm text-ink">
+      <Info size={18} class="mt-0.5 shrink-0 text-[#0284C7]" />
+      <div class="flex min-w-0 flex-col gap-1">
+        <p>{about}</p>
+        {#if example}
+          <p><strong>Contoh:</strong> {example}</p>
+        {/if}
+        {#if tip}
+          <p><strong>Tips:</strong> {tip}</p>
+        {/if}
+      </div>
     </div>
   {/if}
 </span>

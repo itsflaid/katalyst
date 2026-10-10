@@ -176,7 +176,7 @@
     <!-- Hero navy -->
     <StatCard
       tone="navy"
-      class="relative z-10 p-6 shadow-lg lg:p-10"
+      class="relative z-20 p-6 shadow-lg lg:p-10"
     >
       <div class="flex flex-col gap-6 lg:flex-row lg:items-center">
         <!-- Headline -->
@@ -245,10 +245,10 @@
       </div>
     </StatCard>
 
-    <!-- Card progress overlap -->
-    <div class="relative z-20 -mt-2 px-4 sm:px-6 lg:px-8">
+    <!-- Card progress -->
+    <div class="relative z-0 -mt-8 px-4 sm:px-6 lg:px-8">
       <StatCard
-        class="relative rounded-xl border border-black/10 bg-white p-5 shadow-lg lg:p-6"
+        class="relative rounded-xl border border-black/10 bg-white p-5 pt-12 shadow-lg lg:p-6 lg:pt-14"
       >
         <div
           class="flex flex-wrap items-start justify-between gap-3"
@@ -411,7 +411,7 @@
 {/if}
 
 <!-- FORM PENGATURAN DAN KEUANGAN -->
-<div class="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+<div class="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-2">
   <!-- Pengaturan zakat -->
   <StatCard>
     <h2 class="mb-1 text-headline-sm text-ink">
@@ -430,7 +430,7 @@
     >
       <div class="flex flex-col gap-1">
         <div
-          class="flex flex-wrap items-center gap-1.5 text-body-sm text-ink"
+          class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink"
         >
           <label for="z-gold">
             Harga emas per gram (Rp)
@@ -445,6 +445,7 @@
 
         <Input
           id="z-gold"
+          class="h-12 rounded-lg text-body-lg"
           type="number"
           name="goldPrice"
           min="1"
@@ -469,7 +470,7 @@
 
       <div class="flex flex-col gap-1">
         <div
-          class="flex flex-wrap items-center gap-1.5 text-body-sm text-ink"
+          class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink"
         >
           <label for="z-nisab">Nisab (gram)</label>
 
@@ -482,6 +483,7 @@
 
         <Input
           id="z-nisab"
+          class="h-12 rounded-lg text-body-lg"
           type="number"
           name="nisabGrams"
           min="1"
@@ -491,7 +493,7 @@
 
       <div class="flex flex-col gap-1">
         <div
-          class="flex flex-wrap items-center gap-1.5 text-body-sm text-ink"
+          class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink"
         >
           <label for="z-haul">Tanggal mulai haul</label>
 
@@ -504,6 +506,7 @@
 
         <Input
           id="z-haul"
+          class="h-12 rounded-lg text-body-lg"
           type="date"
           name="haulStartDate"
           bind:value={haulStartDate}
@@ -512,7 +515,7 @@
 
       <div class="flex flex-col gap-1">
         <div
-          class="flex flex-wrap items-center gap-1.5 text-body-sm text-ink"
+          class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink"
         >
           <label for="z-valuasi">
             Metode valuasi stok
@@ -529,14 +532,14 @@
           id="z-valuasi"
           name="stockValuation"
           bind:value={stockValuation}
-          class="flex h-9 w-full rounded border border-border-input bg-white px-3 py-1 text-body-md text-ink"
+          class="flex h-12 w-full rounded-lg border border-border-input bg-white px-3 py-1 text-body-lg text-ink"
         >
           <option value="SELLING">Harga jual</option>
           <option value="COST">Harga modal</option>
         </select>
       </div>
 
-      <Button type="submit">
+      <Button type="submit" class="h-11 self-center px-8">
         Simpan pengaturan
       </Button>
     </form>
@@ -560,7 +563,7 @@
     >
       <div class="flex flex-col gap-1">
         <div
-          class="flex flex-wrap items-center gap-1.5 text-body-sm text-ink"
+          class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink"
         >
           <label for="z-cash">Kas (Rp)</label>
 
@@ -573,6 +576,7 @@
 
         <Input
           id="z-cash"
+          class="h-12 rounded-lg text-body-lg"
           type="number"
           name="cash"
           min="0"
@@ -583,7 +587,7 @@
 
       <div class="flex flex-col gap-1">
         <div
-          class="flex flex-wrap items-center gap-1.5 text-body-sm text-ink"
+          class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink"
         >
           <label for="z-receivable">
             Piutang lancar (Rp)
@@ -598,6 +602,7 @@
 
         <Input
           id="z-receivable"
+          class="h-12 rounded-lg text-body-lg"
           type="number"
           name="receivable"
           min="0"
@@ -608,7 +613,7 @@
 
       <div class="flex flex-col gap-1">
         <div
-          class="flex flex-wrap items-center gap-1.5 text-body-sm text-ink"
+          class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink"
         >
           <label for="z-debt">
             Utang jatuh tempo (Rp)
@@ -623,6 +628,7 @@
 
         <Input
           id="z-debt"
+          class="h-12 rounded-lg text-body-lg"
           type="number"
           name="debt"
           min="0"
@@ -637,7 +643,7 @@
         </p>
       {/if}
 
-      <Button type="submit">
+      <Button type="submit" class="h-11 self-center px-8">
         Simpan posisi keuangan
       </Button>
     </form>
