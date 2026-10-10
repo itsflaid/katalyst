@@ -13,7 +13,7 @@
   }
 </script>
 
-<div class="hidden sm:flex items-stretch gap-0 rounded-[10px] border border-border-stat bg-surface shadow-stat-bar divide-x divide-border-stat">
+<div class="hidden sm:flex items-stretch gap-0 divide-x divide-border-stat">
   <div class="flex flex-col justify-center gap-1 px-4 py-3">
     <span class="text-body-sm text-muted">Periode</span>
     <span class="relative inline-flex">

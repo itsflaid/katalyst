@@ -73,7 +73,7 @@
 
 <PageHeader title="Statistik" subtitle="Laporan performa per periode — delta selalu dibanding periode sebelumnya yang sama panjang." />
 
-<Card class="mb-6">
+<StatCard class="mb-6 p-0 shadow-stat-bar">
   <StatFilterBar
     {activeRange}
     rangeLabel={data.rangeLabel}
@@ -82,7 +82,7 @@
     onSelect={(k) => goWithRange(k)}
     onApply={applyCustom}
   />
-  <div class="sm:hidden flex flex-col gap-2">
+  <div class="sm:hidden flex flex-col gap-2 p-5">
     <button type="button" on:click={() => (showPeriodSheet = true)} class="inline-flex h-9 items-center justify-between rounded border border-border-input bg-white px-3 text-body-md text-ink">
       <span>Periode: <strong>{rangeNames[activeRange] ?? '30 hari'}</strong></span>
       <span aria-hidden="true" class="text-muted">▾</span>
@@ -91,7 +91,7 @@
       <span class="text-body-sm text-muted">Dipakai: <strong class="text-ink">{data.rangeLabel}</strong></span>
     {/if}
   </div>
-</Card>
+</StatCard>
 
 {#if showPeriodSheet}
   <SlideOver title="Pilih Periode" onClose={() => (showPeriodSheet = false)}>
