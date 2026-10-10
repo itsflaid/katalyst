@@ -133,7 +133,7 @@
       : null;
 
   const fmtTanggal = (iso: string | null) => {
-    if (!iso) return '—';
+    if (!iso) return '-';
 
     const [y, m, d] = iso.split('-');
 
@@ -211,14 +211,14 @@
             class="mt-1 break-words text-2xl font-extrabold leading-tight text-white lg:text-[30px]"
           >
             {result.nisab === null
-              ? '—'
+              ? '-'
               : fmtRupiah(result.nisab)}
           </p>
 
           <p class="mt-2 text-xs text-white/70">
             {input.nisabGrams} gram ×
             {input.goldPricePerGram === null
-              ? '—'
+              ? '-'
               : `${fmtRupiah(input.goldPricePerGram)} per gram`}
           </p>
 
@@ -310,8 +310,8 @@
         {#if partial}
           <p class="mt-2 text-sm leading-relaxed text-muted">
             Belum diisi:
-            {result.missing.map((m) => missingLabel[m]).join(', ')}
-            — angka di atas memakai 0 untuk yang kosong.
+            {result.missing.map((m) => missingLabel[m]).join(', ')}.
+            Yang kosong dihitung 0.
           </p>
         {/if}
       </StatCard>
@@ -404,7 +404,7 @@
     </h2>
 
     <p class="text-body-md text-muted">
-      Isi pengaturan dan posisi keuangan di bawah —
+      Isi pengaturan dan posisi keuangan di bawah agar
       hasil estimasi muncul di sini.
     </p>
   </Card>
@@ -463,7 +463,7 @@
 
           {#if data.setting.goldAgeDays !== null && data.setting.goldAgeDays > 30}
             <Badge tone="warning" size="sm">
-              lebih dari 30 hari — perbarui
+              lebih dari 30 hari, perbarui
             </Badge>
           {/if}
         </p>

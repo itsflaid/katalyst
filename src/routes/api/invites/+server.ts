@@ -41,7 +41,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   const [existingUser] = await db.select({ id: user.id }).from(user).where(eq(user.username, invite.username));
   if (existingUser) {
-    // Bersih-bersih: username keburu dipakai — cabut invite.
+    // Bersih-bersih: username keburu dipakai, cabut invite.
     await db.update(staffInvitation).set({ revokedAt: new Date() }).where(eq(staffInvitation.id, invite.id));
     throw error(409, 'Username sudah dipakai.');
   }
@@ -68,7 +68,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   return json({ id, username: invite.username, token: rawToken, expiresAt: expiresAt.toISOString() }, { status: 201 });
 };
 
-// Cabut undangan — link langsung mati dengan error generik (jangan bocorkan alasan ke pemegang link).
+// Cabut undangan: link langsung mati dengan error generik (jangan bocorkan alasan ke pemegang link).
 export const DELETE: RequestHandler = async ({ request, locals }) => {
   requireOwner(locals);
   const businessId = locals.user!.businessId as string;

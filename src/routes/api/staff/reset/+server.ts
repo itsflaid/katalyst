@@ -9,7 +9,7 @@ import type { RequestHandler } from './$types';
 
 // Reset password staff aktif yang lupa password: server set password sementara + cabut semua sesi staff.
 // Password sementara ditampilkan sekali ke owner; staff login pakai itu lalu wajib ganti sendiri di halaman Akun.
-// Beda dengan "Kirim ulang" di Undangan Pending (untuk akun belum jadi — link invite baru, bukan password).
+// Beda dengan "Kirim ulang" di Undangan Pending (untuk akun belum jadi: link invite baru, bukan password).
 export const POST: RequestHandler = async ({ request, locals }) => {
   if (!locals.user || locals.user.role !== 'OWNER') {
     throw error(403, 'Cuma Owner yang bisa me-reset password staff.');
@@ -34,12 +34,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   const tempPassword = generateTempPassword();
 
-  // headers: teruskan cookie sesi owner — endpoint admin menolak tanpa sesi admin.
+  // headers: teruskan cookie sesi owner, endpoint admin menolak tanpa sesi admin.
   await auth.api.setUserPassword({
     body: { userId: id, newPassword: tempPassword },
     headers: request.headers
   });
-  // Sesi lama langsung mati — cuma login baru pakai password sementara yang bisa masuk.
+  // Sesi lama langsung mati, cuma login baru pakai password sementara yang bisa masuk.
   await auth.api.revokeUserSessions({ body: { userId: id }, headers: request.headers });
 
   return json({ tempPassword });

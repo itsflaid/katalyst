@@ -28,7 +28,7 @@ function mulberry32(seed: number) {
 const rand = mulberry32(20261004);
 const ri = (min: number, max: number) => Math.floor(rand() * (max - min + 1)) + min;
 
-// ORACLE BEKU — salinan verbatim resolveStatistikRange / resolveSimulatorRange
+// ORACLE BEKU: salinan verbatim resolveStatistikRange / resolveSimulatorRange
 // dari src/lib/server/domains/stats/loaders.ts. Jangan diubah: dipakai sebagai
 // patokan stabil.
 

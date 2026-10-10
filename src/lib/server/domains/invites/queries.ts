@@ -3,14 +3,14 @@
 // Cloudflare Workers; jangan pakai node:crypto.
 export const INVITE_TTL_MS = 48 * 60 * 60 * 1000; // 48 jam
 
-/** Token mentah 64 hex chars (256 bit) — cuma tampil sekali ke owner. */
+/** Token mentah 64 hex chars (256 bit), cuma tampil sekali ke owner. */
 export function generateInviteToken(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** SHA-256 hex dari token mentah — yang disimpan di DB (tokenHash unique). */
+/** SHA-256 hex dari token mentah, yang disimpan di DB (tokenHash unique). */
 export async function hashInviteToken(raw: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
@@ -39,7 +39,7 @@ export function placeholderEmail(username: string): string {
   return `${normalizeUsername(username)}@staff.internal`;
 }
 
-// Password sementara buat reset oleh owner — format 4-4 mudah didikte
+// Password sementara buat reset oleh owner, format 4-4 mudah didikte
 // via WA/lisan (tanpa karakter ambigu 0/O, 1/l). Selalu ≥ min 6 better-auth.
 const TEMP_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
 

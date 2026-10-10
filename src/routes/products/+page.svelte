@@ -41,7 +41,7 @@
     .sort((a, b) => (stockFilter === "all" ? 0 : a.stock - b.stock));
   $: activeCount = data.products.filter((p) => p.isActive).length;
   // STAFF boleh lihat daftar & stok, tapi semua aksi ubah data ditolak server
-  // (OWNER-only) — di sini tombolnya disembunyikan biar tidak ada dead-end.
+  // (OWNER-only); di sini tombolnya disembunyikan biar tidak ada dead-end.
   $: isOwner = data.role === "OWNER";
 
   let showCreate = false;
@@ -134,7 +134,7 @@
 {#if pendingDelete}
   <ConfirmDialog title="Hapus produk?" onClose={closeModals}>
     “{pendingDelete.name}” akan dihapus permanen. Produk yang sudah punya
-    riwayat penjualan tidak bisa dihapus — nonaktifkan saja.
+    riwayat penjualan tidak bisa dihapus, nonaktifkan saja.
     {#if form?.for === "delete"}<p class="text-body-sm text-status-negative mt-2">{form.message}</p>{/if}
     <svelte:fragment slot="actions">
       <Button variant="secondary" class="flex-1" on:click={closeModals}>Batal</Button>

@@ -30,7 +30,7 @@
   export let onEdit: (d: DiscountRow) => void;
   export let onDelete: (d: DiscountRow) => void;
 
-  // T cukup dirujuk di markup (reaktif via prop) — tidak ada fungsi pembantu
+  // T cukup dirujuk di markup (reaktif via prop), tidak ada fungsi pembantu
   // di luar markup yang butuh T sebagai argumen di sini.
   const fmtRange = (d: DiscountRow) => {
     const start = T.fmt(d.startsAt, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -49,7 +49,7 @@
     {#each discounts as d}
       <tr>
         <td class="px-3 py-2 text-ink font-semibold whitespace-nowrap">{d.name}</td>
-        <td class="px-3 py-2 text-muted whitespace-nowrap">{d.scope === 'PRODUCT' ? (d.productName ?? '—') : 'Semua produk'}</td>
+        <td class="px-3 py-2 text-muted whitespace-nowrap">{d.scope === 'PRODUCT' ? (d.productName ?? '-') : 'Semua produk'}</td>
         <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{d.percent}%</td>
         <td class="px-3 py-2 text-body-sm text-muted whitespace-nowrap">{fmtRange(d)}</td>
         <td class="px-3 py-2 text-body-sm text-muted whitespace-nowrap">

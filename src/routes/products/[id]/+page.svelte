@@ -22,9 +22,9 @@
     <p class="text-label-sm uppercase text-muted">Stok sekarang</p>
     <p class="text-num-display text-ink tabular">{num(data.product.stock)}</p>
     {#if data.product.stock <= 0}
-      <p class="text-body-sm text-status-negative mt-1">Habis — tidak muncul di kasir sampai direstock.</p>
+      <p class="text-body-sm text-status-negative mt-1">Habis, tidak muncul di kasir sampai direstock.</p>
     {:else if data.product.stock <= (data.product.minStock ?? 5)}
-      <p class="text-body-sm text-status-warning mt-1">Menipis — segera restock.</p>
+      <p class="text-body-sm text-status-warning mt-1">Menipis, segera restock.</p>
     {/if}
   </Card>
   <Card>
@@ -67,8 +67,8 @@
         <td class="px-3 py-2 text-body-sm text-muted whitespace-nowrap">{fmtDate(m.createdAt)}</td>
         <td class="px-3 py-2 tabular font-semibold whitespace-nowrap {m.qtyChange >= 0 ? 'text-status-positive' : 'text-status-negative'}">{m.qtyChange >= 0 ? `+${m.qtyChange}` : m.qtyChange}</td>
         <td class="px-3 py-2 text-ink whitespace-nowrap">{reasonLabel[m.reason] ?? m.reason}</td>
-        <td class="px-3 py-2 text-muted">{m.note ?? '—'}</td>
-        <td class="px-3 py-2 text-muted whitespace-nowrap">{m.createdByName ?? '—'}</td>
+        <td class="px-3 py-2 text-muted">{m.note ?? '-'}</td>
+        <td class="px-3 py-2 text-muted whitespace-nowrap">{m.createdByName ?? '-'}</td>
       </tr>
     {/each}
   </Table>

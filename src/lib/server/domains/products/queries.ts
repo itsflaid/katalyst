@@ -4,7 +4,7 @@ import { eq, and } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 
 // STAFF boleh buka /products (lihat stok & harga), tapi semua perubahan
-// data produk OWNER-only. Dicek di server — menyembunyikan tombol di UI
+// data produk OWNER-only. Dicek di server, menyembunyikan tombol di UI
 // saja tidak cukup karena form action bisa dipanggil langsung.
 export function denyUnlessOwner(locals: App.Locals, forKey: string, message: string) {
   if (locals.user?.role !== 'OWNER') return fail(403, { for: forKey, message });

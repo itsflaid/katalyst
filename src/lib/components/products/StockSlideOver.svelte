@@ -16,7 +16,7 @@
   let sNote = '';
 </script>
 
-<SlideOver title={modal.mode === 'restock' ? `Restock — ${modal.name}` : `Koreksi Stok — ${modal.name}`} onClose={onClose}>
+<SlideOver title={modal.mode === 'restock' ? `Restock: ${modal.name}` : `Koreksi Stok: ${modal.name}`} onClose={onClose}>
   {#if modal.mode === 'restock'}
     <form method="POST" action="?/restock" use:enhance={onSubmit} class="flex flex-col gap-3">
       <input type="hidden" name="id" value={modal.id} />

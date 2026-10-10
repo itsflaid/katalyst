@@ -51,11 +51,11 @@
       .map((w) => w[0]?.toUpperCase() ?? '')
       .join('') || '?';
 
-  // Mode ringkas (icon-only rail) — preferensi disimpan di localStorage
+  // Mode ringkas (icon-only rail): preferensi disimpan di localStorage
   // biar gak balik ke expanded tiap navigasi/refresh.
   let collapsed = false;
 
-  // Grup collapsible (dropdown) — preferensi disimpan di localStorage
+  // Grup collapsible (dropdown): preferensi disimpan di localStorage
   // sebagai daftar nama grup yang dilipat.
   let collapsedGroups: string[] = [];
   onMount(() => {
