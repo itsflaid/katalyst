@@ -191,9 +191,9 @@
 {/if}
 
 <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
-  <Card>
-    <h2 class="text-headline-sm text-ink mb-1">Pengaturan zakat</h2>
-    <p class="text-body-sm text-muted mb-3">Harga emas diisi manual dari toko emas langganan — tanpa API eksternal.</p>
+  <StatCard>
+    <h2 class="text-headline-sm text-ink mb-1">Pengaturan Zakat</h2>
+    <p class="text-body-sm text-muted mb-3">Harga emas, nisab, dan cara menghitung stok.</p>
     <form method="POST" action="?/saveSetting" use:enhance={refresh} class="flex flex-col gap-3">
       <div class="flex flex-col gap-1">
         <div class="flex flex-wrap items-center gap-1.5 text-body-sm text-ink">
@@ -236,11 +236,11 @@
       </div>
       <Button type="submit">Simpan pengaturan</Button>
     </form>
-  </Card>
+  </StatCard>
 
-  <Card>
+  <StatCard>
     <h2 class="text-headline-sm text-ink mb-1">Posisi keuangan</h2>
-    <p class="text-body-sm text-muted mb-3">Kas adalah saldo tunai + rekening — bukan omzet. Kosongkan bila belum tahu.</p>
+    <p class="text-body-sm text-muted mb-3">Kondisi kas, piutang, dan utang usahamu saat ini.</p>
     <form method="POST" action="?/saveBalance" use:enhance={refresh} class="flex flex-col gap-3">
       <div class="flex flex-col gap-1">
         <div class="flex flex-wrap items-center gap-1.5 text-body-sm text-ink">
@@ -268,7 +268,7 @@
       {/if}
       <Button type="submit">Simpan posisi keuangan</Button>
     </form>
-  </Card>
+  </StatCard>
 </div>
 
 <Card class="mt-4">
