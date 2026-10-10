@@ -7,6 +7,7 @@
   import FieldHelp from '$lib/components/ui/FieldHelp.svelte';
   import Input from '$lib/components/ui/Input.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
+  import StatCard from '$lib/components/statistik/StatCard.svelte';
   import { ZAKAT_RATE } from '$lib/analytics';
   import { fmtPercent, fmtRupiah } from '$lib/shared/format';
   export let data;
@@ -107,14 +108,39 @@
 {/if}
 
 {#if result && input}
-  <Card class="mb-4">
-    <div class="flex flex-wrap items-center gap-2">
-      <Badge tone={statusMeta[result.status].tone}>{statusMeta[result.status].label}</Badge>
-      {#if partial}<Badge tone="neutral">estimasi parsial</Badge>{/if}
+  <StatCard tone="navy" class="mb-4">
+    <div class="flex flex-col lg:flex-row gap-5 lg:items-center">
+      <div class="flex-1 min-w-0">
+        <h2 class="text-headline-lg text-white">Hitung zakat usahamu <span class="text-status-positive">dengan data yang kamu isi sendiri</span></h2>
+        <p class="text-body-sm text-white/70 mt-2">Harga emas diisi manual dari toko emas langganan — tanpa API eksternal. Estimasi {fmtPercent(ZAKAT_RATE)} dari aset bersih setelah 1 haul.</p>
+      </div>
+      <div class="rounded-[9px] bg-white/10 px-5 py-4 lg:w-[300px] shrink-0">
+        <p class="text-label-sm uppercase text-white/70">Nisab saat ini</p>
+        <p class="text-num-display text-white tabular break-words">{result.nisab === null ? '—' : fmtRupiah(result.nisab)}</p>
+        <div class="flex gap-5 mt-3 pt-3 border-t border-white/15 text-body-sm">
+          <div>
+            <p class="text-white/70">Stok ({input.valuation === 'COST' ? 'Modal' : 'Jual'})</p>
+            <p class="text-white tabular font-semibold">{fmtRupiah(result.stockValue)}</p>
+          </div>
+          <div>
+            <p class="text-white/70">Kas</p>
+            <p class="text-white tabular font-semibold">{input.cash === null ? '—' : fmtRupiah(input.cash)}</p>
+          </div>
+        </div>
+      </div>
     </div>
-    <p class="mt-3 text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular break-words [overflow-wrap:anywhere]">
-      {partial ? '~' : ''}{fmtRupiah(result.amount)}
-    </p>
+  </StatCard>
+
+  <StatCard class="mb-4">
+    <div class="flex flex-wrap items-start justify-between gap-2">
+      <p class="text-num-display lg:text-[48px] font-bold leading-none text-ink tabular break-words [overflow-wrap:anywhere]">
+        {partial ? '~' : ''}{fmtRupiah(result.amount)}
+      </p>
+      <div class="flex flex-col items-end gap-1.5">
+        <Badge tone={statusMeta[result.status].tone} class="rounded-full">{statusMeta[result.status].label}</Badge>
+        {#if partial}<Badge tone="neutral" class="rounded-full">estimasi parsial</Badge>{/if}
+      </div>
+    </div>
     {#if nisabGap !== null}
       <p class="mt-2 text-body-sm text-muted">{nisabText}</p>
       <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-status-neutral-bg" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(nisabPct)} aria-label="Posisi aset terhadap nisab">
@@ -125,7 +151,7 @@
     {#if partial}
       <p class="mt-2 text-body-sm text-muted">Belum diisi: {result.missing.map((m) => missingLabel[m]).join(', ')} — angka di atas memakai 0 untuk yang kosong.</p>
     {/if}
-  </Card>
+  </StatCard>
 
   <Card class="mb-4">
     <h2 class="text-headline-sm text-ink mb-3">Rincian</h2>
