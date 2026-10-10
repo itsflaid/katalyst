@@ -422,7 +422,7 @@
 
     <!-- KANAN: panggung hasil (identitas simulator: panel gelap) -->
     <div class="flex flex-col gap-4 min-w-0">
-      <div class="relative overflow-hidden rounded-panel bg-ink-navy p-5 shadow-level1">
+      <div class="relative overflow-hidden rounded-panel bg-ink-navy p-5 shadow-stat-card">
         <span aria-hidden="true" class="pointer-events-none absolute inset-0">
           <span class="copilot-sheen absolute inset-y-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/10 to-transparent"></span>
         </span>
