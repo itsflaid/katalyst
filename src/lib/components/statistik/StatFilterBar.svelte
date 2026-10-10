@@ -7,26 +7,32 @@
   export let toInput: string;
   export let onSelect: (key: PeriodKey) => void;
   export let onApply: () => void;
+  export let desktopOnly = true;
+  export let ranges: { value: string; label: string }[] = [
+    { value: 'today', label: 'Hari ini' },
+    { value: 'week', label: 'Minggu ini' },
+    { value: '30d', label: '30 hari' },
+    { value: 'month', label: 'Bulan ini' }
+  ];
 
   function pick(e: Event) {
     onSelect((e.currentTarget as HTMLSelectElement).value as PeriodKey);
   }
 </script>
 
-<div class="hidden sm:flex items-stretch gap-0 divide-x divide-border-stat">
+<div class={desktopOnly ? 'hidden sm:flex items-stretch gap-0 divide-x divide-border-stat' : 'flex flex-col sm:flex-row items-stretch gap-0 divide-y sm:divide-y-0 sm:divide-x divide-border-stat'}>
   <div class="flex flex-col justify-center gap-1 px-4 py-3">
     <span class="text-body-sm text-muted">Periode</span>
     <span class="relative inline-flex">
       <select
         value={activeRange}
         on:change={pick}
-        class="h-9 appearance-none rounded-[9px] border border-border-stat bg-surface pl-3 pr-9 text-body-md text-ink"
+        class="h-9 w-full sm:w-auto appearance-none rounded-[9px] border border-border-stat bg-surface pl-3 pr-9 text-body-md text-ink"
         aria-label="Periode"
       >
-        <option value="today">Hari ini</option>
-        <option value="week">Minggu ini</option>
-        <option value="30d">30 hari</option>
-        <option value="month">Bulan ini</option>
+        {#each ranges as r}
+          <option value={r.value}>{r.label}</option>
+        {/each}
         {#if activeRange === 'custom'}
           <option value="custom" selected>Custom</option>
         {/if}
@@ -40,7 +46,7 @@
       <input
         type="date"
         bind:value={fromInput}
-        class="h-9 rounded-[9px] border border-border-stat bg-surface px-3 pr-9 text-body-md text-ink [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+        class="h-9 w-full sm:w-auto rounded-[9px] border border-border-stat bg-surface px-3 pr-9 text-body-md text-ink [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
         aria-label="Dari tanggal"
       />
       <Calendar size={16} class="pointer-events-none absolute right-2.5 text-muted" />
@@ -53,7 +59,7 @@
         type="date"
         bind:value={toInput}
         min={fromInput || undefined}
-        class="h-9 rounded-[9px] border border-border-stat bg-surface px-3 pr-9 text-body-md text-ink [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+        class="h-9 w-full sm:w-auto rounded-[9px] border border-border-stat bg-surface px-3 pr-9 text-body-md text-ink [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
         aria-label="Sampai tanggal"
       />
       <Calendar size={16} class="pointer-events-none absolute right-2.5 text-muted" />
@@ -63,7 +69,7 @@
     <button
       type="button"
       on:click={onApply}
-      class="h-[46px] rounded-[9px] border border-border-stat bg-ink-navy px-5 text-body-md font-semibold text-white"
+      class="h-[46px] w-full sm:w-auto rounded-[9px] border border-border-stat bg-ink-navy px-5 text-body-md font-semibold text-white"
     >
       Terapkan
     </button>
