@@ -8,6 +8,7 @@
   import Input from '$lib/components/ui/Input.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import StatCard from '$lib/components/statistik/StatCard.svelte';
+  import { ShieldCheck } from 'lucide-svelte';
   import { ZAKAT_RATE } from '$lib/analytics';
   import { fmtPercent, fmtRupiah } from '$lib/shared/format';
   export let data;
@@ -93,9 +94,13 @@
       : result.haul.daysLeft > 0
         ? `kira-kira ${result.haul.daysLeft} hari lagi`
         : 'Haul sudah genap.';
-  // selisih = asetBersih − nisab   (null bila harga emas belum diisi)
+    // selisih = asetBersih − nisab   (null bila harga emas belum diisi)
   $: nisabGap = result && result.nisab !== null ? result.netAssets - result.nisab : null;
-  $: nisabPct =
+  const fmtTanggal = (iso: string | null) => {
+    if (!iso) return '—';
+    const [y, m, d] = iso.split('-');
+    return y && m && d ? `${d}/${m}/${y}` : iso;
+  };  $: nisabPct =
     result && result.nisab !== null && result.nisab > 0 ? Math.min(100, Math.max(0, (result.netAssets / result.nisab) * 100)) : 0;
   $: nisabText =
     nisabGap === null ? '' : nisabGap < 0 ? `Kurang ${partial ? '~' : ''}${fmtRupiah(-nisabGap)} lagi untuk mencapai nisab.` : `Sudah ${partial ? '~' : ''}${fmtRupiah(nisabGap)} di atas nisab.`;
@@ -108,23 +113,24 @@
 {/if}
 
 {#if result && input}
-  <StatCard tone="navy" class="mb-4">
-    <div class="flex flex-col lg:flex-row gap-5 lg:items-center">
+  <StatCard tone="navy" class="mb-4 p-6 lg:p-10">
+    <div class="flex flex-col lg:flex-row gap-6 lg:items-center">
       <div class="flex-1 min-w-0">
-        <h2 class="text-headline-lg text-white">Hitung zakat usahamu <span class="text-status-positive">dengan data yang kamu isi sendiri</span></h2>
-        <p class="text-body-sm text-white/70 mt-2">Harga emas diisi manual dari toko emas langganan — tanpa API eksternal. Estimasi {fmtPercent(ZAKAT_RATE)} dari aset bersih setelah 1 haul.</p>
+        <h2 class="text-headline-xl text-white">Hitung zakat usahamu <span class="text-[#4ADE80]">dengan data yang kamu isi sendiri</span></h2>
+        <p class="text-body-md text-white/70 mt-3">Harga emas diisi manual dari toko emas langganan — tanpa API eksternal. Estimasi {fmtPercent(ZAKAT_RATE)} dari aset bersih setelah 1 haul.</p>
       </div>
       <div class="rounded-[9px] bg-white/10 px-5 py-4 lg:w-[300px] shrink-0">
         <p class="text-label-sm uppercase text-white/70">Nisab saat ini</p>
         <p class="text-num-display text-white tabular break-words">{result.nisab === null ? '—' : fmtRupiah(result.nisab)}</p>
+        <p class="text-body-sm text-white/70 mt-1">{input.nisabGrams} gram x {input.goldPricePerGram === null ? '—' : `${fmtRupiah(input.goldPricePerGram)} per gram`}</p>
         <div class="flex gap-5 mt-3 pt-3 border-t border-white/15 text-body-sm">
           <div>
-            <p class="text-white/70">Stok ({input.valuation === 'COST' ? 'Modal' : 'Jual'})</p>
-            <p class="text-white tabular font-semibold">{fmtRupiah(result.stockValue)}</p>
+            <p class="text-white/70">Mulai haul</p>
+            <p class="text-white tabular font-semibold">{fmtTanggal(input.haulStartDate)}</p>
           </div>
           <div>
-            <p class="text-white/70">Kas</p>
-            <p class="text-white tabular font-semibold">{input.cash === null ? '—' : fmtRupiah(input.cash)}</p>
+            <p class="text-white/70">Valuasi stok</p>
+            <p class="text-white tabular font-semibold">{input.valuation === 'COST' ? 'Harga modal' : 'Harga jual'}</p>
           </div>
         </div>
       </div>
@@ -133,7 +139,7 @@
 
   <StatCard class="mb-4">
     <div class="flex flex-wrap items-start justify-between gap-2">
-      <p class="text-num-display lg:text-[48px] font-bold leading-none text-ink tabular break-words [overflow-wrap:anywhere]">
+      <p class="text-num-display lg:text-[48px] font-bold leading-none text-ink-navy tabular break-words [overflow-wrap:anywhere]">
         {partial ? '~' : ''}{fmtRupiah(result.amount)}
       </p>
       <div class="flex flex-col items-end gap-1.5">
@@ -143,7 +149,7 @@
     </div>
     {#if nisabGap !== null}
       <p class="mt-2 text-body-sm text-muted">{nisabText}</p>
-      <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-status-neutral-bg" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(nisabPct)} aria-label="Posisi aset terhadap nisab">
+      <div class="mt-1.5 h-[14px] w-full overflow-hidden rounded-full bg-status-neutral-bg" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(nisabPct)} aria-label="Posisi aset terhadap nisab">
         <div class="h-full rounded-full {nisabGap >= 0 ? 'bg-status-positive' : 'bg-status-warning'}" style="width: {nisabPct}%"></div>
       </div>
     {/if}
@@ -153,7 +159,7 @@
     {/if}
   </StatCard>
 
-  <Card class="mb-4">
+  <StatCard class="mb-4">
     <h2 class="text-headline-sm text-ink mb-3">Rincian</h2>
     <dl class="flex flex-col gap-1.5 text-body-md">
       <div class="flex justify-between gap-3 border-b border-table-divider py-1.5">
@@ -271,6 +277,9 @@
   </StatCard>
 </div>
 
-<Card class="mt-4">
-  <p class="text-body-sm text-muted">Estimasi berdasarkan data yang Anda isi, bukan fatwa. Konfirmasi ke BAZNAS atau lembaga amil zakat.</p>
-</Card>
+<StatCard class="mt-4">
+  <p class="flex items-start gap-2.5 text-body-md text-ink">
+    <ShieldCheck size={20} class="shrink-0 text-status-positive" />
+    <span>Estimasi berdasarkan data yang Anda isi, bukan fatwa. Konfirmasi ke BAZNAS atau lembaga amil zakat.</span>
+  </p>
+</StatCard>
