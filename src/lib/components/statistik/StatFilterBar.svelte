@@ -75,10 +75,10 @@
     </button>
   </div>
   {#if rangeLabel}
-    <div class="flex min-w-0 items-center gap-2 px-4 py-3">
+    <div class="flex min-w-0 ml-auto shrink-0 items-center gap-2 px-4 py-3">
       <CalendarDays size={20} class="shrink-0 text-muted" />
-      <span class="text-body-sm text-muted">Ditampilkan:</span>
-      <strong class="truncate text-body-md text-ink-navy" title={rangeLabel}>{rangeLabel}</strong>
+      <span class="shrink-0 text-body-sm text-muted">Ditampilkan:</span>
+      <strong class="truncate text-body-md text-ink-navy max-w-[360px]" title={rangeLabel}>{rangeLabel}</strong>
     </div>
   {/if}
 </div>
