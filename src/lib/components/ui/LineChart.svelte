@@ -56,7 +56,7 @@
             callbacks: {
               label: (item) => {
                 const v = item.parsed.y;
-                if (v === null || v === undefined) return ` ${item.dataset.label}: —`;
+                if (v === null || v === undefined) return ` ${item.dataset.label}: -`;
                 return ` ${item.dataset.label}: ${yFormat ? yFormat(Number(v)) : v}`;
               },
             },

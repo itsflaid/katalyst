@@ -28,7 +28,7 @@ export async function queryHourly(businessId: string, from: Date, to: Date, tz: 
 // label berisi nama user terkini, fallback snapshot cashier_name.
 // Revenue dari factColumns + metricsOf.
 export async function queryCashiers(businessId: string, from: Date, to: Date) {
-  // Literal coalesce — tanpa parameter, jadi aman dipakai ulang di groupBy.
+  // Literal coalesce, tanpa parameter, jadi aman dipakai ulang di groupBy.
   const keyExpr = sql<string>`coalesce(${transaction.userId}, ${transaction.cashierName}, '-')`;
   const rows = await db
     .select({

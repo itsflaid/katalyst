@@ -19,7 +19,7 @@
       error = signInError.message ?? 'Login gagal, cek username + password.';
       return;
     }
-    // invalidateAll: paksa load function layout jalan ulang — tanpa ini data.user tetap null dan Sidebar tidak muncul sampai refresh manual.
+    // invalidateAll: paksa load function layout jalan ulang, tanpa ini data.user tetap null dan Sidebar tidak muncul sampai refresh manual.
     // Tujuan role-aware: OWNER → /dashboard, STAFF → /transactions; kalau sesi belum kebaca (race), fallback ke `/` biar server yang mutusin.
     // await: pastikan navigasi selesai sebelum handler kelar, biar tidak ada navigasi lain yang menimpa tujuan.
     const { data } = await authClient.getSession();

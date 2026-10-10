@@ -59,7 +59,7 @@
     },
     {
       t: 'Habis & Menipis',
-      d: 'Stok 0 ditandai Habis. Batas "menipis" bisa diatur per produk (default 5) lewat form tambah/edit — mis. barang mahal boleh batas 2, barang laris batas 10.'
+      d: 'Stok 0 ditandai Habis. Batas "menipis" bisa diatur per produk (default 5) lewat form tambah/edit, mis. barang mahal boleh batas 2, barang laris batas 10.'
     },
     {
       t: 'Habis = hilang dari kasir',
@@ -94,7 +94,7 @@
     },
     {
       t: 'Insight',
-      d: 'Temuan otomatis dari data, misal produk laris tapi margin tipis — cocok dinaikkan sedikit harganya.'
+      d: 'Temuan otomatis dari data, misal produk laris tapi margin tipis, cocok dinaikkan sedikit harganya.'
     }
   ];
 
@@ -129,7 +129,7 @@
     },
     {
       t: 'Bukan fatwa',
-      d: 'Estimasi berdasarkan data yang kamu isi — konfirmasi ke BAZNAS atau lembaga amil zakat.'
+      d: 'Estimasi berdasarkan data yang kamu isi, konfirmasi ke BAZNAS atau lembaga amil zakat.'
     }
   ];
 
@@ -154,13 +154,13 @@
   ];
 </script>
 
-<PageHeader title="Bantuan" subtitle="Arti istilah yang dipakai di aplikasi — dengan bahasa yang mudah di pahami." />
+<PageHeader title="Bantuan" subtitle="Arti istilah yang dipakai di aplikasi, dengan bahasa yang mudah di pahami." />
 
 <Card class="mb-4">
   <h2 class="text-headline-sm text-ink mb-2">Apa itu Katalyst?</h2>
   <p class="text-body-md text-muted">
     Katalyst adalah aplikasi kasir + laporan untuk UMKM yang menjual barang. Setiap penjualan dicatat sebagai struk,
-    lalu aplikasi menghitung otomatis omzet, modal, untung, dan margin — plus memberi tahu produk mana
+    lalu aplikasi menghitung otomatis omzet, modal, untung, dan margin, plus memberi tahu produk mana
     yang paling menguntungkan dan mana yang marginnya tipis. Semua angka dihitung langsung dari data
     transaksimu dengan rumus pasti; AI hanya membantu menjelaskan, tidak mengarang angka.
   </p>

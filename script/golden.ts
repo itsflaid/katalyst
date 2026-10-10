@@ -204,11 +204,11 @@ async function main() {
   // Mode check
   let diff = 0;
   const names = existsSync(DIR) ? readdirSync(DIR) : [];
-  if (names.length === 0) throw new Error('.golden/ kosong — jalankan golden:record dulu.');
+  if (names.length === 0) throw new Error('.golden/ kosong, jalankan golden:record dulu.');
   for (const r of rows) {
     const f = join(DIR, `${slug(r.route)}.json`);
     if (!existsSync(f)) {
-      console.log(`DIFF (baru): ${r.route} — tak ada snapshot`);
+      console.log(`DIFF (baru): ${r.route}, tak ada snapshot`);
       diff++;
       continue;
     }

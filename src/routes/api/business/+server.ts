@@ -29,7 +29,7 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
     patch.name = name;
   }
   if (hasTz) {
-    // Zona harus salah satu dari whitelist — bukan zona perangkat sembarang.
+    // Zona harus salah satu dari whitelist, bukan zona perangkat sembarang.
     if (!isBizTz(body.timezone)) throw error(400, 'Zona waktu tidak valid.');
     patch.timezone = body.timezone;
   }

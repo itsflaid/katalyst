@@ -5,7 +5,7 @@ import type { Db } from '../facts/queries';
 import type { SubrequestBudget } from './budget';
 
 // Db per request: tiap query HTTP dihitung; drizzle memakai `.query`,
-// `db.batch` memakai `.transaction` — ketiganya satu HTTP per pemanggilan.
+// `db.batch` memakai `.transaction`, ketiganya satu HTTP per pemanggilan.
 export function countedDb(url: string, budget: SubrequestBudget): Db {
   const query = neon(url);
   const base = query as unknown as (...args: never[]) => Promise<unknown>;

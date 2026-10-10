@@ -1,5 +1,5 @@
 // E2E diskon: menyerang dev server (BASE_URL, default localhost:5173) + asersi DB langsung.
-// Skrip MENULIS data fixture (berawalan E2E-) — jalankan hanya di DB dev; exit 1 bila FAIL.
+// Skrip MENULIS data fixture (berawalan E2E-): jalankan hanya di DB dev; exit 1 bila FAIL.
 import 'dotenv/config';
 import postgres from 'postgres';
 import { randomUUID } from 'crypto';

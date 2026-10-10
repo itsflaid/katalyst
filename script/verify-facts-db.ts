@@ -63,7 +63,7 @@ async function main() {
       ]);
 
       // T1: batas tengah malam (16:30Z = WIB 23:30 29 Sep, WITA/WIT 30 Sep).
-      // A parsial: qty 8, 5 kena diskon 15% (unit 1500) — kuota habis di tengah.
+      // A parsial: qty 8, 5 kena diskon 15% (unit 1500), kuota habis di tengah.
       const t1 = randomUUID();
       await tx.insert(transaction).values({ id: t1, businessId: biz, createdAt: new Date('2026-09-29T16:30:00Z') });
       await tx.insert(transactionItem).values([

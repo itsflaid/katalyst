@@ -164,7 +164,7 @@
         Aktif dijual
       </label>
       <p class="text-body-sm text-muted">
-        Stok tidak diubah dari sini — pakai tombol <strong>Stok</strong> di daftar (restock / koreksi) biar tercatat di riwayat.
+        Stok tidak diubah dari sini, pakai tombol <strong>Stok</strong> di daftar (restock / koreksi) biar tercatat di riwayat.
       </p>
       {#if form?.for === "update"}<p class="text-body-sm text-status-negative">
           {form.message}

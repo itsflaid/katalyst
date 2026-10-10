@@ -39,7 +39,7 @@ async function main() {
     const dateExpr = localDate(sql`timestamp '2026-09-29 16:30:00'`, z.tz);
     const hourExpr = localHour(sql`timestamp '2026-09-29 16:30:00'`, z.tz);
     const rows = await db.select({ d: sql<string>`(${dateExpr})::text`, h: sql<number>`${hourExpr}` }).from(transaction).limit(1);
-    // Baris transaction mungkin kosong — pakai SELECT tanpa FROM bila perlu.
+    // Baris transaction mungkin kosong, pakai SELECT tanpa FROM bila perlu.
     let d: string;
     let h: number;
     if (rows.length > 0) {
