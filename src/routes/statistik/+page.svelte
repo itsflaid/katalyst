@@ -10,6 +10,8 @@
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import SlideOver from '$lib/components/ui/SlideOver.svelte';
   import StatFilterBar from '$lib/components/statistik/StatFilterBar.svelte';
+  import StatCard from '$lib/components/statistik/StatCard.svelte';
+  import { Receipt } from 'lucide-svelte';
   import type { PeriodKey } from '$lib/shared/period';
   import { goto } from '$app/navigation';
   export let data;
@@ -60,7 +62,7 @@
     .slice(0, 8);
   $: perfUnit = perfMetric === 'margin' ? '% · 8 teratas' : `${perfMetric === 'revenue' ? 'Nominal' : 'Nominal'} · 8 teratas`;
   const perfBtn = (current: 'revenue' | 'profit' | 'margin', key: 'revenue' | 'profit' | 'margin') =>
-    `rounded border px-2.5 py-1 text-body-sm ${current === key ? 'border-ink-navy bg-ink-navy text-white font-semibold' : 'border-border-input bg-white text-ink hover:bg-table-header'}`;
+    `rounded-[5px] border border-border-stat px-2.5 py-1 text-body-sm ${current === key ? 'bg-ink-navy text-white font-semibold' : 'bg-surface text-ink hover:bg-table-header'}`;
 
   // Warna per-bar chart estimasi hari stok: ≤3 hari merah, ≤7 amber, sisanya navy.
   $: daysColors = data.inventory.daysList.map((p) =>
@@ -114,7 +116,7 @@
 
 {#key [data.range, data.rangeFrom, data.rangeTo, data.trend.labels.join(',')].join('|')}
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-    <Card>
+    <StatCard>
       <h2 class="text-headline-sm text-ink mb-1">Tren Revenue & Profit</h2>
       <p class="text-body-sm text-muted mb-3">{data.trend.unitLabel} · {data.rangeLabel}</p>
       <LineChart
@@ -124,8 +126,8 @@
           { label: 'Profit', data: data.trend.profit, color: '#16A34A' }
         ]}
       />
-    </Card>
-    <Card>
+    </StatCard>
+    <StatCard>
       <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
         <h2 class="text-headline-sm text-ink">Performa per Produk</h2>
         <div class="flex gap-1" role="group" aria-label="Metrik performa">
@@ -140,43 +142,54 @@
           labels={perfSorted.map((p) => p.name)}
           data={perfSorted.map((p) => (perfMetric === 'margin' ? Math.round(p.margin * 1000) / 10 : p[perfMetric]))}
           horizontal
-          color="#16A34A"
+          color="#172554"
+          rounded="edge"
           yFormat={perfMetric === 'margin' ? (v) => `${v}%` : fmtShort}
         />
       {/key}
-    </Card>
+    </StatCard>
   </div>
 
-  <div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4 mb-6">
-    <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
-      <p class="text-label-sm uppercase text-muted mb-1 truncate">Rata-rata struk</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words [overflow-wrap:anywhere]">{idr(Math.round(data.highlights.avgTicket))}</p>
-      <Badge tone={deltaTone(data.highlights.avgTicketDelta)} class="text-[11px] sm:text-label-md">{fmtDelta(data.highlights.avgTicketDelta)}</Badge>
-    </Card>
-    <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
-      <p class="text-label-sm uppercase text-muted mb-1 truncate">Hari tersibuk</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{data.highlights.bestDayLabel}</p>
-      <p class="text-body-sm text-muted tabular break-words [overflow-wrap:anywhere]">{idr(data.highlights.bestDayRevenue)}</p>
-    </Card>
-    <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
-      <p class="text-label-sm uppercase text-muted mb-1 truncate">Margin tertinggi</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{data.highlights.topMargin ? data.highlights.topMargin.name : '—'}</p>
-      <p class="text-body-sm tabular break-words {data.highlights.topMargin ? 'text-status-positive font-semibold' : 'text-muted'}">{data.highlights.topMargin ? `${(data.highlights.topMargin.margin * 100).toFixed(1)}%` : ''}</p>
-    </Card>
-    <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
-      <p class="text-label-sm uppercase text-muted mb-1 truncate">Margin terendah</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{data.highlights.lowMargin ? data.highlights.lowMargin.name : '—'}</p>
-      <p class="text-body-sm tabular break-words {data.highlights.lowMargin ? 'text-status-warning font-semibold' : 'text-muted'}">{data.highlights.lowMargin ? `${(data.highlights.lowMargin.margin * 100).toFixed(1)}%` : ''}</p>
-    </Card>
+  <div class="grid grid-cols-2 gap-4 lg:grid-cols-4 mb-6">
+    <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
+      <p class="text-label-md uppercase text-white mb-1 truncate">Rata-rata struk</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words [overflow-wrap:anywhere]">{idr(Math.round(data.highlights.avgTicket))}</p>
+      <Badge tone={deltaTone(data.highlights.avgTicketDelta)} class="rounded-full">{fmtDelta(data.highlights.avgTicketDelta)}</Badge>
+    </StatCard>
+    <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
+      <p class="text-label-md uppercase text-white mb-1 truncate">Hari tersibuk</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">{data.highlights.bestDayLabel}</p>
+      <p class="text-body-sm text-white/70 tabular break-words [overflow-wrap:anywhere]">{idr(data.highlights.bestDayRevenue)}</p>
+    </StatCard>
+    <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
+      <p class="text-label-md uppercase text-white mb-1 truncate">Margin tertinggi</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">{data.highlights.topMargin ? data.highlights.topMargin.name : '—'}</p>
+      {#if data.highlights.topMargin}
+        <p class="text-body-sm tabular break-words"><Badge tone="positive" class="rounded-full">{`${(data.highlights.topMargin.margin * 100).toFixed(1)}%`}</Badge></p>
+      {/if}
+    </StatCard>
+    <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
+      <p class="text-label-md uppercase text-white mb-1 truncate">Margin terendah</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">{data.highlights.lowMargin ? data.highlights.lowMargin.name : '—'}</p>
+      {#if data.highlights.lowMargin}
+        <p class="text-body-sm tabular break-words"><Badge tone="warning" class="rounded-full">{`${(data.highlights.lowMargin.margin * 100).toFixed(1)}%`}</Badge></p>
+      {/if}
+    </StatCard>
   </div>
+
+  <StatCard class="mb-6">
+    <h2 class="text-headline-sm text-ink mb-1">Struk per Hari</h2>
+    <p class="text-body-sm text-muted mb-3">Jumlah struk · {data.rangeLabel}</p>
+    <BarChart labels={data.trend.labels} data={data.txPerDay} color="#172554" rounded="edge" />
+  </StatCard>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-    <Card>
-      <h2 class="text-headline-sm text-ink mb-1">Struk per Hari</h2>
-      <p class="text-body-sm text-muted mb-3">Jumlah struk · {data.rangeLabel}</p>
-      <BarChart labels={data.trend.labels} data={data.txPerDay} />
-    </Card>
-    <Card>
+    <StatCard tone="navy">
+      <h2 class="text-headline-sm text-white mb-1">Jam Tersibuk</h2>
+      <p class="text-body-sm text-white/70 mb-3">Puncak: {data.hourly.peak} · {data.hourly.total} struk di periode ini</p>
+      <BarChart labels={data.hourly.labels} data={data.hourly.data} tone="navy" rounded="edge" />
+    </StatCard>
+    <StatCard>
       <h2 class="text-headline-sm text-ink mb-1">Rata-rata Struk</h2>
       <p class="text-body-sm text-muted mb-3">{data.avgTicketPerDay.unitLabel} · {data.rangeLabel}</p>
       <LineChart
@@ -184,46 +197,39 @@
         datasets={[{ label: 'Rata-rata struk', data: data.avgTicketPerDay.data, color: '#0284C7' }]}
         spanGaps={false}
       />
-    </Card>
+    </StatCard>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-    <Card>
-      <h2 class="text-headline-sm text-ink mb-1">Jam Tersibuk</h2>
-      <p class="text-body-sm text-muted mb-3">Puncak: {data.hourly.peak} · {data.hourly.total} struk di periode ini</p>
-      <BarChart labels={data.hourly.labels} data={data.hourly.data} />
-    </Card>
-    <Card>
-      <h2 class="text-headline-sm text-ink mb-1">Hari dalam Seminggu</h2>
-      {#if data.weekday.show}
-        <p class="text-body-sm text-muted mb-3">Rata-rata revenue per hari · {data.rangeLabel}</p>
-        <BarChart labels={data.weekday.labels} data={data.weekday.data} yFormat={fmtShort} />
-      {:else}
-        <p class="text-body-sm text-muted mb-3">Butuh rentang ≥ 2 minggu biar polanya kebaca.</p>
-      {/if}
-    </Card>
-  </div>
-
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-    <Card>
+    <StatCard>
       <h2 class="text-headline-sm text-ink mb-1">Tren Margin</h2>
       <p class="text-body-sm text-muted mb-3">% per hari · {data.rangeLabel}</p>
       <LineChart
         labels={data.trend.labels}
         datasets={[{ label: 'Margin', data: data.marginTrend, color: '#B45309' }]}
       />
-    </Card>
-    {#if data.pie.labels.length > 0}
-      <Card>
-        <h2 class="text-headline-sm text-ink mb-1">Komposisi Profit</h2>
-        <p class="text-body-sm text-muted mb-3">Makin besar potongan = makin besar keuntungan produknya</p>
-        <PieChart labels={data.pie.labels} data={data.pie.data} />
-      </Card>
-    {/if}
+    </StatCard>
+    <StatCard>
+      <h2 class="text-headline-sm text-ink mb-1">Hari dalam Seminggu</h2>
+      {#if data.weekday.show}
+        <p class="text-body-sm text-muted mb-3">Rata-rata revenue per hari · {data.rangeLabel}</p>
+        <BarChart labels={data.weekday.labels} data={data.weekday.data} yFormat={fmtShort} color="#172554" rounded="edge" />
+      {:else}
+        <p class="text-body-sm text-muted mb-3">Butuh rentang ≥ 2 minggu biar polanya kebaca.</p>
+      {/if}
+    </StatCard>
   </div>
 
+  {#if data.pie.labels.length > 0}
+    <StatCard class="mb-6">
+      <h2 class="text-headline-sm text-ink mb-1">Komposisi Profit</h2>
+      <p class="text-body-sm text-muted mb-3">Makin besar potongan = makin besar keuntungan produknya</p>
+      <PieChart labels={data.pie.labels} data={data.pie.data} />
+    </StatCard>
+  {/if}
+
   {#if data.matrix.show}
-    <Card class="mb-6">
+    <StatCard class="mb-6">
       <h2 class="text-headline-sm text-ink mb-1">Matriks Volume vs Margin</h2>
       <p class="text-body-sm text-muted mb-3">Ukuran titik = revenue · garis = median qty & margin periode · klik titik untuk simulasi</p>
       <ScatterChart
@@ -233,46 +239,53 @@
         xLine={data.matrix.xLine}
         yLine={data.matrix.yLine}
       />
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 text-body-sm text-muted">
+      <div class="grid grid-cols-1 sm:grid-cols-2 sm:grid-flow-col sm:grid-rows-2 gap-2 mt-3 text-body-sm text-muted">
         <p><strong class="text-ink">Bintang</strong> (kanan atas): laku & margin baik — jaga stok.</p>
-        <p><strong class="text-ink">Laris tapi margin tipis</strong> (kanan bawah): kandidat naik harga.</p>
         <p><strong class="text-ink">Margin bagus, kurang laku</strong> (kiri atas): butuh promosi.</p>
+        <p><strong class="text-ink">Laris tapi margin tipis</strong> (kanan bawah): kandidat naik harga.</p>
         <p><strong class="text-ink">Evaluasi</strong> (kiri bawah): pertimbangkan hentikan.</p>
       </div>
-    </Card>
+    </StatCard>
   {/if}
 
   {#if data.cashiers.show}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-      <Card>
+      <StatCard>
         <h2 class="text-headline-sm text-ink mb-1">Penjualan per Kasir</h2>
         <p class="text-body-sm text-muted mb-3">Revenue · {data.rangeLabel}</p>
         <BarChart
           labels={data.cashiers.list.map((c) => c.label)}
           data={data.cashiers.list.map((c) => c.revenue)}
           horizontal
+          color="#172554"
+          rounded="edge"
           yFormat={fmtShort}
         />
-      </Card>
-      <Card>
-        <h2 class="text-headline-sm text-ink mb-3">Ringkasan Kasir</h2>
-        <Table headers={['Kasir', 'Struk', 'Revenue', 'Rata-rata']}>
-          {#each data.cashiers.list as c}
-            <tr>
-              <td class="px-3 py-2 text-ink font-semibold whitespace-nowrap">
-                {#if c.userId}
-                  <a href={`/transactions?kasir=${c.userId}`} class="text-ink-navy hover:underline">{c.label}</a>
-                {:else}
-                  {c.label}
-                {/if}
-              </td>
-              <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{num(c.tx)}×</td>
-              <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(c.revenue)}</td>
-              <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{idr(Math.round(c.avg))}</td>
-            </tr>
-          {/each}
-        </Table>
-      </Card>
+      </StatCard>
+      <StatCard class="p-0 overflow-hidden">
+        <div class="flex items-center gap-2 bg-ink-navy text-white px-4 h-[44px]">
+          <Receipt size={18} class="shrink-0" />
+          <h2 class="text-headline-sm">Ringkasan Transaksi</h2>
+        </div>
+        <div class="p-5">
+          <Table headTone="light" headers={['Kasir', 'Struk', 'Revenue', 'Rata-rata']}>
+            {#each data.cashiers.list as c}
+              <tr>
+                <td class="px-3 py-2 text-ink font-semibold whitespace-nowrap">
+                  {#if c.userId}
+                    <a href={`/transactions?kasir=${c.userId}`} class="text-ink-navy hover:underline">{c.label}</a>
+                  {:else}
+                    {c.label}
+                  {/if}
+                </td>
+                <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{num(c.tx)}×</td>
+                <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(c.revenue)}</td>
+                <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{idr(Math.round(c.avg))}</td>
+              </tr>
+            {/each}
+          </Table>
+        </div>
+      </StatCard>
     </div>
   {/if}
 
@@ -300,9 +313,17 @@
     <p class="text-body-sm text-muted mb-4">Stok di produk nonaktif: {idr(data.inventory.inactiveStock.value)} ({num(data.inventory.inactiveStock.count)} produk)</p>
   {/if}
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-    <Card>
-      <h2 class="text-headline-sm text-ink mb-1">Estimasi Hari Stok</h2>
-      <p class="text-body-sm text-muted mb-3">8 produk paling mendesak · merah ≤3 hari, kuning ≤7 hari</p>
+    <StatCard>
+      <div class="flex flex-wrap items-start justify-between gap-2 mb-3">
+        <div>
+          <h2 class="text-headline-sm text-ink mb-1">Estimasi Hari Stok</h2>
+          <p class="text-body-sm text-muted">8 produk paling mendesak</p>
+        </div>
+        <div class="flex items-center gap-3 text-body-sm text-muted">
+          <span class="inline-flex items-center gap-1.5"><span class="inline-block h-[14px] w-[14px] rounded-[3px]" style="background-color: #DC2626;"></span>≤3 hari</span>
+          <span class="inline-flex items-center gap-1.5"><span class="inline-block h-[14px] w-[14px] rounded-[3px]" style="background-color: #B45309;"></span>≤7 hari</span>
+        </div>
+      </div>
       {#if data.inventory.daysList.length > 0}
         <BarChart
           labels={data.inventory.daysList.map((p) => p.name)}
@@ -314,8 +335,8 @@
       {:else}
         <p class="text-body-md text-muted">Belum ada penjualan 14 hari terakhir.</p>
       {/if}
-    </Card>
-    <Card>
+    </StatCard>
+    <StatCard>
       <h2 class="text-headline-sm text-ink mb-1">Stok Mati</h2>
       <p class="text-body-sm text-muted mb-3">Stok &gt; 0 tapi 0 terjual 14 hari · 5 modal terbesar</p>
       {#if data.inventory.deadList.length > 0}
@@ -331,10 +352,10 @@
       {:else}
         <p class="text-body-md text-muted">Tidak ada stok mati — semua produk bergerak.</p>
       {/if}
-    </Card>
+    </StatCard>
   </div>
 
-  <Card class="mb-6">
+  <StatCard class="mb-6">
     <h2 class="text-headline-sm text-ink mb-1">Pergerakan Stok per Minggu</h2>
     <p class="text-body-sm text-muted mb-3">Satuan · {data.rangeLabel}</p>
     {#if data.movement.labels.length > 0}
@@ -354,7 +375,7 @@
     {:else}
       <p class="text-body-md text-muted">Belum ada pergerakan stok pada periode ini.</p>
     {/if}
-  </Card>
+  </StatCard>
 {/key}
 
 {#if data.rows.length === 0}
