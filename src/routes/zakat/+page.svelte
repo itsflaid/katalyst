@@ -411,9 +411,10 @@
 {/if}
 
 <!-- FORM PENGATURAN DAN KEUANGAN -->
-<div class="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+<!-- Kartu dibiarkan stretch supaya tinggi kiri-kanan sama; tombol simpan didorong ke dasar kartu (mt-auto) biar ruang kosong kartu yang lebih pendek ada di antara input dan tombol, bukan di bawah tombol. -->
+<div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
   <!-- Pengaturan zakat -->
-  <StatCard>
+  <StatCard class="flex flex-col">
     <h2 class="mb-1 text-headline-sm text-ink">
       Pengaturan Zakat
     </h2>
@@ -426,7 +427,7 @@
       method="POST"
       action="?/saveSetting"
       use:enhance={refresh}
-      class="flex flex-col gap-3"
+      class="flex flex-1 flex-col gap-3"
     >
       <div class="flex flex-col gap-1">
         <div
@@ -539,14 +540,14 @@
         </select>
       </div>
 
-      <Button type="submit" class="h-11 self-center px-8">
+      <Button type="submit" class="mt-auto h-11 self-center px-8">
         Simpan pengaturan
       </Button>
     </form>
   </StatCard>
 
   <!-- Posisi keuangan -->
-  <StatCard>
+  <StatCard class="flex flex-col">
     <h2 class="mb-1 text-headline-sm text-ink">
       Posisi keuangan
     </h2>
@@ -559,7 +560,7 @@
       method="POST"
       action="?/saveBalance"
       use:enhance={refresh}
-      class="flex flex-col gap-3"
+      class="flex flex-1 flex-col gap-3"
     >
       <div class="flex flex-col gap-1">
         <div
@@ -643,7 +644,7 @@
         </p>
       {/if}
 
-      <Button type="submit" class="h-11 self-center px-8">
+      <Button type="submit" class="mt-auto h-11 self-center px-8">
         Simpan posisi keuangan
       </Button>
     </form>
