@@ -292,7 +292,7 @@
   <div class="grid grid-cols-2 lg:grid-cols-[2.2fr_1fr_1fr_1fr] gap-4 mb-4">
     <StatCard tone="navy" class="min-w-0 overflow-hidden text-center">
       <p class="text-label-md uppercase text-white mb-1">Nilai stok</p>
-      <p class="text-num-display lg:text-[40px] font-bold leading-none text-white tabular break-words [overflow-wrap:anywhere]">{idr(data.inventory.stockValue)}</p>
+      <p class="text-num-display lg:text-[60px] font-bold leading-none text-white tabular break-words [overflow-wrap:anywhere]">{idr(data.inventory.stockValue)}</p>
     </StatCard>
     <StatCard tone="navy" class="min-w-0 overflow-hidden text-center">
       <p class="text-label-md uppercase text-white mb-1">Habis</p>
