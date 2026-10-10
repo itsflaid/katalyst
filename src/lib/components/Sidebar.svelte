@@ -17,7 +17,7 @@
     CircleHelp,
     CircleUserRound,
     LogOut,
-    ChevronLeft,
+    PanelLeft,
     ChevronDown
   } from 'lucide-svelte';
 
@@ -90,18 +90,26 @@
 </script>
 
 <aside
-  class="scroll-navy flex flex-col h-full flex-shrink-0 border-r border-white/10 bg-ink-navy p-3 box-border overflow-y-auto overflow-x-hidden transition-[width] duration-150 {collapsed
+  class="scroll-navy flex flex-col h-full flex-shrink-0 border-r border-white/10 bg-ink-navy p-3 box-border overflow-y-auto overflow-x-hidden rounded-r-xl transition-[width] duration-150 {collapsed
     ? 'w-[64px] items-center'
     : 'w-60'}"
 >
-  <div class="flex items-center gap-2.5 mb-6 px-1 w-full {collapsed ? 'justify-center' : ''}">
+  <div class="flex items-center gap-2.5 mb-6 px-1 w-full {collapsed ? 'flex-col justify-center' : ''}">
     <img src="/logo/logo-sidebar.png" alt="Logo Katalyst" class="h-7 w-7 flex-shrink-0 rounded object-cover" />
     {#if !collapsed}
-      <div class="min-w-0">
+      <div class="min-w-0 flex-1">
         <strong class="block text-headline-sm text-white truncate">Katalyst</strong>
         <span class="block text-body-sm text-white/50 truncate">{businessName}</span>
       </div>
     {/if}
+    <button
+      on:click={toggleCollapsed}
+      title={collapsed ? 'Perluas sidebar' : 'Ciutkan sidebar'}
+      aria-label={collapsed ? 'Perluas sidebar' : 'Ciutkan sidebar'}
+      class="grid h-7 w-7 flex-shrink-0 place-items-center rounded border-none bg-transparent text-white hover:bg-white/5 cursor-pointer"
+    >
+      <PanelLeft size={16} aria-hidden="true" />
+    </button>
   </div>
 
   <nav class="flex flex-col flex-1 w-full gap-3">
@@ -166,14 +174,6 @@
       </a>
     {/if}
   </nav>
-
-  <button
-    on:click={toggleCollapsed}
-    title={collapsed ? 'Perluas sidebar' : 'Ciutkan sidebar'}
-    class="flex items-center justify-center gap-1.5 mt-2 mb-1 w-full rounded border border-white/10 py-1.5 text-white/50 hover:text-white hover:bg-white/5 bg-transparent cursor-pointer"
-  >
-    <ChevronLeft size={14} class="transition-transform {collapsed ? 'rotate-180' : ''}" aria-hidden="true" />
-  </button>
 
   <div class="flex items-center gap-2 pt-3 border-t border-white/10 w-full {collapsed ? 'flex-col' : ''}">
     <div class="grid h-7 w-7 flex-shrink-0 place-items-center rounded bg-white/10 border border-white/15 text-white text-label-sm font-bold">{initials}</div>
