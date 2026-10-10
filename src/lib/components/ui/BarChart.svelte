@@ -13,11 +13,14 @@
   export let heightClass = "h-64";
   export let maxLabelChars = 16;
   export let showLegend: boolean | undefined = undefined;
+  export let rounded: 'all' | 'edge' = 'all';
+  export let tone: 'light' | 'navy' = 'light';
 
   let canvasEl: HTMLCanvasElement;
   let chart: Chart;
 
   const PALETTE = ["#172554", "#16A34A", "#0284C7", "#B45309", "#7C3AED", "#DC2626", "#64748B"];
+  const DEFAULT_COLOR = "#172554";
 
   // Label kategori dipotong biar sumbu tidak meluber; tooltip tampilkan penuh.
   $: fullLabels = labels ?? [];
@@ -26,10 +29,17 @@
   );
 
   onMount(() => {
-    const resolved =
+    const resolved: { label: string; data: number[]; color?: string }[] =
       datasets ??
-      [{ label: "", data, color }];
+      [{ label: "", data }];
     const valueAxis = horizontal ? "x" : "y";
+    // Radius sisi tumbuh saja; stacked dan default tetap seperti lama.
+    const edgeRadius = horizontal
+      ? { topLeft: 0, topRight: 5, bottomLeft: 0, bottomRight: 5 }
+      : { topLeft: 5, topRight: 5, bottomLeft: 0, bottomRight: 0 };
+    const fallback = tone === "navy" && color === DEFAULT_COLOR ? "#FFFFFF" : color;
+    const tickColor = tone === "navy" ? "#CBD5E1" : "#64748B";
+    const gridColor = tone === "navy" ? "rgba(255,255,255,0.12)" : "#F1F5F9";
     chart = new Chart(canvasEl, {
       type: "bar",
       data: {
@@ -38,8 +48,8 @@
           label: d.label,
           data: d.data,
           backgroundColor:
-            resolved.length === 1 ? (colors ?? d.color ?? color) : (d.color ?? PALETTE[i % PALETTE.length]),
-          borderRadius: 4,
+            resolved.length === 1 ? (colors ?? d.color ?? fallback) : (d.color ?? PALETTE[i % PALETTE.length]),
+          borderRadius: stacked || rounded === "all" ? 4 : edgeRadius,
           maxBarThickness: 36,
         })),
       },
@@ -71,7 +81,7 @@
             stacked,
             grid: { display: false },
             ticks: {
-              color: "#64748B",
+              color: tickColor,
               font: { family: "Plus Jakarta Sans" },
               ...(valueAxis === "x" && yFormat
                 ? { callback: function (v: string | number) { return yFormat(Number(v)); } as never }
@@ -80,9 +90,9 @@
           },
           y: {
             stacked,
-            grid: { color: "#F1F5F9" },
+            grid: { color: gridColor },
             ticks: {
-              color: "#64748B",
+              color: tickColor,
               font: { family: "Plus Jakarta Sans" },
               ...(valueAxis === "y" && yFormat
                 ? { callback: function (v: string | number) { return yFormat(Number(v)); } as never }
