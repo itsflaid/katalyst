@@ -29,9 +29,9 @@
   );
 
   onMount(() => {
-    const resolved =
+    const resolved: { label: string; data: number[]; color?: string }[] =
       datasets ??
-      [{ label: "", data, color }];
+      [{ label: "", data }];
     const valueAxis = horizontal ? "x" : "y";
     // Radius sisi tumbuh saja; stacked dan default tetap seperti lama.
     const edgeRadius = horizontal
