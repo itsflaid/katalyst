@@ -188,7 +188,7 @@
       </div>
     </dl>
     <p class="mt-2 text-body-sm text-muted">Tarif {fmtPercent(ZAKAT_RATE)} × aset bersih, dibayar bila aset bersih mencapai nisab dan haul genap.</p>
-  </Card>
+  </StatCard>
 {:else}
   <Card class="mb-4">
     <h2 class="text-headline-sm text-ink mb-1">Mulai hitung zakat</h2>
