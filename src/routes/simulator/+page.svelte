@@ -5,6 +5,8 @@
   import Badge from '$lib/components/ui/Badge.svelte';
   import Tooltip from '$lib/components/ui/Tooltip.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
+  import StatCard from '$lib/components/statistik/StatCard.svelte';
+  import StatFilterBar from '$lib/components/statistik/StatFilterBar.svelte';
   import { goto } from '$app/navigation';
   import { sanitizeLevers, simulate } from '$lib/simulation';
   import { ZERO_FACTS, zakatImpactOf } from '$lib/analytics';
@@ -70,15 +72,7 @@
       fromInput = toInput;
       toInput = t;
     }
-    showCustomModal = false;
     goWithRange('custom', fromInput, toInput);
-  }
-
-  let showCustomModal = false;
-  function openCustomModal() {
-    fromInput = data.rangeFrom ?? fromInput;
-    toInput = data.rangeTo ?? toInput;
-    showCustomModal = true;
   }
 
   $: prod = data.products.find((p) => p.id === productId) ?? data.products[0] ?? null;
@@ -281,48 +275,23 @@
 
 <PageHeader title="Simulator “What-if”" subtitle="Lab skenario satu produk — geser tuasnya, hasilnya terhitung otomatis dari data historimu." />
 
-<Card class="mb-6">
-  <div class="flex flex-wrap items-center gap-2">
-    <span class="text-label-md text-ink mr-1">Baseline:</span>
-    <button type="button" on:click={() => goWithRange('today')} class="rounded border px-2.5 py-1.5 text-body-sm {activeRange === 'today' ? 'border-ink-navy bg-ink-navy text-white font-semibold' : 'border-border-input bg-white text-ink hover:bg-table-header'}">Hari ini</button>
-    <button type="button" on:click={() => goWithRange('week')} class="rounded border px-2.5 py-1.5 text-body-sm {activeRange === 'week' ? 'border-ink-navy bg-ink-navy text-white font-semibold' : 'border-border-input bg-white text-ink hover:bg-table-header'}">Minggu ini</button>
-    <button type="button" on:click={() => goWithRange('month')} class="rounded border px-2.5 py-1.5 text-body-sm {activeRange === 'month' ? 'border-ink-navy bg-ink-navy text-white font-semibold' : 'border-border-input bg-white text-ink hover:bg-table-header'}">Bulan ini</button>
-    <button type="button" on:click={() => goWithRange('all')} class="rounded border px-2.5 py-1.5 text-body-sm {activeRange === 'all' ? 'border-ink-navy bg-ink-navy text-white font-semibold' : 'border-border-input bg-white text-ink hover:bg-table-header'}">Semua</button>
-    <button type="button" on:click={openCustomModal} class="rounded border px-2.5 py-1.5 text-body-sm border-status-positive bg-status-positive text-white font-semibold hover:opacity-90 {activeRange === 'custom' ? 'ring-2 ring-status-positive/40 ring-offset-1 ring-offset-white' : ''}">Custom</button>
-    {#if data.rangeLabel}
-      <span class="text-body-sm text-muted ml-auto">Dipakai: <strong class="text-ink">{data.rangeLabel}</strong></span>
-    {/if}
-  </div>
-</Card>
-
-{#if showCustomModal}
-  <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Atur rentang custom">
-    <button type="button" class="absolute inset-0 bg-ink/40 border-none cursor-default p-0" aria-label="Tutup" on:click={() => (showCustomModal = false)}></button>
-    <div class="relative w-full max-w-sm rounded-panel border border-border-cool bg-surface p-5 shadow-level3">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-headline-sm text-ink">Rentang custom</h2>
-        <button type="button" on:click={() => (showCustomModal = false)} class="text-muted hover:text-ink text-body-lg leading-none bg-transparent border-none cursor-pointer" aria-label="Tutup">✕</button>
-      </div>
-      <div class="flex flex-col gap-3">
-        <label class="flex flex-col gap-1 text-body-sm text-muted">
-          Dari
-          <input type="date" bind:value={fromInput} max={toInput || undefined} class="h-9 rounded border border-border-input bg-white px-2.5 text-body-md text-ink focus:outline-none focus:border-ink-navy" />
-        </label>
-        <label class="flex flex-col gap-1 text-body-sm text-muted">
-          Sampai
-          <input type="date" bind:value={toInput} min={fromInput || undefined} class="h-9 rounded border border-border-input bg-white px-2.5 text-body-md text-ink focus:outline-none focus:border-ink-navy" />
-        </label>
-        {#if !fromInput && !toInput}
-          <p class="text-body-sm text-muted">Isi minimal satu tanggal dulu.</p>
-        {/if}
-      </div>
-      <div class="flex justify-end gap-2 mt-5">
-        <Button variant="secondary" size="compact" on:click={() => (showCustomModal = false)}>Batal</Button>
-        <Button size="compact" on:click={applyCustom}>Terapkan</Button>
-      </div>
-    </div>
-  </div>
-{/if}
+<StatCard class="mb-6 p-0">
+  <StatFilterBar
+    {activeRange}
+    rangeLabel={data.rangeLabel}
+    bind:fromInput
+    bind:toInput
+    onSelect={(k) => goWithRange(k)}
+    onApply={applyCustom}
+    desktopOnly={false}
+    ranges={[
+      { value: 'today', label: 'Hari ini' },
+      { value: 'week', label: 'Minggu ini' },
+      { value: 'month', label: 'Bulan ini' },
+      { value: 'all', label: 'Semua' }
+    ]}
+  />
+</StatCard>
 
 {#if !prod}
   <Card class="text-center py-10">
