@@ -30,6 +30,12 @@ export function simFlagText(flag: SimFlag): string {
       return 'Harga jual saat ini berbeda dari rata-rata periode; simulasi memakai harga saat ini.';
     case 'DRIFT_COST':
       return 'Modal saat ini berbeda dari rata-rata periode; simulasi memakai modal saat ini.';
+    case 'OUT_OF_RANGE_PRICE':
+      return 'Harga skenario berubah lebih dari 30% dari harga sekarang; di luar jangkauan data, hasil spekulatif.';
+    case 'VOLUME_CAPPED':
+      return 'Kenaikan volume dibatasi 3× baseline (batas serap pasar).';
+    case 'QUOTA_DEMAND_IGNORED':
+      return 'Diskon berkuota: respons volume dari diskon tidak dihitung.';
   }
 }
 
