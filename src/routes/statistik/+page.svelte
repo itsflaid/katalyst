@@ -290,9 +290,9 @@
 
   <h2 class="w-fit rounded-[5px] bg-ink-navy px-6 py-4 text-headline-sm text-white mb-4">Inventori (14 hari terakhir)</h2>
   <div class="grid grid-cols-2 lg:grid-cols-[2.2fr_1fr_1fr_1fr] gap-4 mb-4">
-    <StatCard tone="navy" class="min-w-0 overflow-hidden text-center">
-      <p class="text-label-md uppercase text-white mb-1">Nilai stok</p>
-      <p class="text-num-display lg:text-[60px] font-bold leading-none text-white tabular break-words [overflow-wrap:anywhere]">{idr(data.inventory.stockValue)}</p>
+    <StatCard class="min-w-0 overflow-hidden text-center">
+      <p class="text-label-md uppercase text-ink-navy mb-1">Nilai stok</p>
+      <p class="text-num-display lg:text-[60px] font-bold leading-none text-ink-navy tabular break-words [overflow-wrap:anywhere]">{idr(data.inventory.stockValue)}</p>
     </StatCard>
     <StatCard tone="navy" class="min-w-0 overflow-hidden text-center">
       <p class="text-label-md uppercase text-white mb-1">Habis</p>
