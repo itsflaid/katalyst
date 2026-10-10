@@ -4,7 +4,10 @@
   $: active = $page.url.pathname.startsWith('/products/stok') ? 'stok' : 'daftar';
 </script>
 
-<div class="flex gap-1 border-b border-border-cool mb-4" role="tablist" aria-label="Navigasi produk">
+<!-- Garis bawah dipegang pembungkus luar supaya slot aksi (CTA) bisa duduk
+     sejajar tab tanpa memutus garis. -->
+<div class="flex items-end justify-between gap-3 border-b border-border-cool mb-4">
+<div class="flex gap-1" role="tablist" aria-label="Navigasi produk">
   <a
     href="/products"
     role="tab"
@@ -23,4 +26,8 @@
         : 'border-transparent text-muted hover:text-ink'}"
     >Riwayat Stok</a>
   {/if}
+</div>
+{#if $$slots.actions}
+  <div class="mb-2 flex-shrink-0"><slot name="actions" /></div>
+{/if}
 </div>

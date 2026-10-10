@@ -1,6 +1,10 @@
 <script lang="ts">
+  import { cn } from '$lib/shared/utils';
   export let headers: string[] = [];
   export let headTone: 'navy' | 'light' = 'navy';
+  // Tambahan kelas sel heading per pemakai (digabung via cn supaya
+  // menang atas padding default bila diisi, mis. py-3).
+  export let headCellClass = '';
 </script>
 
 <div class="overflow-x-auto rounded-panel border border-border-cool">
@@ -9,7 +13,7 @@
       <thead class="bg-ink-navy border-b border-ink-navy">
         <tr>
           {#each headers as h}
-            <th class="px-3 py-2 text-left text-label-md uppercase text-white">{h}</th>
+            <th class={cn('px-3 py-2 text-left text-label-md uppercase text-white', headCellClass)}>{h}</th>
           {/each}
         </tr>
       </thead>
@@ -17,7 +21,7 @@
       <thead class="bg-table-header border-b border-border-cool">
         <tr>
           {#each headers as h}
-            <th class="px-3 py-2 text-left text-label-md uppercase text-ink">{h}</th>
+            <th class={cn('px-3 py-2 text-left text-label-md uppercase text-ink', headCellClass)}>{h}</th>
           {/each}
         </tr>
       </thead>

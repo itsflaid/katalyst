@@ -38,7 +38,7 @@
     m === null ? "neutral" : m >= 30 ? "positive" : "warning";
 </script>
 
-<Table headers={["Produk", "Modal", "Jual", "Margin", "Stok", "Status", "Aksi"]}>
+<Table headers={["Produk", "Modal", "Jual", "Margin", "Stok", "Status", "Aksi"]} headCellClass="py-3 font-bold">
   {#each products as p (p.id)}
     {@const m = marginOf(p)}
     <tr class={!p.isActive ? "opacity-60" : ""}>
