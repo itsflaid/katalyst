@@ -288,25 +288,27 @@
     </div>
   {/if}
 
-  <h2 class="text-headline-sm text-ink mb-3">Inventori (14 hari terakhir)</h2>
-  <div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4 mb-4">
-    <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
-      <p class="text-label-sm uppercase text-muted mb-1 truncate">Nilai stok</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words [overflow-wrap:anywhere]">{idr(data.inventory.stockValue)}</p>
-    </Card>
-    <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
-      <p class="text-label-sm uppercase text-muted mb-1 truncate">Habis</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5">{num(data.inventory.outCount)}</p>
-    </Card>
-    <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
-      <p class="text-label-sm uppercase text-muted mb-1 truncate">Perlu restock</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5">{num(data.inventory.restockCount)}</p>
-    </Card>
-    <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
-      <p class="text-label-sm uppercase text-muted mb-1 truncate">Stok mati</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5">{num(data.inventory.deadCount)}</p>
-      <p class="text-body-sm text-muted tabular break-words [overflow-wrap:anywhere]">Modal tertahan {idr(data.inventory.deadValue)}</p>
-    </Card>
+  <h2 class="w-fit rounded-[5px] bg-ink-navy px-6 py-4 text-headline-sm text-white mb-4">Inventori (14 hari terakhir)</h2>
+  <div class="grid grid-cols-2 lg:grid-cols-[2.2fr_1fr_1fr_1fr] gap-4 mb-4">
+    <StatCard tone="navy" class="min-w-0 overflow-hidden text-center">
+      <p class="text-label-md uppercase text-white mb-1">Nilai stok</p>
+      <p class="text-num-display text-white tabular break-words [overflow-wrap:anywhere]">{idr(data.inventory.stockValue)}</p>
+    </StatCard>
+    <StatCard tone="navy" class="min-w-0 overflow-hidden text-center">
+      <p class="text-label-md uppercase text-white mb-1">Habis</p>
+      <p class="text-num-display lg:text-[72px] font-bold leading-none text-white tabular">{num(data.inventory.outCount)}</p>
+      <p class="text-body-sm text-white/70 mt-1">Produk dengan Stok 0</p>
+    </StatCard>
+    <StatCard tone="navy" class="min-w-0 overflow-hidden text-center">
+      <p class="text-label-md uppercase text-white mb-1">Perlu restock</p>
+      <p class="text-num-display lg:text-[72px] font-bold leading-none text-white tabular">{num(data.inventory.restockCount)}</p>
+      <p class="text-body-sm text-white/70 mt-1">Stok di bawah Batas Minimum</p>
+    </StatCard>
+    <StatCard tone="navy" class="min-w-0 overflow-hidden text-center">
+      <p class="text-label-md uppercase text-white mb-1">Stok mati</p>
+      <p class="text-num-display lg:text-[72px] font-bold leading-none text-white tabular">{num(data.inventory.deadCount)}</p>
+      <p class="text-body-sm text-white/70 tabular break-words [overflow-wrap:anywhere] mt-1">Modal Tertahan {idr(data.inventory.deadValue)}</p>
+    </StatCard>
   </div>
   {#if data.inventory.inactiveStock.count > 0}
     <p class="text-body-sm text-muted mb-4">Stok di produk nonaktif: {idr(data.inventory.inactiveStock.value)} ({num(data.inventory.inactiveStock.count)} produk)</p>
@@ -382,31 +384,37 @@
     <p class="text-body-md text-muted">Belum ada penjualan pada periode ini.</p>
   </Card>
 {:else}
-  <h2 class="text-headline-sm text-ink mb-3">Performa per Produk</h2>
-  <Table headers={['Produk', 'Terjual', 'Revenue', 'Profit', 'Margin', 'Δ Profit']}>
-    {#each data.rows as r}
-      <tr>
-        <td class="px-3 py-2 text-ink font-semibold whitespace-nowrap">{r.name}</td>
-        <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{num(r.current.quantitySold)}×</td>
-        <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(r.current.revenue)}</td>
-        <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(r.current.profit)}</td>
-        <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{(r.current.margin * 100).toFixed(1)}%</td>
-        <td class="px-3 py-2 whitespace-nowrap"><Badge size="sm" tone={deltaTone(r.change.profitChangePercent * 100)}>{fmtDelta(r.change.profitChangePercent * 100)}</Badge></td>
-      </tr>
-    {/each}
-  </Table>
+  <StatCard class="p-0 overflow-hidden mb-6">
+    <div class="flex items-center bg-ink-navy text-white px-4 h-[44px]">
+      <h2 class="text-headline-sm">Performa per Produk</h2>
+    </div>
+    <div class="p-5">
+      <Table headTone="light" headers={['Produk', 'Terjual', 'Revenue', 'Profit', 'Margin', 'Δ Profit']}>
+        {#each data.rows as r}
+          <tr>
+            <td class="px-3 py-2 text-ink font-semibold whitespace-nowrap">{r.name}</td>
+            <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{num(r.current.quantitySold)}×</td>
+            <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(r.current.revenue)}</td>
+            <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(r.current.profit)}</td>
+            <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{(r.current.margin * 100).toFixed(1)}%</td>
+            <td class="px-3 py-2 whitespace-nowrap"><Badge size="sm" tone={deltaTone(r.change.profitChangePercent * 100)} class="rounded-full">{fmtDelta(r.change.profitChangePercent * 100)}</Badge></td>
+          </tr>
+        {/each}
+      </Table>
+    </div>
+  </StatCard>
 {/if}
 
 {#if data.lowMargin.length > 0}
-  <Card class="mt-6">
-    <h2 class="text-headline-sm text-ink mb-3">Margin tipis (&lt; 15%)</h2>
+  <StatCard tone="navy" class="mt-6">
+    <h2 class="text-headline-sm text-white mb-3">Margin tipis (&lt; 15%)</h2>
     <ul class="flex flex-col gap-2">
       {#each data.lowMargin as p}
-        <li class="flex justify-between gap-3 rounded border border-status-warning-border bg-status-warning-bg px-3 py-2 text-body-md">
+        <li class="flex items-center justify-between gap-2 rounded-[10px] bg-white px-5 py-4 text-body-md">
           <span class="text-ink">{p.name}</span>
-          <span class="tabular font-semibold text-status-warning whitespace-nowrap">{(p.margin * 100).toFixed(1)}%</span>
+          <span class="tabular text-num-display text-status-warning whitespace-nowrap">{(p.margin * 100).toFixed(1)}%</span>
         </li>
       {/each}
     </ul>
-  </Card>
+  </StatCard>
 {/if}
