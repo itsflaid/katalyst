@@ -88,4 +88,39 @@ ok(
   !view.includes('"volumePct"') && !view.includes('540000') && !view.includes('350000') && view.includes('Rp540.000') && view.includes('volumePctText')
 );
 
+const sens = buildSimulatePriceData({
+  product,
+  baseline,
+  period: 'last_30d',
+  windowLabel: '30 hari terakhir',
+  targetPrice: 12000,
+  priceDelta: 2000,
+  volumePcts: [0],
+  sensitivity: 'medium'
+});
+ok('model aktif: qty 0% dari model (≈76,07, bukan 100)', Math.abs(sens.volumeScenarios[0].qty - 76.07) < 0.05 && sens.volumeScenarios[0].profit === 410792, `${sens.volumeScenarios[0].qty}/${sens.volumeScenarios[0].profit}`);
+ok('band 3 entri + drop terisi', sens.band.length === 3 && typeof sens.demand?.dropPer10PctText === 'string' && (sens.demand?.dropPer10PctText.length ?? 0) > 0);
+ok('puncak di batas +30% (harga 13000)', sens.peak !== null && sens.peak.price === 13000 && sens.peak.priceText === 'Rp13.000', JSON.stringify(sens.peak));
+
+const far = buildSimulatePriceData({
+  product,
+  baseline,
+  period: 'last_30d',
+  windowLabel: '30 hari terakhir',
+  targetPrice: 60000,
+  volumePcts: [0],
+  sensitivity: 'medium'
+});
+const oor = far.flags.find((f) => f.code === 'OUT_OF_RANGE_PRICE');
+ok('harga 60rb: flag luar jangkauan berteks', oor !== undefined && oor.text.length > 0);
+ok('harga 60rb: bukan PROFITABLE', far.assessment.code !== 'PROFITABLE', far.assessment.code);
+
+ok('baru bebas NaN/Infinity', finiteDeep(JSON.parse(JSON.stringify(sens))) && finiteDeep(JSON.parse(JSON.stringify(far))));
+
+const sensView = JSON.stringify(toModelView(sens));
+ok(
+  'proyeksi baru tanpa angka mentah',
+  !sensView.includes('18000') && !sensView.includes('"e":') && sensView.includes('Rp') && sensView.includes('dropPer10PctText')
+);
+
 if (failed) process.exit(1);

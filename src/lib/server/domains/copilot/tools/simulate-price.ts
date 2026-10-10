@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { simulate, type SimFlag } from '../../../../simulation';
+import { SENSITIVITY_LEVELS, assessScenario, dropFromElasticity, sensitivityBand, simulate, type ScenarioCode, type SimFlag } from '../../../../simulation';
 import { ZERO_FACTS, type Facts } from '../../../../analytics/facts';
 import { fmtDelta, fmtInt, fmtPercent, fmtPoints, fmtRupiah } from '../../../../shared/format';
 import { resolveNamedPeriod, type NamedPeriodKey } from '../../../../shared/period';
@@ -52,6 +52,35 @@ export interface VolumeScenario {
   marginText: string;
 }
 
+export interface DemandInfo {
+  sensitivity: string;
+  label: string;
+  e: number;
+  eText: string;
+  dropPer10Pct: number;
+  dropPer10PctText: string;
+  factor: number;
+  factorText: string;
+  capped: boolean;
+}
+
+export interface SensitivityBandRow {
+  sensitivity: string;
+  label: string;
+  qty: number;
+  qtyText: string;
+  profit: number;
+  profitText: string;
+  profitVsNow: number | null;
+  profitVsNowText: string;
+}
+
+export interface AssessmentInfo {
+  tone: string;
+  code: ScenarioCode;
+  text: string;
+}
+
 export interface SimulatePriceData {
   product: { id: string; name: string };
   window: { key: NamedPeriodKey; label: string };
@@ -67,8 +96,41 @@ export interface SimulatePriceData {
   maxDiscountPctText: string | null;
   profitAtMaxDiscount: number | null;
   profitAtMaxDiscountText: string | null;
+  demand: DemandInfo | null;
+  peak: { price: number; priceText: string; profit: number; profitText: string } | null;
+  maxVolumeDrop: number | null;
+  maxVolumeDropText: string | null;
+  band: SensitivityBandRow[];
+  assessment: AssessmentInfo;
   flags: { code: SimFlag; text: string }[];
   simulatorLink: string;
+}
+
+type SensitivityArg = 'low' | 'medium' | 'high';
+
+function levelOf(id: SensitivityArg) {
+  return SENSITIVITY_LEVELS.find((l) => l.id === id) ?? SENSITIVITY_LEVELS[1];
+}
+
+function assessmentText(code: ScenarioCode): string {
+  switch (code) {
+    case 'NO_VOLUME':
+      return 'Belum ada volume: skenario ini tidak menjual apa pun.';
+    case 'DEMAND_COLLAPSE':
+      return 'Pada harga ini pembeli diperkirakan hilang.';
+    case 'UNIT_LOSS':
+      return 'Tiap unit merugi: harga efektif di bawah modal.';
+    case 'LOSS':
+      return 'Skenario merugi dibanding kondisi sekarang.';
+    case 'OUT_OF_RANGE':
+      return 'Harga di luar ±30% dari harga sekarang; hasil spekulatif.';
+    case 'PROFIT_SENSITIVE':
+      return 'Untung hanya bila pembeli cukup setia.';
+    case 'PROFITABLE':
+      return 'Skenario menguntungkan dengan margin terjaga.';
+    case 'NEUTRAL':
+      return 'Dampak kecil dibanding kondisi sekarang.';
+  }
 }
 
 export function buildSimulatePriceData(input: {
@@ -80,13 +142,16 @@ export function buildSimulatePriceData(input: {
   priceDelta?: number;
   discountPct?: number;
   volumePcts: number[];
+  sensitivity?: SensitivityArg;
 }): SimulatePriceData {
   const discount = input.discountPct === undefined ? undefined : { kind: 'percent' as const, pct: input.discountPct };
+  const level = input.sensitivity === undefined ? null : levelOf(input.sensitivity);
+  const demandLever = level === null ? undefined : { kind: 'elasticity' as const, e: level.e };
   const runs = input.volumePcts.map((pct) =>
     simulate({
       baseline: input.baseline,
       product: input.product,
-      levers: { price: input.targetPrice, ...(discount ? { discount } : {}), volume: { kind: 'pct' as const, pct } }
+      levers: { price: input.targetPrice, ...(discount ? { discount } : {}), volume: { kind: 'pct' as const, pct }, ...(demandLever ? { demand: demandLever } : {}) }
     })
   );
   const zeroAt = input.volumePcts.indexOf(0);
@@ -118,10 +183,35 @@ export function buildSimulatePriceData(input: {
     const atMax = simulate({
       baseline: input.baseline,
       product: input.product,
-      levers: { price: input.targetPrice, discount: { kind: 'percent' as const, pct: base.maxDiscountPct }, volume: { kind: 'pct' as const, pct: input.volumePcts[chosenIndex] } }
+      levers: { price: input.targetPrice, discount: { kind: 'percent' as const, pct: base.maxDiscountPct }, volume: { kind: 'pct' as const, pct: input.volumePcts[chosenIndex] }, ...(demandLever ? { demand: demandLever } : {}) }
     });
     profitAtMaxDiscount = atMax.simulated.profit;
   }
+  const bandInput = {
+    baseline: input.baseline,
+    product: input.product,
+    price: input.targetPrice,
+    ...(discount ? { discount } : {})
+  };
+  const band: SensitivityBandRow[] =
+    level === null
+      ? []
+      : sensitivityBand({
+          baseline: bandInput.baseline,
+          product: bandInput.product,
+          levers: { price: bandInput.price, ...(bandInput.discount ? { discount: bandInput.discount } : {}), volume: { kind: 'pct' as const, pct: 0 } }
+        }).map((b) => ({
+          sensitivity: b.id,
+          label: b.label,
+          qty: b.result.qty.simulated,
+          qtyText: fmtInt(b.result.qty.simulated),
+          profit: b.result.simulated.profit,
+          profitText: fmtRupiah(b.result.simulated.profit),
+          profitVsNow: b.result.impact.vsStatusQuo.profit,
+          profitVsNowText: fmtDelta(b.result.impact.vsStatusQuo.profit)
+        }));
+  const assessed = assessScenario(chosen, band.map((b) => b.profitVsNow));
+  const drop = level === null ? 0 : dropFromElasticity(level.e);
   return {
     product: { id: input.product.id, name: input.product.name },
     window: { key: input.period, label: input.windowLabel },
@@ -148,6 +238,28 @@ export function buildSimulatePriceData(input: {
     maxDiscountPctText: base.maxDiscountPct === null ? null : fmtPercent(base.maxDiscountPct / 100),
     profitAtMaxDiscount,
     profitAtMaxDiscountText: profitAtMaxDiscount === null ? null : fmtRupiah(profitAtMaxDiscount),
+    demand:
+      level === null
+        ? null
+        : {
+            sensitivity: input.sensitivity as string,
+            label: level.label,
+            e: level.e,
+            eText: String(level.e),
+            dropPer10Pct: drop,
+            dropPer10PctText: fmtPercent(drop),
+            factor: chosen.demand.factor,
+            factorText: `×${String(Math.round(chosen.demand.factor * 1000) / 1000).replace('.', ',')}`,
+            capped: chosen.demand.capped
+          },
+    peak:
+      chosen.peak === null
+        ? null
+        : { price: chosen.peak.price, priceText: fmtRupiah(chosen.peak.price), profit: chosen.peak.profit, profitText: fmtRupiah(chosen.peak.profit) },
+    maxVolumeDrop: chosen.maxVolumeDrop,
+    maxVolumeDropText: chosen.maxVolumeDrop === null ? null : fmtPercent(chosen.maxVolumeDrop),
+    band,
+    assessment: { tone: assessed.tone, code: assessed.code, text: assessmentText(assessed.code) },
     flags,
     simulatorLink: `/simulator?productId=${encodeURIComponent(input.product.id)}`
   };
@@ -156,7 +268,8 @@ export function buildSimulatePriceData(input: {
 export async function simulatePrice(ctx: ToolContext, input: unknown): Promise<ToolResult<SimulatePriceData>> {
   const checked = validateArgs(input, {
     product: { type: 'string', required: true }, period: { type: 'string', enum: periods }, from: { type: 'string' }, to: { type: 'string' },
-    priceDelta: { type: 'integer' }, price: { type: 'integer', min: 0 }, discountPct: { type: 'integer', min: 0, max: 100 }, volumePct: { type: 'integer', min: -100, max: 1000 }
+    priceDelta: { type: 'integer' }, price: { type: 'integer', min: 0 }, discountPct: { type: 'integer', min: 0, max: 100 }, volumePct: { type: 'integer', min: -100, max: 1000 },
+    sensitivity: { type: 'string', enum: ['low', 'medium', 'high'] }
   });
   if (!checked.ok) return failure(TOOL, 'INVALID_ARGS', checked.message);
   const period = (checked.value.period ?? 'last_30d') as NamedPeriodKey;
@@ -182,6 +295,7 @@ export async function simulatePrice(ctx: ToolContext, input: unknown): Promise<T
   if (targetPrice < 0) return failure(TOOL, 'INVALID_ARGS', 'Harga hasil simulasi tidak boleh negatif.');
   const volumePct = checked.value.volumePct as number | undefined;
   const volumePcts = volumePct === undefined ? DEFAULT_VOLUMES : [volumePct];
+  const sensitivity = (checked.value.sensitivity as SensitivityArg | undefined) ?? 'medium';
   try {
     const data = buildSimulatePriceData({
       product: { ...selected, name: resolved.product.name },
@@ -191,9 +305,13 @@ export async function simulatePrice(ctx: ToolContext, input: unknown): Promise<T
       targetPrice,
       ...(priceDelta === undefined ? {} : { priceDelta }),
       ...(checked.value.discountPct === undefined ? {} : { discountPct: checked.value.discountPct as number }),
-      volumePcts
+      volumePcts,
+      sensitivity
     });
-    return success(TOOL, data, ['Skenario volume adalah asumsi, bukan prediksi.']);
+    const notes = ['Skenario volume adalah asumsi, bukan prediksi.'];
+    const lvl = levelOf(sensitivity);
+    notes.push(`Angka respons pembeli hanya asumsi/perkiraan, bukan kepastian (sensitivitas ${lvl.label}).`);
+    return success(TOOL, data, notes);
   } catch (error) {
     return failure(TOOL, 'INVALID_ARGS', error instanceof Error ? error.message : 'Skenario tidak valid.');
   }
