@@ -1,4 +1,4 @@
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, sql } from 'drizzle-orm';
 import { copilotConversation, copilotMessage } from '../../db/schema';
 import type { Db } from '../facts/queries';
 
@@ -10,8 +10,8 @@ export function dailyLimitFrom(envValue: string | undefined): number {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_DAILY_LIMIT;
 }
 
-// Pertanyaan user 24 jam terakhir; permintaan yang ditolak tidak ikut dihitung.
-export async function countRecentUserMessages(db: Db, businessId: string, now: Date): Promise<number> {
+// Jawaban Copilot 24 jam terakhir; pertanyaan yang gagal dijawab provider tidak memakan jatah.
+export async function countRecentAnswers(db: Db, businessId: string, now: Date): Promise<number> {
   const since = new Date(now.getTime() - DAY_MS);
   const rows = await db
     .select({ count: sql<string>`count(*)::text` })
@@ -20,7 +20,7 @@ export async function countRecentUserMessages(db: Db, businessId: string, now: D
     .where(
       and(
         eq(copilotConversation.businessId, businessId),
-        eq(copilotMessage.role, 'user'),
+        inArray(copilotMessage.role, ['assistant', 'notice']),
         gte(copilotMessage.createdAt, since)
       )
     );
@@ -33,6 +33,6 @@ export async function canUseCopilot(
   limit: number,
   now: Date
 ): Promise<{ ok: boolean; used: number; limit: number }> {
-  const used = await countRecentUserMessages(db, businessId, now);
+  const used = await countRecentAnswers(db, businessId, now);
   return used < limit ? { ok: true, used, limit } : { ok: false, used, limit };
 }
