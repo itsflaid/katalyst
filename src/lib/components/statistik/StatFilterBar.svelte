@@ -18,6 +18,15 @@
   function pick(e: Event) {
     onSelect((e.currentTarget as HTMLSelectElement).value as PeriodKey);
   }
+  // Sinkron eksplisit sebelum apply: urutan listener bind vs on:change tak dijamin.
+  function changedFrom(e: Event) {
+    fromInput = (e.currentTarget as HTMLInputElement).value;
+    onApply();
+  }
+  function changedTo(e: Event) {
+    toInput = (e.currentTarget as HTMLInputElement).value;
+    onApply();
+  }
 </script>
 
 <div class={desktopOnly ? 'hidden sm:flex items-stretch gap-0 divide-x divide-border-stat' : 'flex flex-col sm:flex-row items-stretch gap-0 divide-y sm:divide-y-0 sm:divide-x divide-border-stat'}>
@@ -46,6 +55,7 @@
       <input
         type="date"
         bind:value={fromInput}
+        on:change={changedFrom}
         class="h-9 w-full sm:w-auto rounded-[9px] border border-border-stat bg-surface px-3 pr-9 text-body-md text-ink [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
         aria-label="Dari tanggal"
       />
@@ -58,21 +68,13 @@
       <input
         type="date"
         bind:value={toInput}
+        on:change={changedTo}
         min={fromInput || undefined}
         class="h-9 w-full sm:w-auto rounded-[9px] border border-border-stat bg-surface px-3 pr-9 text-body-md text-ink [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
         aria-label="Sampai tanggal"
       />
       <Calendar size={16} class="pointer-events-none absolute right-2.5 text-muted" />
     </span>
-  </div>
-  <div class="flex items-center px-4 py-3">
-    <button
-      type="button"
-      on:click={onApply}
-      class="h-[46px] w-full sm:w-auto rounded-[9px] border border-border-stat bg-ink-navy px-5 text-body-md font-semibold text-white"
-    >
-      Terapkan
-    </button>
   </div>
   {#if rangeLabel}
     <div class="flex min-w-0 ml-auto shrink-0 items-center gap-2 px-4 py-3">
