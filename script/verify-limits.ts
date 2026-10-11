@@ -4,7 +4,7 @@ import postgres from 'postgres';
 import { randomUUID } from 'crypto';
 import * as schema from '../src/lib/server/db/schema';
 import { business, copilotConversation, copilotMessage } from '../src/lib/server/db/schema';
-import { canUseCopilot, countRecentUserMessages, dailyLimitFrom } from '../src/lib/server/domains/copilot/limits';
+import { canUseCopilot, countRecentAnswers, dailyLimitFrom } from '../src/lib/server/domains/copilot/limits';
 
 let passCount = 0;
 let failCount = 0;
@@ -34,18 +34,20 @@ async function main() {
       await tx.insert(copilotConversation).values({ id: conv, businessId: biz, title: 'Uji' });
       const minute = 60_000;
       await tx.insert(copilotMessage).values([
-        { id: randomUUID(), conversationId: conv, role: 'user', content: 'dalam', createdAt: new Date(now.getTime() - (24 * 60 - 1) * minute) },
-        { id: randomUUID(), conversationId: conv, role: 'user', content: 'luar', createdAt: new Date(now.getTime() - (24 * 60 + 1) * minute) },
-        { id: randomUUID(), conversationId: conv, role: 'assistant', content: 'balasan', createdAt: new Date(now.getTime() - 60 * minute) }
+        { id: randomUUID(), conversationId: conv, role: 'assistant', content: 'dalam', createdAt: new Date(now.getTime() - (24 * 60 - 1) * minute) },
+        { id: randomUUID(), conversationId: conv, role: 'assistant', content: 'luar', createdAt: new Date(now.getTime() - (24 * 60 + 1) * minute) },
+        { id: randomUUID(), conversationId: conv, role: 'notice', content: 'peringatan', createdAt: new Date(now.getTime() - 60 * minute) },
+        { id: randomUUID(), conversationId: conv, role: 'user', content: 'tanya', createdAt: new Date(now.getTime() - 60 * minute) },
+        { id: randomUUID(), conversationId: conv, role: 'tool', content: 'alat', createdAt: new Date(now.getTime() - 60 * minute) }
       ]);
       const second = randomUUID();
       await tx.insert(copilotConversation).values({ id: second, businessId: biz, title: 'Kedua' });
       await tx.insert(copilotMessage).values(
-        Array.from({ length: 38 }, (_, i) => ({
+        Array.from({ length: 37 }, (_, i) => ({
           id: randomUUID(),
           conversationId: second,
-          role: 'user',
-          content: `tanya ${i}`,
+          role: 'assistant',
+          content: `jawab ${i}`,
           createdAt: new Date(now.getTime() - (i + 1) * minute)
         }))
       );
@@ -55,16 +57,16 @@ async function main() {
         Array.from({ length: 100 }, (_, i) => ({
           id: randomUUID(),
           conversationId: foreign,
-          role: 'user',
+          role: 'assistant',
           content: `asing ${i}`,
           createdAt: new Date(now.getTime() - (i + 1) * minute)
         }))
       );
-      const used = await countRecentUserMessages(tx, biz, now);
-      ok('batas 24 jam dan peran disaring', used === 39, `used=${used}`);
+      const used = await countRecentAnswers(tx, biz, now);
+      ok('hanya assistant/notice dihitung', used === 39, `used=${used}`);
       ok('di bawah batas boleh', (await canUseCopilot(tx, biz, 40, now)).ok);
       ok('tepat di batas ditolak', !(await canUseCopilot(tx, biz, 39, now)).ok);
-      ok('bisnis lain diabaikan', (await countRecentUserMessages(tx, other, now)) === 100);
+      ok('bisnis lain diabaikan', (await countRecentAnswers(tx, other, now)) === 100);
       throw ROLLBACK;
     });
   } catch (e) {

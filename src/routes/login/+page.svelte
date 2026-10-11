@@ -16,7 +16,10 @@
     const { error: signInError } = await signIn.username({ username: identity.trim(), password });
     loading = false;
     if (signInError) {
-      error = signInError.message ?? 'Login gagal, cek username + password.';
+      error =
+        signInError.status === 429
+          ? 'Terlalu banyak percobaan masuk. Coba lagi sebentar.'
+          : (signInError.message ?? 'Login gagal, cek username + password.');
       return;
     }
     // invalidateAll: paksa load function layout jalan ulang, tanpa ini data.user tetap null dan Sidebar tidak muncul sampai refresh manual.

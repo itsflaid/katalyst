@@ -46,3 +46,19 @@ export function isOwnerOnly(path: string): boolean {
 export function isBlockedAuthPath(path: string): boolean {
 	return matchesPrefix(path, '/api/auth/sign-up') || matchesPrefix(path, '/api/auth/admin');
 }
+
+export type AccessVerdict =
+	| { kind: 'allow' }
+	| { kind: 'redirect'; to: string }
+	| { kind: 'forbidden'; message: string };
+
+// Satu tempat untuk keputusan akses; hooks hanya menerjemahkan hasilnya.
+export function decideAccess(path: string, user: { role?: unknown; businessId?: unknown } | null): AccessVerdict {
+	if (!isProtected(path)) return { kind: 'allow' };
+	if (!user) return { kind: 'redirect', to: '/login' };
+	if (typeof user.businessId !== 'string' || user.businessId === '') {
+		return { kind: 'forbidden', message: 'Akun belum terhubung ke bisnis. Hubungi owner.' };
+	}
+	if (isOwnerOnly(path) && user.role !== 'OWNER') return { kind: 'redirect', to: '/transactions' };
+	return { kind: 'allow' };
+}
