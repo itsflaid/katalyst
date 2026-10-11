@@ -6,7 +6,6 @@
   import PieChart from '$lib/components/ui/PieChart.svelte';
   import ScatterChart from '$lib/components/ui/ScatterChart.svelte';
   import Badge from '$lib/components/ui/Badge.svelte';
-  import Button from '$lib/components/ui/Button.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import SlideOver from '$lib/components/ui/SlideOver.svelte';
   import StatFilterBar from '$lib/components/statistik/StatFilterBar.svelte';
@@ -46,6 +45,14 @@
   function applyCustom() {
     if (!fromInput && !toInput) return;
     goWithRange('custom', fromInput, toInput);
+  }
+  function syncFrom(e: Event) {
+    fromInput = (e.currentTarget as HTMLInputElement).value;
+    applyCustom();
+  }
+  function syncTo(e: Event) {
+    toInput = (e.currentTarget as HTMLInputElement).value;
+    applyCustom();
   }
 
   const btn = (current: string, key: string) =>
@@ -103,13 +110,12 @@
       <div class="flex flex-col gap-2 rounded border border-border-cool p-3">
         <label class="flex flex-col gap-1 text-body-md text-ink">
           Dari
-          <input type="date" bind:value={fromInput} class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink" />
+          <input type="date" bind:value={fromInput} on:change={syncFrom} class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink" />
         </label>
         <label class="flex flex-col gap-1 text-body-md text-ink">
           Sampai
-          <input type="date" bind:value={toInput} min={fromInput || undefined} class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink" />
+          <input type="date" bind:value={toInput} on:change={syncTo} min={fromInput || undefined} class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink" />
         </label>
-        <Button class="w-full" on:click={applyCustom}>Terapkan</Button>
       </div>
     </div>
   </SlideOver>
