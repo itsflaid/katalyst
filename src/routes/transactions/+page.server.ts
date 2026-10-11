@@ -5,6 +5,7 @@ import { DEFAULT_TZ, isBizTz, makeTime } from '$lib/shared/time';
 import { calculateCart, getDiscountStatus, quotaDeltas } from '$lib/discount';
 import { receiptTotals } from '$lib/analytics';
 import { getActiveProductDiscounts, getGlobalDiscount } from '$lib/server/domains/discounts';
+import { INT4_MAX } from '$lib/server/domains/products';
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -252,6 +253,9 @@ export const actions: Actions = {
     // Tolak seluruh struk kalau satu item pun stoknya kurang, jangan simpan sebagian sebelum kasir betulkan.
     const short = dbProducts.find((p) => merged.get(p.id)! > p.stock);
     if (short) return fail(400, { message: `Stok ${short.name} kurang (sisa ${short.stock}).` });
+    // discountAmount per baris bertipe int4: qty × harga yang lewat batas bikin batch gagal di DB.
+    const tooBig = dbProducts.find((p) => merged.get(p.id)! * p.sellingPrice > INT4_MAX);
+    if (tooBig) return fail(400, { message: `Nilai ${tooBig.name} terlalu besar untuk satu struk, kurangi jumlahnya.` });
 
     const byId = new Map(dbProducts.map((p) => [p.id, p]));
     const cashierName =
