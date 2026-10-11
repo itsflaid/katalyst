@@ -21,30 +21,15 @@ export type VolumeLever =
   | { kind: 'override'; qty: number };
 
 // Respons permintaan terhadap harga efektif; mati berarti qty ikut rumus lama.
-export type DemandLever = { kind: 'off' } | { kind: 'elasticity'; e: number };
+export type DemandLever = { kind: 'off' } | { kind: 'on' };
 
 export const DEMAND_MAX_FACTOR = 3;
-export const DEMAND_MAX_ELASTICITY = 6;
+export const DEMAND_ELASTICITY = 1.5;
 export const PRICE_RANGE_LIMIT_PCT = 30;
-
-export const SENSITIVITY_LEVELS = [
-  { id: 'low', label: 'Pembeli setia', e: 1.2 },
-  { id: 'medium', label: 'Pembeli biasa', e: 1.5 },
-  { id: 'high', label: 'Pembeli gampang pindah', e: 2.5 }
-] as const;
-
-export type SensitivityId = (typeof SENSITIVITY_LEVELS)[number]['id'];
 
 // turun10 = 1 − 1,1^(−e)   (fraksi penjualan hilang tiap harga naik 10%)
 export function dropFromElasticity(e: number): number {
   return 1 - Math.pow(1.1, -e);
-}
-
-// e = −ln(1 − d) / ln(1,1)   (d dijepit 0..40; 0 bila tidak finit)
-export function elasticityFromDrop(dropPct: number): number {
-  if (!Number.isFinite(dropPct)) return 0;
-  const d = Math.min(40, Math.max(0, dropPct)) / 100;
-  return -Math.log(1 - d) / Math.log(1.1);
 }
 
 export interface SimInput {
@@ -163,11 +148,8 @@ export function simulate(input: SimInput): SimResult {
     if (discountLever.units !== undefined) reqInt('units', discountLever.units, 0);
   }
   const demandLever = levers.demand;
-  if (demandLever?.kind === 'elasticity') {
-    const e = demandLever.e;
-    if (!Number.isFinite(e) || e < 0 || e > DEMAND_MAX_ELASTICITY) {
-      throw new RangeError(`demand e harus 0..${DEMAND_MAX_ELASTICITY} (dapat: ${e})`);
-    }
+  if (demandLever !== undefined && demandLever.kind !== 'off' && demandLever.kind !== 'on') {
+    throw new RangeError(`demand kind harus off/on (dapat: ${(demandLever as { kind: unknown }).kind})`);
   }
 
   const B = metricsOf(baseline);
@@ -184,16 +166,16 @@ export function simulate(input: SimInput): SimResult {
       : P2 - unitDiscount(P2, discountLever.pct)
     : P2 * (1 - dr0);
 
-  // Model dipakai hanya bila pembeli peka harga, qty bukan manual, ada histori, dan harga acuan positif.
+  // Model dipakai bila qty bukan manual, ada histori, dan harga acuan positif.
   const useDemand =
-    demandLever?.kind === 'elasticity' &&
+    demandLever?.kind === 'on' &&
     levers.volume?.kind !== 'override' &&
     baseline.qty > 0 &&
     Peff0 > 0;
 
   let simQty: number;
   let volumeChanged = false;
-  let demand: DemandInfo = { applied: false, e: 0, ratio: 1, factor: 1, capped: false };
+  let demand: DemandInfo = { applied: false, e: DEMAND_ELASTICITY, ratio: 1, factor: 1, capped: false };
   const vol = levers.volume;
   if (vol?.kind === 'override') {
     simQty = reqInt('qty', vol.qty, 0);
@@ -201,14 +183,14 @@ export function simulate(input: SimInput): SimResult {
   } else {
     const pct = vol?.pct ?? 0;
     if (!Number.isInteger(pct)) throw new RangeError(`volume pct harus integer (dapat: ${pct})`);
-    if (useDemand && demandLever?.kind === 'elasticity') {
+    if (useDemand) {
       // factorRaw = ratio^(−e)   (Infinity bila ratio ≤ 0)
       // factor    = min(factorRaw, 3)
-      const e = demandLever.e;
+      const e = DEMAND_ELASTICITY;
       const ratio = Peff2 / Peff0;
       const factorRaw = ratio <= 0 ? Infinity : Math.pow(ratio, -e);
-      const factor = e === 0 ? 1 : Math.min(factorRaw, DEMAND_MAX_FACTOR);
-      const capped = e !== 0 && factorRaw > DEMAND_MAX_FACTOR;
+      const factor = Math.min(factorRaw, DEMAND_MAX_FACTOR);
+      const capped = factorRaw > DEMAND_MAX_FACTOR;
       demand = { applied: true, e, ratio, factor, capped };
       simQty = Math.max(0, baseline.qty * factor * (1 + pct / 100));
     } else {
@@ -304,7 +286,7 @@ export function simulate(input: SimInput): SimResult {
   // PeffAnalytic = c2 × e / (e − 1)
   // PeffBoundary = Peff0 × 3^(−1/e); ±30% harga efektif sekarang = terbaik dalam rentang data.
   let peak: { price: number; profit: number } | null = null;
-  if (demand.applied && demand.e > 1 && baseline.qty > 0 && !quotaDemand && c2 >= 0) {
+  if (demand.applied && baseline.qty > 0 && !quotaDemand && c2 >= 0) {
     const d = discountLever?.kind === 'percent' ? discountLever.pct / 100 : dr0;
     if (1 - d > 0) {
       const peffStar = Math.min(Math.max((c2 * demand.e) / (demand.e - 1), Peff0 * Math.pow(DEMAND_MAX_FACTOR, -1 / demand.e), Peff0 * 0.7), Peff0 * 1.3);
@@ -343,13 +325,11 @@ export type ScenarioCode =
   | 'UNIT_LOSS'
   | 'LOSS'
   | 'OUT_OF_RANGE'
-  | 'PROFIT_SENSITIVE'
   | 'PROFITABLE'
   | 'NEUTRAL';
 
 export function assessScenario(
-  result: SimResult,
-  bandDeltas: (number | null)[] = []
+  result: SimResult
 ): { tone: 'positive' | 'warning' | 'negative' | 'neutral'; code: ScenarioCode } {
   const pd = result.impact.vsStatusQuo.profit ?? 0;
   const mp = result.impact.vsStatusQuo.marginPoints;
@@ -362,45 +342,9 @@ export function assessScenario(
   if (pd <= -0.05 || result.simulated.margin < 0) return { tone: 'negative', code: 'LOSS' };
   if (pd >= 0.05 && mp >= -0.02) {
     if (result.outOfRange) return { tone: 'warning', code: 'OUT_OF_RANGE' };
-    if (bandDeltas.some((d) => d !== null && d <= -0.05)) return { tone: 'warning', code: 'PROFIT_SENSITIVE' };
     return { tone: 'positive', code: 'PROFITABLE' };
   }
   return { tone: 'warning', code: 'NEUTRAL' };
-}
-
-// Tiap tingkat sensitivitas dijalankan model yang sama; kosong bila qty manual.
-export function sensitivityBand(input: SimInput): { id: string; label: string; e: number; result: SimResult }[] {
-  if (input.levers?.volume?.kind === 'override') return [];
-  return SENSITIVITY_LEVELS.map((l) => ({
-    id: l.id,
-    label: l.label,
-    e: l.e,
-    result: simulate({ ...input, levers: { ...input.levers, demand: { kind: 'elasticity', e: l.e } } })
-  }));
-}
-
-export interface Robustness {
-  eBase: number;
-  eHigh: number;
-  pdBase: number | null;
-  pdHigh: number | null;
-  agree: boolean;
-}
-
-// Tanda untung dibandingkan di dua sensitivitas; null bila qty manual.
-export function robustnessOf(input: SimInput, eHigh = 3): Robustness | null {
-  if (input.levers?.volume?.kind === 'override') return null;
-  const eBase = input.levers?.demand?.kind === 'elasticity' ? input.levers.demand.e : 1.5;
-  const run = (e: number) =>
-    simulate({ ...input, levers: { ...input.levers, demand: { kind: 'elasticity' as const, e } } }).impact.vsStatusQuo.profit;
-  if (eBase === eHigh) {
-    const pd = run(eBase);
-    return { eBase, eHigh, pdBase: pd, pdHigh: pd, agree: true };
-  }
-  const pdBase = run(eBase);
-  const pdHigh = run(eHigh);
-  const sign = (v: number | null) => (v === null || v === 0 ? 0 : v > 0 ? 1 : -1);
-  return { eBase, eHigh, pdBase, pdHigh, agree: sign(pdBase) === sign(pdHigh) };
 }
 
 export function sanitizeLevers(levers: NonNullable<SimInput['levers']>): NonNullable<SimInput['levers']> {
@@ -436,10 +380,7 @@ export function sanitizeLevers(levers: NonNullable<SimInput['levers']>): NonNull
         : { kind: 'pct', pct: roundInt(levers.volume.pct) };
   }
   if (levers.demand !== undefined) {
-    out.demand =
-      levers.demand.kind === 'off'
-        ? { kind: 'off' }
-        : { kind: 'elasticity', e: Number.isFinite(levers.demand.e) ? Math.min(DEMAND_MAX_ELASTICITY, Math.max(0, levers.demand.e)) : 0 };
+    out.demand = { kind: levers.demand.kind === 'on' ? 'on' : 'off' };
   }
   return out;
 }

@@ -10,11 +10,8 @@
   import { goto } from '$app/navigation';
   import { fmtQty } from '$lib/shared/format';
   import {
-    SENSITIVITY_LEVELS,
     assessScenario,
-    robustnessOf,
     sanitizeLevers,
-    sensitivityBand,
     simulate,
     type ScenarioCode
   } from '$lib/simulation';
@@ -49,10 +46,6 @@
   let discountPct = 0;
   let volPct = 0;
   let qtyOverride = '';
-  // Respons pembeli selalu aktif dengan sensitivitas bawaan sistem (bukan pilihan pengguna).
-  const mediumSensitivity = SENSITIVITY_LEVELS.find((l) => l.id === 'medium') ?? SENSITIVITY_LEVELS[1];
-  const sensLabel = mediumSensitivity.label;
-  const demandE = mediumSensitivity.e;
 
   // Rentang baseline: hari ini / minggu ini / bulan ini / semua / custom. Default bulan ini (dari server) biar load awal ringan.
   // Ganti rentang = reload server (goto) biar agregat dihitung ulang dari transaction.created_at.
@@ -111,22 +104,20 @@
     qtyOverride.trim() === '' ? null : Math.max(0, Math.floor(Number(qtyOverride) || 0));
 
   // Satu-satunya hitungan simulasi, tak ada rumus lokal lagi.
-  // Sensitivitas diteruskan apa adanya; engine yang memutuskan dipakai tidaknya.
-  $: simLevers = ((ov, dm) =>
+  // Respons pembeli selalu aktif; engine yang memutuskan dipakai tidaknya.
+  $: simLevers = ((ov) =>
     sanitizeLevers({
       price: priceValue,
       cost: costValue,
       discount: discountMode === 'keep' ? { kind: 'keep' } : { kind: 'percent', pct: discountPct },
       volume: ov !== null ? { kind: 'override', qty: ov } : { kind: 'pct', pct: volPct },
-      demand: ov !== null ? { kind: 'off' } : { kind: 'elasticity', e: dm }
-    }))(overrideQty, demandE);
+      demand: ov !== null ? { kind: 'off' } : { kind: 'on' }
+    }))(overrideQty);
   $: result = simulate({
     baseline: base.facts,
     product: { sellingPrice: sellBase, costPrice: costBase },
     levers: simLevers
   });
-  $: band = ((facts, sell, cost, lv) => sensitivityBand({ baseline: facts, product: { sellingPrice: sell, costPrice: cost }, levers: lv }))(base.facts, sellBase, costBase, simLevers);
-  $: bandDeltas = band.map((b) => b.result.impact.vsStatusQuo.profit);
 
   $: simQty = result.qty.simulated;
   $: effPrice = result.simulated.avgNetPrice;
@@ -177,64 +168,40 @@
       marginPts: number;
       priceValue: number;
       pricePct: number;
-      sensLabel: string;
-      selDelta: number | null;
-      selLabel: string;
-      worstDelta: number | null;
-      worstLabel: string;
     }
   ): { title: string; desc: string } {
     switch (code) {
       case 'NO_VOLUME':
         return { title: 'Belum ada volume', desc: 'Isi override quantity atau pastikan produk punya histori penjualan.' };
       case 'DEMAND_COLLAPSE':
-        return { title: 'Pembeli diperkirakan hilang', desc: `Pada harga ${idr(v.effPrice)}, model memperkirakan hampir tidak ada yang membeli (sensitivitas ${v.sensLabel}).` };
+        return { title: 'Pembeli diperkirakan hilang', desc: `Pada harga ${idr(v.effPrice)}, model memperkirakan hampir tidak ada yang membeli.` };
       case 'UNIT_LOSS':
         return { title: 'Tiap unit merugi', desc: `Harga efektif ${idr(v.effPrice)} di bawah modal ${idr(v.costValue)}. Skenario ini rugi di setiap unit.` };
       case 'LOSS':
         return { title: 'Skenario merugikan', desc: `Profit ${fmtDeltaPct(v.profitDelta)} dibanding kondisi sekarang dan margin ${fmtPoin(v.marginPts)}. Pertimbangkan ulang tuasnya.` };
       case 'OUT_OF_RANGE':
         return { title: 'Di luar jangkauan data', desc: `Harga ${idr(v.priceValue)} berubah ${v.pricePct >= 0 ? '+' : ''}${v.pricePct.toFixed(0)}% dari harga sekarang, jauh di luar yang bisa diprediksi dari histori. Anggap hasilnya spekulatif dan uji dulu dengan kenaikan bertahap.` };
-      case 'PROFIT_SENSITIVE':
-        return { title: 'Tergantung kesetiaan pembeli', desc: `Profit ${fmtDeltaPct(v.selDelta)} bila pembeli ${v.selLabel}, tapi ${fmtDeltaPct(v.worstDelta)} bila ${v.worstLabel}. Untung hanya kalau pembeli cukup setia.` };
       case 'PROFITABLE':
         return { title: 'Skenario menguntungkan', desc: `Profit ${fmtDeltaPct(v.profitDelta)} dibanding kondisi sekarang dengan margin terjaga di ${(v.margin * 100).toFixed(1)}%.` };
       case 'NEUTRAL':
         return { title: 'Dampak netral', desc: 'Perubahan kecil terhadap profit dibanding kondisi sekarang. Coba geser tuas lebih jauh atau ubah volume.' };
+      default:
+        return { title: 'Dampak netral', desc: 'Perubahan kecil terhadap profit dibanding kondisi sekarang. Coba geser tuas lebih jauh atau ubah volume.' };
     }
   }
 
-  // Level terpilih (bawaan sistem) dan terburuk untuk teks PROFIT_SENSITIVE.
-  $: sensSel = ((list, pd) =>
-    ((f) => (f ? { delta: f.result.impact.vsStatusQuo.profit, label: f.label } : { delta: pd, label: sensLabel }))(
-      list.find((b) => b.id === 'medium')
-    ))(band, profitDelta);
-  $: sensWorst = ((list) => {
-    let w: { delta: number; label: string } | null = null;
-    for (const b of list) {
-      const d = b.result.impact.vsStatusQuo.profit;
-      if (d === null) continue;
-      if (w === null || d < w.delta) w = { delta: d, label: b.label };
-    }
-    return w;
-  })(band);
   // Penilaian skenario satu pintu di engine; halaman hanya memetakan teks.
-  $: verdict = ((r, ds, ctx) => {
-    const a = assessScenario(r, ds);
+  $: verdict = ((r, ctx) => {
+    const a = assessScenario(r);
     return { tone: a.tone, ...verdictText(a.code, ctx) };
-  })(result, bandDeltas, {
+  })(result, {
     effPrice,
     costValue,
     profitDelta,
     margin: result.simulated.margin,
     marginPts,
     priceValue,
-    pricePct,
-    sensLabel,
-    selDelta: sensSel.delta,
-    selLabel: sensSel.label,
-    worstDelta: sensWorst?.delta ?? sensSel.delta,
-    worstLabel: sensWorst?.label ?? sensSel.label
+    pricePct
   });
 
   $: demandDeltaPct = ((r) => {
@@ -268,9 +235,6 @@
     ...(result.demand.capped ? ['Kenaikan volume dibatasi 3× dari baseline (batas serap pasar).'] : []),
     ...(result.flags.includes('QUOTA_DEMAND_IGNORED') ? ['Diskon berkuota: respons volume dari diskon tidak dihitung.'] : []),
     ...(result.outOfRange ? ['Harga skenario di luar ±30% dari harga sekarang; hasil spekulatif.'] : []),
-    ...(robustness && !robustness.agree
-      ? [`Bila pembeli sangat sensitif (e = 3), profit ${fmtDeltaPct(robustness.pdHigh)}, hasil tergantung perilaku pembeli.`]
-      : []),
     ...(base.txCount > 0 ? [`Baseline dari ${num(base.txCount)} transaksi tercatat.`] : []),
     'Dampak zakat dihitung dari selisih profit produk ini pada rentang baseline, dengan asumsi selisih tersebut tertahan sebagai kas atau stok sampai haul; kas, piutang, dan utang diambil dari halaman Zakat.'
   ];
@@ -294,14 +258,6 @@
   $: maxProfit = Math.max(sqProfit, result.simulated.profit, 1);
   $: maxQty = Math.max(histQty, simQty, 1);
   const w = (v: number, max: number) => `${Math.max(2, (v / max) * 100).toFixed(1)}%`;
-
-  $: robustness = ((bl, sell, cost, lv) =>
-    robustnessOf({ baseline: bl, product: { sellingPrice: sell, costPrice: cost }, levers: lv }))(
-    base.facts,
-    sellBase,
-    costBase,
-    simLevers
-  );
   // Jembatan ke /diskon: persen simulasi dijadikan draf diskon produk yang dihitung dari harga jual saat ini, tombol aktif hanya bila tuas harga jual tidak diubah.
   // Baseline week/month parsial (Senin–sekarang / tgl 1–sekarang), jadi kuota dari simQty hanyalah saran awal.
   function goToDiscount() {
@@ -522,7 +478,7 @@
             <div class="flex items-center justify-between mb-1">
               <span class="flex items-center gap-1.5 text-body-md text-ink font-semibold">
                 Penyesuaian volume
-                <Tooltip text="Tambahan di luar respons harga. 0% berarti ikuti sensitivitas pembeli." />
+                <Tooltip text="Tambahan di luar respons harga. 0% berarti ikuti hitungan model." />
               </span>
               <span class="text-body-sm tabular text-ink">{volPct >= 0 ? '+' : ''}{volPct}%</span>
             </div>
@@ -690,7 +646,7 @@
             <div class="flex justify-between"><dt class="text-muted">Diskon maks sebelum rugi</dt><dd class="tabular text-ink">{maxDiscount === null ? '-' : `${maxDiscount}%`}</dd></div>
             <div class="flex justify-between"><dt class="text-muted">Penjualan boleh turun maks</dt><dd class="tabular font-semibold {maxDrop === null || maxDrop >= 0 ? 'text-ink' : 'text-status-warning'}">{maxDropText}</dd></div>
             <div class="flex justify-between gap-3">
-              <dt class="text-muted">Harga paling untung dalam rentang (asumsi {sensLabel})</dt>
+              <dt class="text-muted">Harga paling untung dalam rentang</dt>
               <dd class="tabular text-right text-ink">
                 {#if result.peak}
                   <span class="font-semibold">{idr(result.peak.price)}</span>
