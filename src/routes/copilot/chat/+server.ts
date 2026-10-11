@@ -113,7 +113,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
   const limit = dailyLimitFrom(env.COPILOT_DAILY_LIMIT);
   if (!(await canUseCopilot(requestDb, business.id, limit, now)).ok) {
     return Response.json(
-      { code: 'DAILY_LIMIT', error: `Batas ${limit} pertanyaan per 24 jam tercapai. Coba lagi nanti.` },
+      { code: 'DAILY_LIMIT', error: `Batas ${limit} jawaban per 24 jam tercapai. Coba lagi nanti.` },
       { status: 429 }
     );
   }
@@ -135,9 +135,11 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
   const system = copilotPrompt({ businessName: business.name, dateLabel: T.fmt(now, { day: 'numeric', month: 'short', year: 'numeric' }), tz });
 
   const encoder = new TextEncoder();
+  let cancelled = false;
   const stream = new ReadableStream({
     async start(controller) {
       const send = (event: string, data: unknown) => {
+        if (cancelled) return;
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
       };
       let steps = 0;
@@ -281,7 +283,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
           console.log(JSON.stringify({ budgetUsed: budget.used, steps, wallMs: Date.now() - startMs }));
         }
       } catch (e) {
-        if ((e as Error)?.name === 'AbortError' || request.signal.aborted) return;
+        if (cancelled || (e as Error)?.name === 'AbortError' || request.signal.aborted) return;
         console.log(JSON.stringify({ budgetUsed: budget.used, steps, wallMs: Date.now() - startMs }));
         const code = e instanceof LlmHttpError && e.status === 429 ? 'RATE_LIMITED' : 'PROVIDER';
         const limited = code === 'RATE_LIMITED' ? rateLimitMessage(e instanceof LlmHttpError ? e.retryAfterMs : null) : null;
@@ -292,8 +294,12 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             : 'Penyedia AI bermasalah, coba lagi sebentar.';
         send('error', limited ? { code, message, retryAfterSec: limited.retryAfterSec } : { code, message });
       } finally {
-        controller.close();
+        // Stream yang sudah di-cancel client menolak close().
+        if (!cancelled) controller.close();
       }
+    },
+    cancel() {
+      cancelled = true;
     }
   });
   return new Response(stream, {
