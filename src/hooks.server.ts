@@ -1,10 +1,10 @@
 import { auth } from '$lib/server/domains/auth';
-import { isBlockedAuthPath, isOwnerOnly, isProtected, normalizePath } from '$lib/server/domains/auth/path-guard';
+import { decideAccess, isBlockedAuthPath, normalizePath } from '$lib/server/domains/auth/path-guard';
 import { db } from '$lib/server/db';
 import { business } from '$lib/server/db/schema';
 import { DEFAULT_TZ, isBizTz } from '$lib/shared/time';
 import { eq } from 'drizzle-orm';
-import { redirect, type Handle } from '@sveltejs/kit';
+import { error, redirect, type Handle } from '@sveltejs/kit';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
 
@@ -31,21 +31,12 @@ export const handle: Handle = async ({ event, resolve }) => {
     return new Response(null, { status: 404 });
   }
 
-  const protectedPath = isProtected(path);
-  const ownerOnly = isOwnerOnly(path);
-
-  if (protectedPath && !event.locals.user) {
-    throw redirect(303, '/login');
-  }
+  // Keputusan akses terpusat di decideAccess; hooks hanya menerjemahkan hasilnya.
+  const verdict = decideAccess(path, event.locals.user);
+  if (verdict.kind === 'redirect') throw redirect(303, verdict.to);
+  if (verdict.kind === 'forbidden') throw error(403, verdict.message);
 
   const businessId = (event.locals.user as { businessId?: unknown } | null)?.businessId;
-  if (protectedPath && event.locals.user?.role === 'OWNER' && (typeof businessId !== 'string' || !businessId)) {
-    throw redirect(303, '/login');
-  }
-
-  if (ownerOnly && event.locals.user?.role !== 'OWNER') {
-    throw redirect(303, '/transactions');
-  }
 
   // Isi bisnis sekali per request (kecuali auth API) agar layout & loader
   // tidak query business sendiri-sendiri. Fallback DEFAULT_TZ bila nilai

@@ -33,6 +33,16 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: 6
   },
+  // Default better-auth hanya aktif bila NODE_ENV=production, yang tidak di-set di Workers.
+  rateLimit: {
+    enabled: env.AUTH_RATE_LIMIT !== 'off',
+    customRules: {
+      '/sign-in/username': { window: 60, max: 5 },
+      '/sign-in/email': { window: 60, max: 5 }
+    }
+  },
+  // x-forwarded-for berantai dianggap tak terpercaya; cf-connecting-ip selalu satu nilai dari Cloudflare.
+  advanced: { ipAddress: { ipAddressHeaders: ['cf-connecting-ip'] } },
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 hari
     updateAge: 60 * 60 * 24

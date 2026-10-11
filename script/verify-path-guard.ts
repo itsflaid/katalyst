@@ -1,4 +1,5 @@
 import {
+	decideAccess,
 	isBlockedAuthPath,
 	isOwnerOnly,
 	isProtected,
@@ -81,6 +82,28 @@ try {
 	valid = false;
 }
 ok('owner valid lolos', valid);
+
+type AccessUser = { role?: unknown; businessId?: unknown } | null;
+const accessCases: { path: string; user: AccessUser; want: string }[] = [
+	{ path: '/dashboard', user: null, want: 'redirect:/login' },
+	{ path: '/dashboard', user: { role: 'OWNER', businessId: null }, want: 'forbidden' },
+	{ path: '/dashboard', user: { role: 'OWNER', businessId: '' }, want: 'forbidden' },
+	{ path: '/transactions', user: { role: 'STAFF', businessId: null }, want: 'forbidden' },
+	{ path: '/dashboard', user: { role: 'STAFF', businessId: 'b1' }, want: 'redirect:/transactions' },
+	{ path: '/products/stok', user: { role: 'STAFF', businessId: 'b1' }, want: 'redirect:/transactions' },
+	{ path: '/transactions', user: { role: 'STAFF', businessId: 'b1' }, want: 'allow' },
+	{ path: '/dashboard', user: { role: 'OWNER', businessId: 'b1' }, want: 'allow' },
+	{ path: '/copilot', user: { role: 'OWNER', businessId: 'b1' }, want: 'allow' },
+	{ path: '/diskon', user: { role: 'OWNER', businessId: 'b1' }, want: 'allow' },
+	{ path: '/login', user: { role: 'OWNER', businessId: null }, want: 'allow' },
+	{ path: '/invite/abc', user: { role: 'OWNER', businessId: null }, want: 'allow' },
+	{ path: '/dashboardx', user: null, want: 'allow' }
+];
+for (const c of accessCases) {
+	const v = decideAccess(c.path, c.user);
+	const got = v.kind === 'allow' ? 'allow' : v.kind === 'redirect' ? `redirect:${v.to}` : 'forbidden';
+	ok(`akses ${c.path} (${JSON.stringify(c.user)})`, got === c.want, `dapat=${got}`);
+}
 
 console.log(`\n${passCount} passed, ${failCount} failed\n`);
 if (failCount > 0) process.exit(1);
