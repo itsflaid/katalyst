@@ -148,10 +148,10 @@
           {/if}
         </td>
         <td class="px-3 py-2">
-          {#if row.action === 'LOGIN'}
+          {#if row.action === 'LOGIN' || row.action === 'LOGOUT'}
             <p class="text-body-sm text-ink">{describeUserAgent(row.userAgent)}</p>
             <p class="text-body-sm text-muted">{row.ip ?? '-'}</p>
-            {#if parseMeta('LOGIN', row.meta).newDevice}
+            {#if row.action === 'LOGIN' && parseMeta('LOGIN', row.meta).newDevice}
               <Badge tone="warning" size="sm">Perangkat baru</Badge>
             {/if}
           {:else}

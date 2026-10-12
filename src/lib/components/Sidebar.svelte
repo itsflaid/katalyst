@@ -82,6 +82,12 @@
 
   async function handleLogout() {
     try {
+      // Logout dicatat sebelum sesi dihapus; gagal catat tidak menghalangi keluar.
+      try {
+        await fetch('/api/activity/logout', { method: 'POST' });
+      } catch {
+        // abaikan: sesi tetap dihapus di bawah
+      }
       await signOut();
     } finally {
       // finally: sesi gagal sign-out pun tetap keluar ke /login.
