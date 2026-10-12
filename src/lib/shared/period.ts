@@ -2,7 +2,7 @@
 // Murni: jam masuk lewat `now`; hanya import relatif.
 import { makeTime, type BizTz } from './time';
 
-export type PeriodKey = 'today' | 'week' | 'month' | '30d' | 'all' | 'custom' | 'yesterday' | 'last_week' | 'last_month' | 'last_7d' | 'last_90d';
+export type PeriodKey = 'today' | 'week' | '7d' | 'month' | '30d' | 'all' | 'custom' | 'yesterday' | 'last_week' | 'last_month' | 'last_7d' | 'last_90d';
 export type NamedPeriodKey = 'today' | 'yesterday' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'last_30d' | 'last_7d' | 'last_90d' | 'custom';
 
 export interface Period {
@@ -22,7 +22,7 @@ export interface ResolveOpts {
 export function resolvePeriod(url: URL, tz: BizTz, now: Date, opts: ResolveOpts): Period {
   const T = makeTime(tz);
   const rawParam = (url.searchParams.get('range') ?? opts.default).toLowerCase();
-  const KNOWN = ['today', 'week', 'month', 'custom'];
+  const KNOWN = ['today', 'week', '7d', '30d', 'month', 'custom'];
   const key =
     KNOWN.includes(rawParam) && (opts.allow as string[]).includes(rawParam)
       ? (rawParam as PeriodKey)
@@ -38,6 +38,16 @@ export function resolvePeriod(url: URL, tz: BizTz, now: Date, opts: ResolveOpts)
     const offset = (dow + 6) % 7;
     const from = T.startOfDay(T.addDays(now, -offset));
     return { key, from, to: now, label: 'Minggu ini (Senin–sekarang)', fromISO: '', toISO: '' };
+  }
+  // 7 hari = rolling 6 hari ke belakang + hari ini; beda dengan week yang mengikuti kalender Senin.
+  if (key === '7d') {
+    const from = T.startOfDay(T.addDays(now, -6));
+    return { key, from, to: now, label: '7 hari terakhir', fromISO: '', toISO: '' };
+  }
+  // 30 hari didaftarkan eksplisit supaya halaman yang allow-nya memuat 'all' tidak jatuh ke 'Semua waktu'.
+  if (key === '30d') {
+    const from = T.startOfDay(T.addDays(now, -29));
+    return { key, from, to: now, label: '30 hari terakhir', fromISO: '', toISO: '' };
   }
   if (key === 'month') {
     const w = T.toLocal(now);

@@ -48,7 +48,7 @@
   let volPct = 0;
   let qtyOverride = '';
 
-  // Rentang baseline: hari ini / minggu ini / bulan ini / semua / custom. Default bulan ini (dari server) biar load awal ringan.
+  // Rentang baseline: hari ini / minggu ini / 7 hari / 30 hari / bulan ini / semua / custom. Default bulan ini (dari server) biar load awal ringan.
   // Ganti rentang = reload server (goto) biar agregat dihitung ulang dari transaction.created_at.
   // Hitungan live di client (responsif tiap geser tuas); rumusnya sama dengan lib/simulation.ts (satu fungsi simulate).
   let activeRange: string = data.range ?? 'month';
@@ -269,7 +269,7 @@
       percent: String(Math.round(discountPct))
     });
     if (simQty > 0) params.set('quota', String(Math.round(simQty)));
-    const preset = data.range === 'today' ? 'TODAY' : data.range === 'week' ? 'DAYS_7' : null;
+    const preset = data.range === 'today' ? 'TODAY' : data.range === 'week' || data.range === '7d' ? 'DAYS_7' : null;
     if (preset) params.set('preset', preset);
     if (data.rangeLabel) params.set('baseline', data.rangeLabel);
     goto(`/diskon?${params.toString()}`);
@@ -359,6 +359,8 @@
     ranges={[
       { value: 'today', label: 'Hari ini' },
       { value: 'week', label: 'Minggu ini' },
+      { value: '7d', label: '7 hari' },
+      { value: '30d', label: '30 hari' },
       { value: 'month', label: 'Bulan ini' },
       { value: 'all', label: 'Semua' }
     ]}

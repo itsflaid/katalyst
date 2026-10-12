@@ -11,6 +11,7 @@
   export let ranges: { value: string; label: string }[] = [
     { value: 'today', label: 'Hari ini' },
     { value: 'week', label: 'Minggu ini' },
+    { value: '7d', label: '7 hari' },
     { value: '30d', label: '30 hari' },
     { value: 'month', label: 'Bulan ini' }
   ];
