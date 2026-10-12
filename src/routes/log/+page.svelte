@@ -66,7 +66,7 @@
   }
 </script>
 
-<PageHeader title="Log Aktivitas" subtitle="Riwayat login dan aksi penting di bisnis ini" />
+<PageHeader title="Log Aktivitas" subtitle="Riwayat login dan aktifitas lainnya" />
 
 <Card class="mb-4">
   <div class="flex flex-wrap items-center gap-2">

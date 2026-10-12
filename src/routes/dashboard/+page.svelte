@@ -5,6 +5,7 @@
   import Badge from '$lib/components/ui/Badge.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
+  import InsightToasts from '$lib/components/dashboard/InsightToasts.svelte';
   import StockBadge from '$lib/components/products/StockBadge.svelte';
   import { page } from '$app/stores';
   import { makeTime, DEFAULT_TZ } from '$lib/shared/time';
@@ -29,6 +30,8 @@
 </script>
 
 <PageHeader title="Dashboard" subtitle="Semoga Usaha Anda Terus Berkembang!" />
+
+<InsightToasts insights={data.insights} />
 
 <!-- Baris 1: 4 KPI full width, di HP tetap 4 sebaris versi kompak -->
 <div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4 mb-6">
@@ -82,17 +85,6 @@
   </Card>
   </div>
 {/key}
-
-{#if data.insights.length > 0}
-  <Card class="mb-6 bg-ink-navy">
-    <h2 class="text-headline-sm text-white mb-3">Insight otomatis</h2>
-    <ul class="flex flex-col gap-2.5">
-      {#each data.insights as ins}
-        <li class="rounded border border-border-cool bg-table-header px-3 py-2.5 text-body-md text-ink">{ins.message}</li>
-      {/each}
-    </ul>
-  </Card>
-{/if}
 
 {#if data.restock.list.length > 0}
   <Card class="mb-6">
@@ -167,3 +159,16 @@
     </div>
   </div>
 </div>
+
+<!-- Baris 4: arsip insight; toast di atas hanya tampil sekali per sesi -->
+{#if data.insights.length > 0}
+  <Card class="mt-6 bg-ink-navy">
+    <h2 class="text-headline-sm text-white mb-1">Insight otomatis</h2>
+    <p class="text-body-sm text-white/65 mb-3">30 hari terakhir</p>
+    <ul class="flex flex-col gap-2.5">
+      {#each data.insights as ins}
+        <li class="rounded border border-border-cool bg-table-header px-3 py-2.5 text-body-md text-ink">{ins.message}</li>
+      {/each}
+    </ul>
+  </Card>
+{/if}
