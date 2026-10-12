@@ -16,6 +16,7 @@
     Settings,
     CircleHelp,
     CircleUserRound,
+    ScrollText,
     LogOut,
     PanelLeft,
     ChevronDown
@@ -34,6 +35,7 @@
     { href: '/transactions', label: 'Transaksi', icon: ShoppingCart, ownerOnly: false, group: 'Operasional' },
     { href: '/diskon', label: 'Diskon', icon: TicketPercent, ownerOnly: true, group: 'Operasional' },
     { href: '/settings', label: 'Pengaturan', icon: Settings, ownerOnly: true, group: 'Lainnya' },
+    { href: '/log', label: 'Log Aktivitas', icon: ScrollText, ownerOnly: true, group: 'Lainnya' },
     { href: '/bantuan', label: 'Bantuan', icon: CircleHelp, ownerOnly: false, group: 'Lainnya' },
     { href: '/akun', label: 'Akun', icon: CircleUserRound, ownerOnly: false, group: 'Lainnya' }
   ];
