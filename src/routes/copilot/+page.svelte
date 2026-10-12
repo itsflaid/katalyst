@@ -1,9 +1,11 @@
 <script lang="ts">
   import { browser } from '$app/environment';
+  import { goto } from '$app/navigation';
   import { onMount, tick } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { History, Plus, Send, X } from 'lucide-svelte';
   import { renderChatMarkdown } from '$lib/shared/chat-markdown';
+  import { COPILOT_SUGGESTIONS, parseHandoffQuestion } from '$lib/shared/copilot-handoff';
   import HistoryPanel from '$lib/components/copilot/HistoryPanel.svelte';
 
   type Role = 'user' | 'assistant';
@@ -25,7 +27,7 @@
   }
 
   const storageKey = 'katalyst-copilot-conversations-v1';
-  const suggestions = ['Omzet minggu ini berapa?', 'Produk paling laku bulan ini?', 'Kenapa profit turun?', 'Stok apa yang menipis?'];
+  const suggestions = COPILOT_SUGGESTIONS;
   let conversations: Conversation[] = [];
   let activeId = '';
   let messages: ChatMessage[] = [];
@@ -95,10 +97,17 @@
   }
 
   onMount(async () => {
+    // Selalu mulai layar baru; room lama dibuka lewat Riwayat. Pertanyaan
+    // titipan (?q=) dibuang dari URL sebelum dikirim agar refresh tak mengirim ulang.
+    const handoff = browser ? parseHandoffQuestion(location.search) : null;
     try {
       await refreshList();
       if (browser) localStorage.removeItem(storageKey);
-      if (conversations.length > 0) await openConversation(conversations[0].id);
+      if (handoff) {
+        await goto('/copilot', { replaceState: true, noScroll: true, keepFocus: true });
+        createConversation();
+        await ask(handoff);
+      }
     } catch (error) {
       listError = error instanceof Error ? error.message : 'Riwayat tidak dapat dimuat.';
     } finally {
