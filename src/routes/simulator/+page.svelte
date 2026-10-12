@@ -2,6 +2,7 @@
   import Card from '$lib/components/ui/Card.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import Input from '$lib/components/ui/Input.svelte';
+  import MoneyInput from '$lib/components/ui/MoneyInput.svelte';
   import Badge from '$lib/components/ui/Badge.svelte';
   import Tooltip from '$lib/components/ui/Tooltip.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
@@ -429,7 +430,7 @@
               <span class="text-body-sm tabular {pricePct >= 0 ? 'text-status-positive' : 'text-status-negative'}">{pricePct >= 0 ? '+' : ''}{pricePct.toFixed(0)}%</span>
             </div>
             <input type="range" min={-30} max={50} step={1} value={pricePct} on:input={onPricePct} class="w-full accent-ink-navy" aria-label="Persentase perubahan harga jual" />
-            <Input type="number" min="0" step="500" value={String(priceValue)} on:input={(e) => setNum(e, (v) => (priceValue = v))} aria-label="Harga jual skenario (rupiah)" />
+            <MoneyInput value={String(priceValue)} on:input={(e) => (priceValue = Number(e.detail) || 0)} aria-label="Harga jual skenario (rupiah)" />
             {#if result.outOfRange}
               <p class="text-body-sm text-status-warning mt-1">Di luar ±30% dari harga sekarang. Hasilnya spekulatif.</p>
             {/if}
@@ -470,7 +471,7 @@
               <span class="text-body-sm tabular {costPct <= 0 ? 'text-status-positive' : 'text-status-negative'}">{costPct >= 0 ? '+' : ''}{costPct.toFixed(0)}%</span>
             </div>
             <input type="range" min={-30} max={30} step={1} value={costPct} on:input={onCostPct} class="w-full accent-ink-navy" aria-label="Persentase perubahan harga modal" />
-            <Input type="number" min="0" step="500" value={String(costValue)} on:input={(e) => setNum(e, (v) => (costValue = v))} aria-label="Harga modal skenario (rupiah)" />
+            <MoneyInput value={String(costValue)} on:input={(e) => (costValue = Number(e.detail) || 0)} aria-label="Harga modal skenario (rupiah)" />
           </div>
 
           <!-- Volume -->

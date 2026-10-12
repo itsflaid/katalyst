@@ -55,3 +55,46 @@ export function fmtMoneyShort(n: number, unit: MoneyUnit): string {
   const scaled = n / unit.divisor;
   return `${scaled.toFixed(unit.decimals)} ${unit.label}`;
 }
+
+// Batas digit supaya Number() tetap bilangan bulat aman (di bawah 2^53).
+const MAX_MONEY_DIGITS = 15;
+
+export function digitsOnly(text: string): string {
+  return text.replace(/\D/g, '');
+}
+
+export function groupDigits(digits: string): string {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+export interface MoneyInputState {
+  text: string;
+  value: string;
+  caret: number;
+}
+
+// Kolom kosong tetap "" (beda arti dengan "0"); nol di depan dibuang.
+// Kursor dihitung dari jumlah digit di kirinya karena titik ribuan bergeser.
+// Dengan prev + inputType, Backspace/Delete yang hanya mengenai titik menghapus digit di sebelahnya.
+export function reformatMoneyInput(raw: string, caret: number, prev = '', inputType = ''): MoneyInputState {
+  if (raw.length < prev.length && digitsOnly(raw) === digitsOnly(prev)) {
+    if (inputType === 'deleteContentBackward' && caret > 0) {
+      raw = raw.slice(0, caret - 1) + raw.slice(caret);
+      caret -= 1;
+    } else if (inputType === 'deleteContentForward') {
+      raw = raw.slice(0, caret) + raw.slice(caret + 1);
+    }
+  }
+  const all = digitsOnly(raw);
+  const trimmed = all.replace(/^0+(?=\d)/, '');
+  const value = trimmed.slice(0, MAX_MONEY_DIGITS);
+  const text = groupDigits(value);
+  const left = Math.max(0, digitsOnly(raw.slice(0, caret)).length - (all.length - trimmed.length));
+  let seen = 0;
+  let pos = 0;
+  while (pos < text.length && seen < left) {
+    if (text[pos] !== '.') seen++;
+    pos++;
+  }
+  return { text, value, caret: pos };
+}
