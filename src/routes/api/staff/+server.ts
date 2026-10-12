@@ -103,7 +103,7 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
   }
 
   const [target] = await db
-    .select({ id: user.id, role: user.role, businessId: user.businessId })
+    .select({ id: user.id, name: user.name, username: user.username, role: user.role, businessId: user.businessId })
     .from(user)
     .where(eq(user.id, id));
   if (!target || target.businessId !== businessId) throw error(404, 'Staff tidak ditemukan.');
@@ -123,6 +123,15 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
     // Balapan dengan request lain (unique constraint menolak).
     throw error(409, 'Username sudah dipakai.');
   }
+
+  await recordActivity({
+    businessId,
+    actor: actorOf(locals.user!),
+    action: 'STAFF_USERNAME_CHANGE',
+    entityType: 'user',
+    entityId: target.id,
+    meta: { username, oldUsername: target.username, name: target.name }
+  });
 
   return json({ id: target.id, username });
 };

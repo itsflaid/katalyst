@@ -3,6 +3,7 @@ import { db } from '$lib/server/db';
 import { readJsonObject } from '$lib/server/http';
 import { staffInvitation, user } from '$lib/server/db/schema';
 import { generateInviteToken, hashInviteToken, INVITE_TTL_MS } from '$lib/server/domains/invites';
+import { actorOf, recordActivity } from '$lib/server/domains/activity/log';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -65,6 +66,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     })
   ]);
 
+  await recordActivity({
+    businessId,
+    actor: actorOf(locals.user!),
+    action: 'INVITE_RESEND',
+    entityType: 'staff_invitation',
+    entityId: id,
+    meta: { username: invite.username, name: invite.name }
+  });
+
   return json({ id, username: invite.username, token: rawToken, expiresAt: expiresAt.toISOString() }, { status: 201 });
 };
 
@@ -80,6 +90,15 @@ export const DELETE: RequestHandler = async ({ request, locals }) => {
 
   const invite = await findPendingInvite(inviteId, businessId);
   await db.update(staffInvitation).set({ revokedAt: new Date() }).where(eq(staffInvitation.id, invite.id));
+
+  await recordActivity({
+    businessId,
+    actor: actorOf(locals.user!),
+    action: 'INVITE_REVOKE',
+    entityType: 'staff_invitation',
+    entityId: invite.id,
+    meta: { username: invite.username, name: invite.name }
+  });
 
   return json({ id: invite.id });
 };
