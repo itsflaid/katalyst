@@ -7,7 +7,6 @@
   import Card from '$lib/components/ui/Card.svelte';
   import FieldHelp from '$lib/components/ui/FieldHelp.svelte';
   import Input from '$lib/components/ui/Input.svelte';
-  import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import StatCard from '$lib/components/statistik/StatCard.svelte';
   import { ShieldCheck } from 'lucide-svelte';
   import { ZAKAT_RATE } from '$lib/analytics';
@@ -155,11 +154,6 @@
         ? `Kurang ${partial ? '~' : ''}${fmtRupiah(-nisabGap)} lagi untuk mencapai nisab.`
         : `Sudah ${partial ? '~' : ''}${fmtRupiah(nisabGap)} di atas nisab.`;
 </script>
-
-<PageHeader
-  title="Zakat Perdagangan"
-  subtitle="Estimasi 2,5% dari aset bersih setelah 1 haul"
-/>
 
 {#if form?.message}
   <p
