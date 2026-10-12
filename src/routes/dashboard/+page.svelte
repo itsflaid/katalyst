@@ -8,6 +8,7 @@
   import StockBadge from '$lib/components/products/StockBadge.svelte';
   import { page } from '$app/stores';
   import { makeTime, DEFAULT_TZ } from '$lib/shared/time';
+  import { handoffUrl } from '$lib/shared/copilot-handoff';
   export let data;
   const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
   const num = (n: number) => new Intl.NumberFormat('id-ID').format(n);
@@ -149,10 +150,10 @@
       <p class="text-body-sm text-white/65 mb-4">Tanya apa aja soal performa bisnismu bulan ini.</p>
 
       <div class="flex flex-col gap-2 mb-4">
-        <a href="/copilot" class="block rounded border border-white/10 bg-white/5 px-3 py-2 text-body-sm text-white/85 no-underline hover:bg-white/10">
+        <a href={handoffUrl('Produk mana yang marginnya paling tipis?')} class="block rounded border border-white/10 bg-white/5 px-3 py-2 text-body-sm text-white/85 no-underline hover:bg-white/10">
           "Produk mana yang marginnya paling tipis?"
         </a>
-        <a href="/copilot" class="block rounded border border-white/10 bg-white/5 px-3 py-2 text-body-sm text-white/85 no-underline hover:bg-white/10">
+        <a href={handoffUrl('Kenapa profit bulan ini turun?')} class="block rounded border border-white/10 bg-white/5 px-3 py-2 text-body-sm text-white/85 no-underline hover:bg-white/10">
           "Kenapa profit bulan ini turun?"
         </a>
       </div>
