@@ -4,6 +4,7 @@ import { db } from '$lib/server/db';
 import { readJsonObject } from '$lib/server/http';
 import { user } from '$lib/server/db/schema';
 import { generateTempPassword } from '$lib/server/domains/invites';
+import { actorOf, recordActivity } from '$lib/server/domains/activity/log';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -26,7 +27,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   if (id === locals.user.id) throw error(400, 'Ganti password sendiri lewat halaman Akun.');
 
   const [target] = await db
-    .select({ id: user.id, role: user.role, businessId: user.businessId })
+    .select({ id: user.id, name: user.name, username: user.username, role: user.role, businessId: user.businessId })
     .from(user)
     .where(and(eq(user.id, id), eq(user.businessId, businessId)));
   if (!target) throw error(404, 'Staff tidak ditemukan.');
@@ -41,6 +42,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   });
   // Sesi lama langsung mati, cuma login baru pakai password sementara yang bisa masuk.
   await auth.api.revokeUserSessions({ body: { userId: id }, headers: request.headers });
+
+  await recordActivity({
+    businessId,
+    actor: actorOf(locals.user!),
+    action: 'STAFF_PASSWORD_RESET',
+    entityType: 'user',
+    entityId: id,
+    meta: { username: target.username, name: target.name }
+  });
 
   return json({ tempPassword });
 };

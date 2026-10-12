@@ -6,6 +6,7 @@ import { requireOwner } from '$lib/server/domains/auth/guards';
 import { denyUnlessOwner } from '$lib/server/domains/products';
 import { canDeleteDiscount, findOverlap, listDiscounts, overlapDbMessage, parseDiscountForm } from '$lib/server/domains/discounts';
 import { getDiscountStatus } from '$lib/discount';
+import { actorOf, recordActivity } from '$lib/server/domains/activity/log';
 import { DEFAULT_TZ, makeTime } from '$lib/shared/time';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -78,9 +79,10 @@ export const actions: Actions = {
     if ('error' in parsed) return fail(400, { message: parsed.error, code: parsed.code, lossProducts: parsed.lossProducts });
 
     // crypto.randomUUID global (bukan import 'crypto') biar jalan di Workers.
+    const discountId = crypto.randomUUID();
     try {
       await db.insert(discount).values({
-        id: crypto.randomUUID(),
+        id: discountId,
         businessId,
         name: parsed.data.name,
         scope: parsed.data.scope,
@@ -96,6 +98,14 @@ export const actions: Actions = {
       if (message) return fail(400, { message });
       throw e;
     }
+    await recordActivity({
+      businessId,
+      actor: actorOf(locals.user!),
+      action: 'DISCOUNT_CREATE',
+      entityType: 'discount',
+      entityId: discountId,
+      meta: { name: parsed.data.name, percent: parsed.data.percent, scope: parsed.data.scope }
+    });
     return { success: true };
   },
 
@@ -133,6 +143,14 @@ export const actions: Actions = {
       if (message) return fail(400, { message });
       throw e;
     }
+    await recordActivity({
+      businessId,
+      actor: actorOf(locals.user!),
+      action: 'DISCOUNT_UPDATE',
+      entityType: 'discount',
+      entityId: id,
+      meta: { name: parsed.data.name, percent: parsed.data.percent }
+    });
     return { success: true };
   },
 
@@ -167,6 +185,14 @@ export const actions: Actions = {
       if (message) return fail(400, { message });
       throw e;
     }
+    await recordActivity({
+      businessId,
+      actor: actorOf(locals.user!),
+      action: 'DISCOUNT_TOGGLE',
+      entityType: 'discount',
+      entityId: id,
+      meta: { name: existing.name, isActive: !existing.isActive }
+    });
     return { success: true };
   },
 
@@ -178,6 +204,11 @@ export const actions: Actions = {
     const id = String(form.get('id') ?? '');
     const checked = await canDeleteDiscount(id, businessId);
     if ('error' in checked) return fail(400, { message: checked.error });
+    // Nama diambil sebelum hapus untuk meta log; baris diskon hilang setelah ini.
+    const [doomed] = await db
+      .select({ name: discount.name })
+      .from(discount)
+      .where(and(eq(discount.id, id), eq(discount.businessId, businessId)));
     try {
       await db.delete(discount).where(and(eq(discount.id, id), eq(discount.businessId, businessId)));
     } catch {
@@ -185,6 +216,14 @@ export const actions: Actions = {
       // Penjaganya canDeleteDiscount di atas (quotaUsed > 0); tangkapan ini menyamakan pesan bila DB gagal di sela.
       return fail(400, { message: 'Sudah dipakai di transaksi, nonaktifkan saja.' });
     }
+    await recordActivity({
+      businessId,
+      actor: actorOf(locals.user!),
+      action: 'DISCOUNT_DELETE',
+      entityType: 'discount',
+      entityId: id,
+      meta: { name: doomed?.name ?? null }
+    });
     return { success: true };
   }
 };

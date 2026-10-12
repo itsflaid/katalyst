@@ -235,6 +235,28 @@ export const stockMovement = pgTable(
   (t) => [index('stock_movement_business_product_created_idx').on(t.businessId, t.productId, t.createdAt)]
 );
 
+// Nama/role disnapshot agar riwayat utuh bila user dihapus; baris log tidak diubah atau dihapus.
+export const activityLog = pgTable(
+  'activity_log',
+  {
+    id: text('id').primaryKey(),
+    businessId: text('business_id')
+      .notNull()
+      .references(() => business.id),
+    actorId: text('actor_id').references(() => user.id, { onDelete: 'set null' }),
+    actorName: text('actor_name').notNull(),
+    actorRole: roleEnum('actor_role').notNull(),
+    action: text('action').notNull(),
+    entityType: text('entity_type'),
+    entityId: text('entity_id'),
+    ip: text('ip'),
+    userAgent: text('user_agent'),
+    meta: jsonb('meta'),
+    createdAt: timestamp('created_at').notNull().defaultNow()
+  },
+  (t) => [index('activity_log_business_created_idx').on(t.businessId, t.createdAt)]
+);
+
 // Riwayat Copilot per bisnis agar owner dapat lanjut di perangkat lain.
 export const copilotConversation = pgTable(
   'copilot_conversation',

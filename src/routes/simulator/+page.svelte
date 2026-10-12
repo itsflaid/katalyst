@@ -2,6 +2,7 @@
   import Card from '$lib/components/ui/Card.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import Input from '$lib/components/ui/Input.svelte';
+  import MoneyInput from '$lib/components/ui/MoneyInput.svelte';
   import Badge from '$lib/components/ui/Badge.svelte';
   import Tooltip from '$lib/components/ui/Tooltip.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
@@ -47,7 +48,7 @@
   let volPct = 0;
   let qtyOverride = '';
 
-  // Rentang baseline: hari ini / minggu ini / bulan ini / semua / custom. Default bulan ini (dari server) biar load awal ringan.
+  // Rentang baseline: hari ini / minggu ini / 7 hari / 30 hari / bulan ini / semua / custom. Default bulan ini (dari server) biar load awal ringan.
   // Ganti rentang = reload server (goto) biar agregat dihitung ulang dari transaction.created_at.
   // Hitungan live di client (responsif tiap geser tuas); rumusnya sama dengan lib/simulation.ts (satu fungsi simulate).
   let activeRange: string = data.range ?? 'month';
@@ -268,7 +269,7 @@
       percent: String(Math.round(discountPct))
     });
     if (simQty > 0) params.set('quota', String(Math.round(simQty)));
-    const preset = data.range === 'today' ? 'TODAY' : data.range === 'week' ? 'DAYS_7' : null;
+    const preset = data.range === 'today' ? 'TODAY' : data.range === 'week' || data.range === '7d' ? 'DAYS_7' : null;
     if (preset) params.set('preset', preset);
     if (data.rangeLabel) params.set('baseline', data.rangeLabel);
     goto(`/diskon?${params.toString()}`);
@@ -358,6 +359,8 @@
     ranges={[
       { value: 'today', label: 'Hari ini' },
       { value: 'week', label: 'Minggu ini' },
+      { value: '7d', label: '7 hari' },
+      { value: '30d', label: '30 hari' },
       { value: 'month', label: 'Bulan ini' },
       { value: 'all', label: 'Semua' }
     ]}
@@ -429,7 +432,7 @@
               <span class="text-body-sm tabular {pricePct >= 0 ? 'text-status-positive' : 'text-status-negative'}">{pricePct >= 0 ? '+' : ''}{pricePct.toFixed(0)}%</span>
             </div>
             <input type="range" min={-30} max={50} step={1} value={pricePct} on:input={onPricePct} class="w-full accent-ink-navy" aria-label="Persentase perubahan harga jual" />
-            <Input type="number" min="0" step="500" value={String(priceValue)} on:input={(e) => setNum(e, (v) => (priceValue = v))} aria-label="Harga jual skenario (rupiah)" />
+            <MoneyInput value={String(priceValue)} on:input={(e) => (priceValue = Number(e.detail) || 0)} aria-label="Harga jual skenario (rupiah)" />
             {#if result.outOfRange}
               <p class="text-body-sm text-status-warning mt-1">Di luar ±30% dari harga sekarang. Hasilnya spekulatif.</p>
             {/if}
@@ -470,7 +473,7 @@
               <span class="text-body-sm tabular {costPct <= 0 ? 'text-status-positive' : 'text-status-negative'}">{costPct >= 0 ? '+' : ''}{costPct.toFixed(0)}%</span>
             </div>
             <input type="range" min={-30} max={30} step={1} value={costPct} on:input={onCostPct} class="w-full accent-ink-navy" aria-label="Persentase perubahan harga modal" />
-            <Input type="number" min="0" step="500" value={String(costValue)} on:input={(e) => setNum(e, (v) => (costValue = v))} aria-label="Harga modal skenario (rupiah)" />
+            <MoneyInput value={String(costValue)} on:input={(e) => (costValue = Number(e.detail) || 0)} aria-label="Harga modal skenario (rupiah)" />
           </div>
 
           <!-- Volume -->

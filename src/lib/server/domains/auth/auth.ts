@@ -4,6 +4,7 @@ import { admin, username } from 'better-auth/plugins';
 import { adminAc, userAc } from 'better-auth/plugins/admin/access';
 import { db } from '$lib/server/db';
 import * as schema from '$lib/server/db/schema';
+import { recordLogin } from '$lib/server/domains/activity/log';
 import { env } from '$env/dynamic/private';
 
 // better-auth handle hashing password (scrypt), tidak perlu bcryptjs manual.
@@ -39,6 +40,16 @@ export const auth = betterAuth({
     customRules: {
       '/sign-in/username': { window: 60, max: 5 },
       '/sign-in/email': { window: 60, max: 5 }
+    }
+  },
+  // Hook sesi dibuat berarti login baru; perpanjangan sesi tidak memicu ini.
+  databaseHooks: {
+    session: {
+      create: {
+        after: async (s) => {
+          await recordLogin({ userId: s.userId, ip: s.ipAddress, userAgent: s.userAgent });
+        }
+      }
     }
   },
   // x-forwarded-for berantai dianggap tak terpercaya; cf-connecting-ip selalu satu nilai dari Cloudflare.

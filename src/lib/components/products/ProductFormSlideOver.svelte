@@ -2,6 +2,7 @@
   import type { SubmitFunction } from "@sveltejs/kit";
   import { enhance } from "$app/forms";
   import Input from "$lib/components/ui/Input.svelte";
+  import MoneyInput from "$lib/components/ui/MoneyInput.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import SlideOver from "$lib/components/ui/SlideOver.svelte";
 
@@ -41,25 +42,21 @@
       </label>
       <label for="c-cost" class="flex flex-col gap-1 text-body-md text-ink">
         Harga modal
-        <Input
+        <MoneyInput
           id="c-cost"
           name="costPrice"
-          type="number"
-          min="0"
           bind:value={cCost}
-          placeholder="15000"
+          placeholder="15.000"
           required
         />
       </label>
       <label for="c-sell" class="flex flex-col gap-1 text-body-md text-ink">
         Harga jual
-        <Input
+        <MoneyInput
           id="c-sell"
           name="sellingPrice"
-          type="number"
-          min="1"
           bind:value={cSell}
-          placeholder="25000"
+          placeholder="25.000"
           required
         />
       </label>
@@ -122,22 +119,18 @@
       </label>
       <label for="e-cost" class="flex flex-col gap-1 text-body-md text-ink">
         Harga modal
-        <Input
+        <MoneyInput
           id="e-cost"
           name="costPrice"
-          type="number"
-          min="0"
           bind:value={product.costPrice}
           required
         />
       </label>
       <label for="e-sell" class="flex flex-col gap-1 text-body-md text-ink">
         Harga jual
-        <Input
+        <MoneyInput
           id="e-sell"
           name="sellingPrice"
-          type="number"
-          min="1"
           bind:value={product.sellingPrice}
           required
         />
