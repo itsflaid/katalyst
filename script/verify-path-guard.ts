@@ -39,6 +39,11 @@ const cases: { raw: string; want: string | null; prot: boolean; owner: boolean; 
 	{ raw: '/api/auth/sign-up/email', want: '/api/auth/sign-up/email', prot: false, owner: false, blocked: true },
 	{ raw: '/api/auth/sign-%75p/email', want: '/api/auth/sign-up/email', prot: false, owner: false, blocked: true },
 	{ raw: '/api/auth/admin/list-users', want: '/api/auth/admin/list-users', prot: false, owner: false, blocked: true },
+	{ raw: '/log', want: '/log', prot: true, owner: true, blocked: false },
+	{ raw: '/%6Cog', want: '/log', prot: true, owner: true, blocked: false },
+	{ raw: '/log/x', want: '/log/x', prot: true, owner: true, blocked: false },
+	{ raw: '/login', want: '/login', prot: false, owner: false, blocked: false },
+	{ raw: '/logx', want: '/logx', prot: false, owner: false, blocked: false },
 	{ raw: '/dashboardx', want: '/dashboardx', prot: false, owner: false, blocked: false },
 	{ raw: '/api/auth/sign-in/username', want: '/api/auth/sign-in/username', prot: false, owner: false, blocked: false }
 ];

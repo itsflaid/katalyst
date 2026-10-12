@@ -87,6 +87,10 @@ function objOf(raw: unknown): Record<string, unknown> {
   return typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
 }
 
+export function parseMeta(action: 'LOGIN', raw: unknown): LoginMeta;
+export function parseMeta(action: 'TX_CREATE', raw: unknown): TxCreateMeta;
+export function parseMeta(action: 'TX_VOID', raw: unknown): TxVoidMeta;
+export function parseMeta(action: ActivityAction, raw: unknown): StaffMeta;
 export function parseMeta(action: ActivityAction, raw: unknown): LoginMeta | TxCreateMeta | TxVoidMeta | StaffMeta {
   const m = objOf(raw);
   if (action === 'LOGIN') return { newDevice: m.newDevice === true };
@@ -103,17 +107,16 @@ export function parseMeta(action: ActivityAction, raw: unknown): LoginMeta | TxC
 }
 
 export function describeActivity(action: ActivityAction, meta: unknown): string {
-  const m = parseMeta(action, meta);
   if (action === 'LOGIN') return '';
   if (action === 'TX_CREATE') {
-    const t = m as TxCreateMeta;
+    const t = parseMeta('TX_CREATE', meta);
     return `${fmtRupiah(t.total)} · ${t.itemCount} jenis, ${t.qty} item`;
   }
   if (action === 'TX_VOID') {
-    const t = m as TxVoidMeta;
+    const t = parseMeta('TX_VOID', meta);
     return `${fmtRupiah(t.total)} · kasir ${t.cashierName ?? '-'}`;
   }
-  const s = m as StaffMeta;
+  const s = parseMeta(action, meta);
   const user = s.username ? `@${s.username}` : null;
   return [user, s.name].filter((x): x is string => !!x).join(' · ');
 }
