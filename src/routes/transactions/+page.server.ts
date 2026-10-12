@@ -1,9 +1,11 @@
 import { db } from '$lib/server/db';
-import { stockMovement, transaction, transactionItem, product, user, discount } from '$lib/server/db/schema';
+import { activityLog, stockMovement, transaction, transactionItem, product, user, discount } from '$lib/server/db/schema';
+import { activityRow } from '$lib/server/domains/activity/log';
 import { eq, desc, and, asc, inArray, gte, lt, or, sql } from 'drizzle-orm';
 import { DEFAULT_TZ, isBizTz, makeTime } from '$lib/shared/time';
 import { calculateCart, getDiscountStatus, quotaDeltas } from '$lib/discount';
 import { receiptTotals } from '$lib/analytics';
+import { actorOf } from '$lib/server/domains/activity/log';
 import { getActiveProductDiscounts, getGlobalDiscount } from '$lib/server/domains/discounts';
 import { INT4_MAX } from '$lib/server/domains/products';
 import { fail } from '@sveltejs/kit';
@@ -349,6 +351,22 @@ export const actions: Actions = {
           .update(discount)
           .set({ quotaUsed: sql`${discount.quotaUsed} + ${d.units}` })
           .where(and(eq(discount.id, d.discountId), eq(discount.businessId, businessId)))
+      ),
+      // Log ikut batch yang sama agar struk dan jejaknya selalu sepasang.
+      db.insert(activityLog).values(
+        activityRow({
+          businessId,
+          actor: { id: userId, name: cashierName ?? '-', role: locals.user!.role as 'OWNER' | 'STAFF' },
+          action: 'TX_CREATE',
+          entityType: 'transaction',
+          entityId: txId,
+          meta: {
+            total: cart.total,
+            itemCount: productIds.length,
+            qty: [...merged.values()].reduce((a, b) => a + b, 0)
+          },
+          createdAt: now
+        })
       )
     ];
 
@@ -384,10 +402,29 @@ export const actions: Actions = {
     if (!txId) return fail(400, { message: 'Id struk wajib diisi.' });
 
     const [existing] = await db
-      .select({ id: transaction.id })
+      .select({ id: transaction.id, createdAt: transaction.createdAt, cashierName: transaction.cashierName })
       .from(transaction)
       .where(and(eq(transaction.id, txId), eq(transaction.businessId, businessId)));
     if (!existing) return fail(404, { message: 'Struk tidak ditemukan.' });
+
+    // Total void dihitung engine yang sama dengan struk agar angka log sama dengan yang tampil.
+    const voidItems = await db
+      .select({
+        quantity: transactionItem.quantity,
+        priceAtSale: transactionItem.priceAtSale,
+        discountAmount: transactionItem.discountAmount
+      })
+      .from(transactionItem)
+      .where(eq(transactionItem.transactionId, txId));
+    // total = Σ(qty × harga) − Σ(diskon)   (Rupiah)
+    const voidTotal = receiptTotals(voidItems).total;
+    const actorName = actorOf(locals.user).name;
+    const metaJson = JSON.stringify({
+      total: voidTotal,
+      itemCount: voidItems.length,
+      cashierName: existing.cashierName,
+      txCreatedAt: existing.createdAt.toISOString()
+    });
 
     // Satu statement (CTE) agar atomik dan idempoten: item terhapus jadi sumber pengembalian stok + kuota + ledger.
     // Klik ganda aman (upaya kedua tak menemukan item); isActive tak tersentuh; CHECK quota_used >= 0 jadi jaring pengaman.
@@ -428,6 +465,13 @@ export const actions: Actions = {
         select gen_random_uuid()::text, ${businessId}::text, product_id, qty,
                'VOID_RESTORE'::stock_reason, ${txId}::text, ${locals.user.id as string}::text
         from restored
+      ),
+      logged as (
+        insert into activity_log
+          (id, business_id, actor_id, actor_name, actor_role, action, entity_type, entity_id, meta)
+        select gen_random_uuid()::text, ${businessId}::text, ${locals.user.id as string}::text, ${actorName}::text,
+               'OWNER'::role, 'TX_VOID', 'transaction', ${txId}::text, ${metaJson}::jsonb
+        where exists (select 1 from removed)
       )
       delete from "transaction" where id = ${txId} and business_id = ${businessId}
     `);
