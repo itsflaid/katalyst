@@ -3,6 +3,7 @@ import { db } from '$lib/server/db';
 import { readJsonObject } from '$lib/server/http';
 import { staffInvitation, transaction, user } from '$lib/server/db/schema';
 import { generateInviteToken, hashInviteToken, normalizeUsername, isValidUsername, INVITE_TTL_MS } from '$lib/server/domains/invites';
+import { actorOf, recordActivity } from '$lib/server/domains/activity/log';
 import { and, eq, isNull, ne } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import type { RequestHandler } from './$types';
@@ -75,6 +76,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   ];
   await db.batch(stmts as [BatchItem<'pg'>, ...BatchItem<'pg'>[]]);
 
+  await recordActivity({
+    businessId,
+    actor: actorOf(locals.user!),
+    action: 'STAFF_INVITE',
+    entityType: 'staff_invitation',
+    entityId: id,
+    meta: { username, name: name || null }
+  });
+
   return json({ id, username, name: name || null, token: rawToken, expiresAt: expiresAt.toISOString() }, { status: 201 });
 };
 
@@ -93,7 +103,7 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
   }
 
   const [target] = await db
-    .select({ id: user.id, role: user.role, businessId: user.businessId })
+    .select({ id: user.id, name: user.name, username: user.username, role: user.role, businessId: user.businessId })
     .from(user)
     .where(eq(user.id, id));
   if (!target || target.businessId !== businessId) throw error(404, 'Staff tidak ditemukan.');
@@ -113,6 +123,15 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
     // Balapan dengan request lain (unique constraint menolak).
     throw error(409, 'Username sudah dipakai.');
   }
+
+  await recordActivity({
+    businessId,
+    actor: actorOf(locals.user!),
+    action: 'STAFF_USERNAME_CHANGE',
+    entityType: 'user',
+    entityId: target.id,
+    meta: { username, oldUsername: target.username, name: target.name }
+  });
 
   return json({ id: target.id, username });
 };
@@ -144,6 +163,16 @@ export const DELETE: RequestHandler = async ({ request, locals }) => {
     .set({ cashierName: target.name ?? target.username ?? '-' })
     .where(and(eq(transaction.userId, id), isNull(transaction.cashierName)));
   await db.delete(user).where(eq(user.id, id));
+
+  // entityId tanpa FK sehingga aman dicatat setelah baris user terhapus.
+  await recordActivity({
+    businessId,
+    actor: actorOf(locals.user!),
+    action: 'STAFF_DELETE',
+    entityType: 'user',
+    entityId: target.id,
+    meta: { username: target.username, name: target.name }
+  });
 
   return json({ id });
 };

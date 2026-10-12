@@ -32,7 +32,7 @@ const ri = (min: number, max: number) => Math.floor(rand() * (max - min + 1)) + 
 // dari src/lib/server/domains/stats/loaders.ts. Jangan diubah: dipakai sebagai
 // patokan stabil.
 
-type StatistikRangeKey = 'today' | 'week' | '30d' | 'month' | 'custom';
+type StatistikRangeKey = 'today' | 'week' | '7d' | '30d' | 'month' | 'custom';
 
 function oracleStatistikRange(url: URL, tz: BizTz): { key: StatistikRangeKey; from: Date; to: Date; label: string; fromISO: string; toISO: string } {
   const T = makeTime(tz);
@@ -55,6 +55,10 @@ function oracleStatistikRange(url: URL, tz: BizTz): { key: StatistikRangeKey; fr
     const firstLocal = new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), 1) - T.offsetMs);
     return { key: 'month', from: firstLocal, to: now, label: 'Bulan ini', fromISO: '', toISO: '' };
   }
+  if (raw === '7d') {
+    const from = T.startOfDay(T.addDays(now, -6));
+    return { key: '7d', from, to: now, label: '7 hari terakhir', fromISO: '', toISO: '' };
+  }
   if (raw === 'custom') {
     const f = T.parseDay(url.searchParams.get('from') ?? '');
     const tRaw = T.parseDay(url.searchParams.get('to') ?? '');
@@ -70,7 +74,7 @@ function oracleStatistikRange(url: URL, tz: BizTz): { key: StatistikRangeKey; fr
   return { key: '30d', from, to: now, label: '30 hari terakhir', fromISO: '', toISO: '' };
 }
 
-type SimulatorRangeKey = 'today' | 'week' | 'month' | 'all' | 'custom';
+type SimulatorRangeKey = 'today' | 'week' | '7d' | '30d' | 'month' | 'all' | 'custom';
 
 function oracleSimulatorRange(url: URL, tz: BizTz): { key: SimulatorRangeKey; from: Date | null; to: Date | null; label: string; fromISO: string; toISO: string } {
   const T = makeTime(tz);
@@ -91,6 +95,14 @@ function oracleSimulatorRange(url: URL, tz: BizTz): { key: SimulatorRangeKey; fr
     const w = T.toLocal(now);
     const from = new Date(Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), 1) - T.offsetMs);
     return { key: 'month', from, to: now, label: 'Bulan ini', fromISO: '', toISO: '' };
+  }
+  if (raw === '7d') {
+    const from = T.startOfDay(T.addDays(now, -6));
+    return { key: '7d', from, to: now, label: '7 hari terakhir', fromISO: '', toISO: '' };
+  }
+  if (raw === '30d') {
+    const from = T.startOfDay(T.addDays(now, -29));
+    return { key: '30d', from, to: now, label: '30 hari terakhir', fromISO: '', toISO: '' };
   }
   if (raw === 'custom') {
     const f = T.parseDay(url.searchParams.get('from') ?? '');
@@ -143,8 +155,8 @@ function norm(r: { key: string; from: Date | null; to: Date | null; label: strin
 }
 
 const TZS: BizTz[] = ['Asia/Jakarta', 'Asia/Makassar', 'Asia/Jayapura'];
-const STAT_ALLOW: PeriodKey[] = ['today', 'week', 'month', '30d', 'custom'];
-const SIM_ALLOW: PeriodKey[] = ['today', 'week', 'month', 'all', 'custom'];
+const STAT_ALLOW: PeriodKey[] = ['today', 'week', '7d', 'month', '30d', 'custom'];
+const SIM_ALLOW: PeriodKey[] = ['today', 'week', '7d', '30d', 'month', 'all', 'custom'];
 
 // Instant uji: dekat tengah malam UTC vs lokal, tgl 31, Minggu/Senin, awal bulan.
 const FIXED_NOWS = [
@@ -177,6 +189,7 @@ const CUSTOM_VARIANTS: string[] = [
   'range=custom&from=&to=',
   'range=today',
   'range=week',
+  'range=7d',
   'range=month',
   'range=30d',
   'range=all',

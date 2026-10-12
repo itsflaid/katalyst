@@ -7,6 +7,7 @@
   import Card from '$lib/components/ui/Card.svelte';
   import FieldHelp from '$lib/components/ui/FieldHelp.svelte';
   import Input from '$lib/components/ui/Input.svelte';
+  import MoneyInput from '$lib/components/ui/MoneyInput.svelte';
   import StatCard from '$lib/components/statistik/StatCard.svelte';
   import { ShieldCheck } from 'lucide-svelte';
   import { ZAKAT_RATE } from '$lib/analytics';
@@ -33,7 +34,7 @@
     };
 
   const moneyTip =
-    'Ketik angka saja, tanpa Rp, titik, atau koma. Kosong = belum diisi; ketik 0 bila memang tidak ada.';
+    'Ketik angkanya saja; titik pemisah ribuan muncul otomatis. Kosong = belum diisi; ketik 0 bila memang tidak ada.';
 
   const help = {
     gold: {
@@ -41,7 +42,7 @@
         'Harga 1 gram emas, dipakai menghitung nisab (nisab gram × harga ini). Lihat di toko emas langganan atau situs harga emas harian.',
       example:
         'Harga Rp1.350.000 per gram → ketik 1350000. Angka ini hanya contoh; isi sesuai harga hari ini.',
-      tip: 'Ketik angka saja, tanpa Rp, titik, atau koma. Perbarui kira-kira sebulan sekali.'
+      tip: 'Ketik angkanya saja; titik pemisah ribuan muncul otomatis. Perbarui kira-kira sebulan sekali.'
     },
     nisab: {
       about:
@@ -438,14 +439,12 @@
           />
         </div>
 
-        <Input
+        <MoneyInput
           id="z-gold"
           class="h-12 rounded-lg text-body-lg"
-          type="number"
           name="goldPrice"
-          min="1"
           bind:value={goldPrice}
-          placeholder="cth. 1350000"
+          placeholder="cth. 1.350.000"
         />
       </div>
 
@@ -569,12 +568,10 @@
           />
         </div>
 
-        <Input
+        <MoneyInput
           id="z-cash"
           class="h-12 rounded-lg text-body-lg"
-          type="number"
           name="cash"
-          min="0"
           bind:value={cash}
           placeholder="belum diisi"
         />
@@ -595,12 +592,10 @@
           />
         </div>
 
-        <Input
+        <MoneyInput
           id="z-receivable"
           class="h-12 rounded-lg text-body-lg"
-          type="number"
           name="receivable"
-          min="0"
           bind:value={receivable}
           placeholder="belum diisi"
         />
@@ -621,12 +616,10 @@
           />
         </div>
 
-        <Input
+        <MoneyInput
           id="z-debt"
           class="h-12 rounded-lg text-body-lg"
-          type="number"
           name="debt"
-          min="0"
           bind:value={debt}
           placeholder="belum diisi"
         />

@@ -3,6 +3,7 @@ import { auth } from '$lib/server/domains/auth';
 import { db } from '$lib/server/db';
 import { business, staffInvitation, user } from '$lib/server/db/schema';
 import { hashInviteToken, placeholderEmail } from '$lib/server/domains/invites';
+import { recordActivity } from '$lib/server/domains/activity/log';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -90,6 +91,17 @@ export const actions: Actions = {
     }
 
     await db.update(staffInvitation).set({ acceptedAt: new Date() }).where(eq(staffInvitation.id, invite.id));
+
+    // Undangan tidak membuat sesi sehingga tak pernah tercatat LOGIN; JOIN menutup lubang itu.
+    const [joined] = await db.select({ id: user.id }).from(user).where(eq(user.username, invite.username));
+    await recordActivity({
+      businessId: invite.businessId,
+      actor: { id: joined?.id ?? null, name, role: 'STAFF' },
+      action: 'STAFF_JOIN',
+      entityType: 'user',
+      entityId: joined?.id,
+      meta: { username: invite.username, name }
+    });
 
     // Idempotent: kalau link diklik/submit 2x, submit kedua jatuh ke
     // cabang acceptedAt di atas (bukan akun dobel).

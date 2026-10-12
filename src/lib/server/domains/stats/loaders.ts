@@ -24,7 +24,7 @@ import { pickMoneyUnit, scaleMoney } from '$lib/shared/format';
 
 export async function getStatistikPageData(businessId: string, url: URL, tz: BizTz) {
   const T = makeTime(tz);
-  const period = resolvePeriod(url, tz, new Date(), { default: '30d', allow: ['today', 'week', 'month', '30d', 'custom'] });
+  const period = resolvePeriod(url, tz, new Date(), { default: '30d', allow: ['today', 'week', '7d', 'month', '30d', 'custom'] });
   // Statistik tak memakai 'all': from/to selalu terisi (dijamin resolver).
   if (!period.from || !period.to) throw new Error('Rentang statistik harus berawal dan berakhir.');
   const range = { key: period.key, from: period.from, to: period.to, label: period.label, fromISO: period.fromISO, toISO: period.toISO };
@@ -382,7 +382,7 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
 }
 
 export async function getSimulatorPageData(businessId: string, url: URL, tz: BizTz) {
-  const range = resolvePeriod(url, tz, new Date(), { default: 'month', allow: ['today', 'week', 'month', 'all', 'custom'] });
+  const range = resolvePeriod(url, tz, new Date(), { default: 'month', allow: ['today', 'week', '7d', '30d', 'month', 'all', 'custom'] });
 
   // Baseline per produk dari lapisan Facts: qty/revenue/cost/profit/margin/
   // txCount + facts (diskon kuota + drift). Produk tanpa histori = angka nol.
