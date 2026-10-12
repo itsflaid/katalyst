@@ -1,6 +1,7 @@
 import { db } from '$lib/server/db';
 import { product, stockMovement, transactionItem } from '$lib/server/db/schema';
 import { denyUnlessOwner, getOwnedProduct, parseProductFields, parseInitialStock } from '$lib/server/domains/products';
+import { actorOf, recordActivity } from '$lib/server/domains/activity/log';
 import { eq, and, inArray, sql, asc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 // crypto.randomUUID global (bukan import 'crypto') biar jalan di Workers.
@@ -58,6 +59,14 @@ export const actions: Actions = {
     } else {
       await insertProduct;
     }
+    await recordActivity({
+      businessId,
+      actor: actorOf(locals.user!),
+      action: 'PRODUCT_CREATE',
+      entityType: 'product',
+      entityId: id,
+      meta: { name: parsed.data.name, sellingPrice: parsed.data.sellingPrice, costPrice: parsed.data.costPrice }
+    });
     return { success: true };
   },
 
@@ -70,7 +79,8 @@ export const actions: Actions = {
     const id = String(form.get('id') ?? '');
     const parsed = parseProductFields(form);
     if ('error' in parsed) return fail(400, { for: 'update', message: parsed.error });
-    if (!(await getOwnedProduct(id, businessId))) {
+    const old = await getOwnedProduct(id, businessId);
+    if (!old) {
       return fail(404, { for: 'update', message: 'Produk tidak ditemukan.' });
     }
     // parsed.data tidak berisi stock → stok tidak tersentuh.
@@ -78,6 +88,21 @@ export const actions: Actions = {
       .update(product)
       .set({ ...parsed.data, updatedAt: new Date() })
       .where(and(eq(product.id, id), eq(product.businessId, businessId)));
+    // fields hanya label yang berubah agar meta ringan dibaca di log.
+    const fields: string[] = [];
+    if (parsed.data.name !== old.name) fields.push('nama');
+    if (parsed.data.costPrice !== old.costPrice) fields.push('modal');
+    if (parsed.data.sellingPrice !== old.sellingPrice) fields.push('jual');
+    if (parsed.data.minStock !== old.minStock) fields.push('minStok');
+    if (parsed.data.isActive !== old.isActive) fields.push('aktif');
+    await recordActivity({
+      businessId,
+      actor: actorOf(locals.user!),
+      action: 'PRODUCT_UPDATE',
+      entityType: 'product',
+      entityId: id,
+      meta: { name: parsed.data.name, fields }
+    });
     return { success: true };
   },
 
@@ -92,13 +117,22 @@ export const actions: Actions = {
     const form = await request.formData();
     const id = String(form.get('id') ?? '');
     const isActive = form.get('isActive') === 'on';
-    if (!(await getOwnedProduct(id, businessId))) {
+    const existing = await getOwnedProduct(id, businessId);
+    if (!existing) {
       return fail(404, { for: 'toggle', message: 'Produk tidak ditemukan.' });
     }
     await db
       .update(product)
       .set({ isActive, updatedAt: new Date() })
       .where(and(eq(product.id, id), eq(product.businessId, businessId)));
+    await recordActivity({
+      businessId,
+      actor: actorOf(locals.user!),
+      action: 'PRODUCT_TOGGLE',
+      entityType: 'product',
+      entityId: id,
+      meta: { name: existing.name, isActive }
+    });
     return { success: true };
   },
 
@@ -109,7 +143,8 @@ export const actions: Actions = {
 
     const form = await request.formData();
     const id = String(form.get('id') ?? '');
-    if (!(await getOwnedProduct(id, businessId))) {
+    const existing = await getOwnedProduct(id, businessId);
+    if (!existing) {
       return fail(404, { for: 'delete', message: 'Produk tidak ditemukan.' });
     }
 
@@ -142,6 +177,14 @@ export const actions: Actions = {
       // Ada penjualan yang masuk di sela cek dan hapus (FK menolak).
       return hasSalesHistory();
     }
+    await recordActivity({
+      businessId,
+      actor: actorOf(locals.user!),
+      action: 'PRODUCT_DELETE',
+      entityType: 'product',
+      entityId: id,
+      meta: { name: existing.name }
+    });
     return { success: true };
   },
 

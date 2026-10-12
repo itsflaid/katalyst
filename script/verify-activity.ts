@@ -45,7 +45,20 @@ try {
     describeActivity('TX_VOID', { total: 1 }),
     describeActivity('STAFF_INVITE', null),
     describeActivity('STAFF_DELETE', 42),
-    describeActivity('STAFF_PASSWORD_RESET', { username: 7, name: null })
+    describeActivity('STAFF_PASSWORD_RESET', { username: 7, name: null }),
+    describeActivity('STAFF_USERNAME_CHANGE', null),
+    describeActivity('PRODUCT_CREATE', 'rusak'),
+    describeActivity('PRODUCT_UPDATE', { name: 5, fields: 'x' }),
+    describeActivity('PRODUCT_TOGGLE', null),
+    describeActivity('PRODUCT_DELETE', 7),
+    describeActivity('DISCOUNT_CREATE', null),
+    describeActivity('DISCOUNT_UPDATE', { percent: 'besar' }),
+    describeActivity('DISCOUNT_TOGGLE', null),
+    describeActivity('DISCOUNT_DELETE', null),
+    describeActivity('LOGOUT', null),
+    describeActivity('STAFF_JOIN', null),
+    describeActivity('INVITE_RESEND', null),
+    describeActivity('INVITE_REVOKE', null)
   ];
   ok('meta rusak tidak melempar dan bertipe string', parts.every((p) => typeof p === 'string'));
 } catch {
@@ -67,6 +80,33 @@ ok(
   describeActivity('STAFF_INVITE', { username: 'andi', name: 'Andi' }) === '@andi · Andi'
 );
 ok('staff null dilewati', describeActivity('STAFF_DELETE', { username: null, name: null }) === '');
+ok('logout tanpa ringkasan', describeActivity('LOGOUT', null) === '');
+ok(
+  'username change memakai panah',
+  describeActivity('STAFF_USERNAME_CHANGE', { username: 'budi2', oldUsername: 'budi', name: 'Budi' }) === '@budi → @budi2'
+);
+ok(
+  'product create menyebut harga jual',
+  describeActivity('PRODUCT_CREATE', { name: 'Beras', sellingPrice: 412000, costPrice: 409850 }) === 'Beras · jual Rp412.000'
+);
+ok(
+  'product update menyebut field',
+  describeActivity('PRODUCT_UPDATE', { name: 'Beras', fields: ['jual', 'modal'] }) === 'Beras · ubah jual, modal'
+);
+ok(
+  'product toggle menyebut status',
+  describeActivity('PRODUCT_TOGGLE', { name: 'Beras', isActive: false }) === 'Beras · dinonaktifkan'
+);
+ok('product delete menyebut nama', describeActivity('PRODUCT_DELETE', { name: 'Beras' }) === 'Beras');
+ok(
+  'discount create menyebut persen',
+  describeActivity('DISCOUNT_CREATE', { name: 'Promo', percent: 15, scope: 'GLOBAL' }) === 'Promo · 15%'
+);
+ok(
+  'discount toggle menyebut status',
+  describeActivity('DISCOUNT_TOGGLE', { name: 'Promo', isActive: true }) === 'Promo · diaktifkan'
+);
+ok('join memakai username', describeActivity('STAFF_JOIN', { username: 'andi', name: 'Andi' }) === '@andi · Andi');
 
 ok('aksi asing ditolak', !isActivityAction('HAPUS') && !isActivityAction(null) && !isActivityAction(7));
 ok('semua aksi valid diterima', ACTIVITY_ACTIONS.every((a) => isActivityAction(a)));

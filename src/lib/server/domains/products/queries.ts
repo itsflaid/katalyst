@@ -13,7 +13,15 @@ export function denyUnlessOwner(locals: App.Locals, forKey: string, message: str
 
 export async function getOwnedProduct(id: string, businessId: string) {
   const [row] = await db
-    .select({ id: product.id, stock: product.stock })
+    .select({
+      id: product.id,
+      name: product.name,
+      costPrice: product.costPrice,
+      sellingPrice: product.sellingPrice,
+      minStock: product.minStock,
+      isActive: product.isActive,
+      stock: product.stock
+    })
     .from(product)
     .where(and(eq(product.id, id), eq(product.businessId, businessId)));
   return row ?? null;
