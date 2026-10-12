@@ -1,6 +1,8 @@
 <script lang="ts">
   import { signIn, authClient } from '$lib/auth-client';
   import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
+  import { INSIGHT_TOAST_KEY } from '$lib/shared/insight-toast';
   import Card from '$lib/components/ui/Card.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import Input from '$lib/components/ui/Input.svelte';
@@ -9,6 +11,15 @@
   let password = '';
   let error = '';
   let loading = false;
+
+  // Halaman login terbuka tanpa sesi aktif: toast insight perlu tampil lagi setelah masuk.
+  onMount(() => {
+    try {
+      sessionStorage.removeItem(INSIGHT_TOAST_KEY);
+    } catch {
+      // Penyimpanan diblokir: tidak ada yang perlu dibersihkan.
+    }
+  });
 
   async function handleSubmit() {
     loading = true;
