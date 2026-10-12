@@ -57,7 +57,7 @@
 
   const btn = (current: string, key: string) =>
     `rounded border px-2.5 py-1.5 text-body-sm ${current === key ? 'border-ink-navy bg-ink-navy text-white font-semibold' : 'border-border-input bg-white text-ink hover:bg-table-header'}`;
-  const rangeNames: Record<string, string> = { today: 'Hari ini', week: 'Minggu ini', '30d': '30 hari', month: 'Bulan ini', custom: 'Custom' };
+  const rangeNames: Record<string, string> = { today: 'Hari ini', week: 'Minggu ini', '7d': '7 hari', '30d': '30 hari', month: 'Bulan ini', custom: 'Custom' };
 
   let showPeriodSheet = false;
 
@@ -105,6 +105,7 @@
     <div class="flex flex-col gap-2">
       <button type="button" on:click={() => goWithRange('today')} class={`${btn(activeRange, 'today')} w-full text-left`}>Hari ini</button>
       <button type="button" on:click={() => goWithRange('week')} class={`${btn(activeRange, 'week')} w-full text-left`}>Minggu ini</button>
+      <button type="button" on:click={() => goWithRange('7d')} class={`${btn(activeRange, '7d')} w-full text-left`}>7 hari</button>
       <button type="button" on:click={() => goWithRange('30d')} class={`${btn(activeRange, '30d')} w-full text-left`}>30 hari</button>
       <button type="button" on:click={() => goWithRange('month')} class={`${btn(activeRange, 'month')} w-full text-left`}>Bulan ini</button>
       <div class="flex flex-col gap-2 rounded border border-border-cool p-3">
