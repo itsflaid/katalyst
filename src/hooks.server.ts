@@ -1,11 +1,11 @@
 import { auth } from '$lib/server/domains/auth';
-import { actorOf, recordVisit } from '$lib/server/domains/activity/log';
+import { actorOf, netOf, recordVisit } from '$lib/server/domains/activity/log';
 import { decideAccess, isBlockedAuthPath, normalizePath } from '$lib/server/domains/auth/path-guard';
 import { db } from '$lib/server/db';
 import { business } from '$lib/server/db/schema';
 import { DEFAULT_TZ, isBizTz } from '$lib/shared/time';
 import { eq } from 'drizzle-orm';
-import { error, redirect, type Handle } from '@sveltejs/kit';
+import { error, redirect, type Handle, type RequestEvent } from '@sveltejs/kit';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
 
@@ -61,7 +61,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 };
 
 // Hanya dokumen HTML yang sudah login: API, auth internal, dan aset statis tidak dicatat.
-function trackVisit(event: Parameters<Handle>[0], path: string): void {
+function trackVisit(event: RequestEvent, path: string): void {
   const biz = event.locals.business;
   const u = event.locals.user;
   if (!biz || !u) return;
@@ -70,8 +70,7 @@ function trackVisit(event: Parameters<Handle>[0], path: string): void {
   const task = recordVisit({
     businessId: biz.id,
     actor: actorOf(u),
-    ip: event.request.headers.get('cf-connecting-ip'),
-    userAgent: event.request.headers.get('user-agent')
+    ...netOf(event)
   });
   const ctx = (event.platform as { context?: { waitUntil?: (p: Promise<unknown>) => void } } | null | undefined)
     ?.context;

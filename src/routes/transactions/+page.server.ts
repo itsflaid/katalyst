@@ -5,7 +5,7 @@ import { eq, desc, and, asc, inArray, gte, lt, or, sql } from 'drizzle-orm';
 import { DEFAULT_TZ, isBizTz, makeTime } from '$lib/shared/time';
 import { calculateCart, getDiscountStatus, quotaDeltas } from '$lib/discount';
 import { receiptTotals } from '$lib/analytics';
-import { actorOf } from '$lib/server/domains/activity/log';
+import { actorOf, netOf } from '$lib/server/domains/activity/log';
 import { getActiveProductDiscounts, getGlobalDiscount } from '$lib/server/domains/discounts';
 import { INT4_MAX } from '$lib/server/domains/products';
 import { fail } from '@sveltejs/kit';
@@ -192,7 +192,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 };
 
 export const actions: Actions = {
-  create: async ({ request, locals }) => {
+  create: async ({ request, locals, getClientAddress }) => {
     const businessId = locals.user?.businessId as string | undefined;
     const userId = locals.user?.id as string | undefined;
     if (!businessId || !userId) return fail(403, { message: 'Sesi tidak valid.' });
@@ -357,6 +357,7 @@ export const actions: Actions = {
         activityRow({
           businessId,
           actor: { id: userId, name: cashierName ?? '-', role: locals.user!.role as 'OWNER' | 'STAFF' },
+          ...netOf({ request, getClientAddress }),
           action: 'TX_CREATE',
           entityType: 'transaction',
           entityId: txId,
@@ -392,7 +393,7 @@ export const actions: Actions = {
   // Void struk: hapus header + items atomik berurutan. OWNER-only, kasir
   // yang salah catat lapor ke owner, owner yang melakukan void lalu buat struk
   // koreksi baru. Tidak ada edit qty in-place biar histori teraudit.
-  deleteTx: async ({ request, locals }) => {
+  deleteTx: async ({ request, locals, getClientAddress }) => {
     if (!locals.user || locals.user.role !== 'OWNER') {
       return fail(403, { message: 'Cuma Owner yang bisa void struk.' });
     }
@@ -419,6 +420,7 @@ export const actions: Actions = {
     // total = Σ(qty × harga) − Σ(diskon)   (Rupiah)
     const voidTotal = receiptTotals(voidItems).total;
     const actorName = actorOf(locals.user).name;
+    const net = netOf({ request, getClientAddress });
     const metaJson = JSON.stringify({
       total: voidTotal,
       itemCount: voidItems.length,
@@ -468,9 +470,9 @@ export const actions: Actions = {
       ),
       logged as (
         insert into activity_log
-          (id, business_id, actor_id, actor_name, actor_role, action, entity_type, entity_id, meta)
+          (id, business_id, actor_id, actor_name, actor_role, action, entity_type, entity_id, ip, user_agent, meta)
         select gen_random_uuid()::text, ${businessId}::text, ${locals.user.id as string}::text, ${actorName}::text,
-               'OWNER'::role, 'TX_VOID', 'transaction', ${txId}::text, ${metaJson}::jsonb
+               'OWNER'::role, 'TX_VOID', 'transaction', ${txId}::text, ${net.ip}::text, ${net.userAgent}::text, ${metaJson}::jsonb
         where exists (select 1 from removed)
       )
       delete from "transaction" where id = ${txId} and business_id = ${businessId}

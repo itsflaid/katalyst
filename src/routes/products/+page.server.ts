@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { product, stockMovement, transactionItem } from '$lib/server/db/schema';
 import { denyUnlessOwner, getOwnedProduct, parseProductFields, parseInitialStock } from '$lib/server/domains/products';
-import { actorOf, recordActivity } from '$lib/server/domains/activity/log';
+import { actorOf, netOf, recordActivity } from '$lib/server/domains/activity/log';
 import { eq, and, inArray, sql, asc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 // crypto.randomUUID global (bukan import 'crypto') biar jalan di Workers.
@@ -24,7 +24,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 // neon-http: tidak ada db.transaction interaktif; db.batch([...]) menjalankan semua statement dalam satu transaksi (gagal satu = rollback semua).
 
 export const actions: Actions = {
-  create: async ({ request, locals }) => {
+  create: async ({ request, locals, getClientAddress }) => {
     const denied = denyUnlessOwner(locals, 'create', 'Cuma Owner yang bisa menambah produk.');
     if (denied) return denied;
     const businessId = locals.user!.businessId as string;
@@ -62,6 +62,7 @@ export const actions: Actions = {
     await recordActivity({
       businessId,
       actor: actorOf(locals.user!),
+      ...netOf({ request, getClientAddress }),
       action: 'PRODUCT_CREATE',
       entityType: 'product',
       entityId: id,
@@ -70,7 +71,7 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  update: async ({ request, locals }) => {
+  update: async ({ request, locals, getClientAddress }) => {
     const denied = denyUnlessOwner(locals, 'update', 'Cuma Owner yang bisa mengubah produk.');
     if (denied) return denied;
     const businessId = locals.user!.businessId as string;
@@ -98,6 +99,7 @@ export const actions: Actions = {
     await recordActivity({
       businessId,
       actor: actorOf(locals.user!),
+      ...netOf({ request, getClientAddress }),
       action: 'PRODUCT_UPDATE',
       entityType: 'product',
       entityId: id,
@@ -109,7 +111,7 @@ export const actions: Actions = {
   // isActive itu pilihan owner (jual / tidak dijual). Tidak ada hubungan
   // dengan stok: produk stok 0 tetap "aktif" tapi otomatis tersembunyi di
   // kasir dan berlabel Habis.
-  toggle: async ({ request, locals }) => {
+  toggle: async ({ request, locals, getClientAddress }) => {
     const denied = denyUnlessOwner(locals, 'toggle', 'Cuma Owner yang bisa mengubah status produk.');
     if (denied) return denied;
     const businessId = locals.user!.businessId as string;
@@ -128,6 +130,7 @@ export const actions: Actions = {
     await recordActivity({
       businessId,
       actor: actorOf(locals.user!),
+      ...netOf({ request, getClientAddress }),
       action: 'PRODUCT_TOGGLE',
       entityType: 'product',
       entityId: id,
@@ -136,7 +139,7 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  delete: async ({ request, locals }) => {
+  delete: async ({ request, locals, getClientAddress }) => {
     const denied = denyUnlessOwner(locals, 'delete', 'Cuma Owner yang bisa menghapus produk.');
     if (denied) return denied;
     const businessId = locals.user!.businessId as string;
@@ -180,6 +183,7 @@ export const actions: Actions = {
     await recordActivity({
       businessId,
       actor: actorOf(locals.user!),
+      ...netOf({ request, getClientAddress }),
       action: 'PRODUCT_DELETE',
       entityType: 'product',
       entityId: id,

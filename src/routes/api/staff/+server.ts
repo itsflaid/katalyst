@@ -3,7 +3,7 @@ import { db } from '$lib/server/db';
 import { readJsonObject } from '$lib/server/http';
 import { staffInvitation, transaction, user } from '$lib/server/db/schema';
 import { generateInviteToken, hashInviteToken, normalizeUsername, isValidUsername, INVITE_TTL_MS } from '$lib/server/domains/invites';
-import { actorOf, recordActivity } from '$lib/server/domains/activity/log';
+import { actorOf, netOf, recordActivity } from '$lib/server/domains/activity/log';
 import { and, eq, isNull, ne } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import type { RequestHandler } from './$types';
@@ -19,7 +19,7 @@ function requireOwner(locals: App.Locals) {
 
 // Buat undangan staff (bukan user langsung): owner input username+nama, staff bikin password sendiri via link /invite/[token].
 // Role dikunci STAFF di record invite. Token mentah dikembalikan sekali ke owner; di DB cuma hash-nya yang disimpan.
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals, getClientAddress }) => {
   requireOwner(locals);
   const businessId = locals.user!.businessId as string;
 
@@ -79,6 +79,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   await recordActivity({
     businessId,
     actor: actorOf(locals.user!),
+    ...netOf({ request, getClientAddress }),
     action: 'STAFF_INVITE',
     entityType: 'staff_invitation',
     entityId: id,
@@ -89,7 +90,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 };
 
 // Atur/ubah username login staff yang sudah ada. OWNER-only. Username unik global.
-export const PATCH: RequestHandler = async ({ request, locals }) => {
+export const PATCH: RequestHandler = async ({ request, locals, getClientAddress }) => {
   requireOwner(locals);
   const businessId = locals.user!.businessId as string;
 
@@ -127,6 +128,7 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
   await recordActivity({
     businessId,
     actor: actorOf(locals.user!),
+    ...netOf({ request, getClientAddress }),
     action: 'STAFF_USERNAME_CHANGE',
     entityType: 'user',
     entityId: target.id,
@@ -138,7 +140,7 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 
 // Hapus staff dari bisnis. Baris user dihapus (termasuk sesi+kredensial via cascade);
 // riwayat transaksi tetap tampil nama via snapshot cashier_name + FK ON DELETE SET NULL.
-export const DELETE: RequestHandler = async ({ request, locals }) => {
+export const DELETE: RequestHandler = async ({ request, locals, getClientAddress }) => {
   requireOwner(locals);
   const businessId = locals.user!.businessId as string;
 
@@ -168,6 +170,7 @@ export const DELETE: RequestHandler = async ({ request, locals }) => {
   await recordActivity({
     businessId,
     actor: actorOf(locals.user!),
+    ...netOf({ request, getClientAddress }),
     action: 'STAFF_DELETE',
     entityType: 'user',
     entityId: target.id,
