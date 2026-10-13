@@ -3,7 +3,7 @@ import { auth } from '$lib/server/domains/auth';
 import { db } from '$lib/server/db';
 import { business, staffInvitation, user } from '$lib/server/db/schema';
 import { hashInviteToken, placeholderEmail } from '$lib/server/domains/invites';
-import { recordActivity } from '$lib/server/domains/activity/log';
+import { netOf, recordActivity } from '$lib/server/domains/activity/log';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -41,7 +41,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 };
 
 export const actions: Actions = {
-  accept: async ({ params, request }) => {
+  accept: async ({ params, request, getClientAddress }) => {
     const invite = await lookup(params.token);
     // Pesan generik untuk semua link mati, jangan bocorkan alasan
     // (expired vs dicabut vs sudah dipakai) ke pemegang link.
@@ -97,6 +97,7 @@ export const actions: Actions = {
     await recordActivity({
       businessId: invite.businessId,
       actor: { id: joined?.id ?? null, name, role: 'STAFF' },
+      ...netOf({ request, getClientAddress }),
       action: 'STAFF_JOIN',
       entityType: 'user',
       entityId: joined?.id,

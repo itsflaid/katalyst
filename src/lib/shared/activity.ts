@@ -3,6 +3,7 @@ import { fmtRupiah } from './format';
 export const ACTIVITY_ACTIONS = [
   'LOGIN',
   'LOGOUT',
+  'VISIT',
   'TX_CREATE',
   'TX_VOID',
   'STAFF_INVITE',
@@ -28,6 +29,7 @@ export const isActivityAction = (v: unknown): v is ActivityAction =>
 export const ACTIVITY_LABEL: Record<ActivityAction, string> = {
   LOGIN: 'Login',
   LOGOUT: 'Logout',
+  VISIT: 'Kunjungan',
   TX_CREATE: 'Mencatat transaksi',
   TX_VOID: 'Void struk',
   STAFF_INVITE: 'Mengundang staff',
@@ -51,7 +53,7 @@ export const ROLE_FILTERS = ['all', 'owner', 'staff'] as const;
 export type RoleFilter = (typeof ROLE_FILTERS)[number];
 
 export const ACTION_FILTERS = [
-  { key: 'login', label: 'Login & logout', actions: ['LOGIN', 'LOGOUT'] },
+  { key: 'login', label: 'Login & kunjungan', actions: ['LOGIN', 'LOGOUT', 'VISIT'] },
   { key: 'transaksi', label: 'Transaksi', actions: ['TX_CREATE', 'TX_VOID'] },
   { key: 'void', label: 'Void', actions: ['TX_VOID'] },
   { key: 'produk', label: 'Produk', actions: ['PRODUCT_CREATE', 'PRODUCT_UPDATE', 'PRODUCT_TOGGLE', 'PRODUCT_DELETE'] },
@@ -168,7 +170,7 @@ export function parseMeta(action: ActivityAction, raw: unknown): LoginMeta | TxC
 }
 
 export function describeActivity(action: ActivityAction, meta: unknown): string {
-  if (action === 'LOGIN' || action === 'LOGOUT') return '';
+  if (action === 'LOGIN' || action === 'LOGOUT' || action === 'VISIT') return '';
   if (action === 'TX_CREATE') {
     const t = parseMeta('TX_CREATE', meta);
     return `${fmtRupiah(t.total)} · ${t.itemCount} jenis, ${t.qty} item`;

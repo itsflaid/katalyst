@@ -1,10 +1,65 @@
 import { db } from '$lib/server/db';
 import { activityLog, user } from '$lib/server/db/schema';
-import { and, eq } from 'drizzle-orm';
+import type { RequestEvent } from '@sveltejs/kit';
+import { and, eq, gte, inArray } from 'drizzle-orm';
 import { activityRow, type ActivityInput } from './row';
 
 export type { ActivityInput };
 export { activityRow };
+
+// IP + UA pemicu aksi agar kolom Perangkat terisi di tiap baris log, bukan cuma login.
+export function netOf(e: Pick<RequestEvent, 'request' | 'getClientAddress'>): {
+  ip: string | null;
+  userAgent: string | null;
+} {
+  const ua = e.request.headers.get('user-agent');
+  const ipHeader = e.request.headers.get('cf-connecting-ip');
+  if (ipHeader) return { ip: ipHeader, userAgent: ua };
+  // cf-connecting-ip hanya ada di belakang Cloudflare; lokal jatuh ke alamat koneksi.
+  try {
+    return { ip: e.getClientAddress(), userAgent: ua };
+  } catch {
+    return { ip: null, userAgent: ua };
+  }
+}
+
+// Kunjungan sesi yang masih login, terpisah dari LOGIN agar sesi lama yang dibuka ulang tetap terlihat.
+// Jendela 30 menit per perangkat: buka-tutup tab tidak membanjiri log, perangkat baru tetap tercatat.
+export async function recordVisit(s: {
+  businessId: string;
+  actor: ActivityInput['actor'];
+  ip?: string | null;
+  userAgent?: string | null;
+}): Promise<void> {
+  try {
+    if (!s.actor.id) return;
+    const ua = s.userAgent ?? null;
+    const recent = await db
+      .select({ userAgent: activityLog.userAgent })
+      .from(activityLog)
+      .where(
+        and(
+          eq(activityLog.businessId, s.businessId),
+          eq(activityLog.actorId, s.actor.id),
+          inArray(activityLog.action, ['LOGIN', 'VISIT']),
+          gte(activityLog.createdAt, new Date(Date.now() - 30 * 60 * 1000))
+        )
+      )
+      .limit(25);
+    if (recent.some((r) => r.userAgent === ua)) return;
+    await db.insert(activityLog).values(
+      activityRow({
+        businessId: s.businessId,
+        actor: s.actor,
+        action: 'VISIT',
+        ip: s.ip ?? null,
+        userAgent: ua
+      })
+    );
+  } catch (e) {
+    console.error('recordVisit gagal', e);
+  }
+}
 
 // Insert tunggal best-effort: kegagalan catat tidak boleh menggagalkan aksi utama.
 export async function recordActivity(input: ActivityInput): Promise<void> {

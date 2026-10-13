@@ -87,19 +87,19 @@
 {/key}
 
 {#if data.restock.list.length > 0}
-  <Card class="mb-6">
-    <h2 class="text-headline-sm text-ink mb-1">Perlu restock</h2>
-    <p class="text-body-sm text-muted mb-3">{data.restock.habis} habis · {data.restock.menipis} menipis</p>
+  <Card class="mb-6 bg-ink-navy">
+    <h2 class="text-headline-sm text-white mb-1">Perlu restock</h2>
+    <p class="text-body-sm text-white/60 mb-3">{data.restock.habis} habis · {data.restock.menipis} menipis</p>
     <ul class="flex flex-col gap-2">
       {#each data.restock.list as p}
-        <li class="flex items-center justify-between gap-3 rounded border border-border-cool px-3 py-2">
+        <li class="flex items-center justify-between gap-3 rounded border border-border-cool px-3 py-2 bg-white">
           <span class="text-body-md text-ink font-semibold truncate">{p.name}</span>
           <StockBadge stock={p.stock} minStock={p.minStock ?? 5} />
         </li>
       {/each}
     </ul>
     <div class="mt-3">
-      <a href="/products?stok=restock" class="text-body-md font-semibold text-ink-navy hover:underline no-underline">Lihat semua yang perlu restock →</a>
+      <a href="/products?stok=restock" class="text-body-md font-semibold text-white hover:underline no-underline">Lihat semua yang perlu restock →</a>
     </div>
   </Card>
 {/if}
@@ -162,9 +162,9 @@
 
 <!-- Baris 4: arsip insight; toast di atas hanya tampil sekali per sesi -->
 {#if data.insights.length > 0}
-  <Card class="mt-6 bg-ink-navy">
-    <h2 class="text-headline-sm text-white mb-1">Insight otomatis</h2>
-    <p class="text-body-sm text-white/65 mb-3">30 hari terakhir</p>
+  <Card class="mt-6 ">
+    <h2 class="text-headline-sm text-ink mb-1">Insight otomatis</h2>
+    <p class="text-body-sm text-ink mb-3">30 hari terakhir</p>
     <ul class="flex flex-col gap-2.5">
       {#each data.insights as ins}
         <li class="rounded border border-border-cool bg-table-header px-3 py-2.5 text-body-md text-ink">{ins.message}</li>

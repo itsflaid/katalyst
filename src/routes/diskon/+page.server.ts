@@ -6,7 +6,7 @@ import { requireOwner } from '$lib/server/domains/auth/guards';
 import { denyUnlessOwner } from '$lib/server/domains/products';
 import { canDeleteDiscount, findOverlap, listDiscounts, overlapDbMessage, parseDiscountForm } from '$lib/server/domains/discounts';
 import { getDiscountStatus } from '$lib/discount';
-import { actorOf, recordActivity } from '$lib/server/domains/activity/log';
+import { actorOf, netOf, recordActivity } from '$lib/server/domains/activity/log';
 import { DEFAULT_TZ, makeTime } from '$lib/shared/time';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -69,7 +69,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 };
 
 export const actions: Actions = {
-  create: async ({ request, locals }) => {
+  create: async ({ request, locals, getClientAddress }) => {
     const denied = denyUnlessOwner(locals, 'create', 'Cuma Owner yang bisa menambah diskon.');
     if (denied) return denied;
     const businessId = locals.user!.businessId as string;
@@ -101,6 +101,7 @@ export const actions: Actions = {
     await recordActivity({
       businessId,
       actor: actorOf(locals.user!),
+      ...netOf({ request, getClientAddress }),
       action: 'DISCOUNT_CREATE',
       entityType: 'discount',
       entityId: discountId,
@@ -109,7 +110,7 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  update: async ({ request, locals }) => {
+  update: async ({ request, locals, getClientAddress }) => {
     const denied = denyUnlessOwner(locals, 'update', 'Cuma Owner yang bisa mengubah diskon.');
     if (denied) return denied;
     const businessId = locals.user!.businessId as string;
@@ -146,6 +147,7 @@ export const actions: Actions = {
     await recordActivity({
       businessId,
       actor: actorOf(locals.user!),
+      ...netOf({ request, getClientAddress }),
       action: 'DISCOUNT_UPDATE',
       entityType: 'discount',
       entityId: id,
@@ -154,7 +156,7 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  toggle: async ({ request, locals }) => {
+  toggle: async ({ request, locals, getClientAddress }) => {
     const denied = denyUnlessOwner(locals, 'toggle', 'Cuma Owner yang bisa mengubah status diskon.');
     if (denied) return denied;
     const businessId = locals.user!.businessId as string;
@@ -188,6 +190,7 @@ export const actions: Actions = {
     await recordActivity({
       businessId,
       actor: actorOf(locals.user!),
+      ...netOf({ request, getClientAddress }),
       action: 'DISCOUNT_TOGGLE',
       entityType: 'discount',
       entityId: id,
@@ -196,7 +199,7 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  delete: async ({ request, locals }) => {
+  delete: async ({ request, locals, getClientAddress }) => {
     const denied = denyUnlessOwner(locals, 'delete', 'Cuma Owner yang bisa menghapus diskon.');
     if (denied) return denied;
     const businessId = locals.user!.businessId as string;
@@ -219,6 +222,7 @@ export const actions: Actions = {
     await recordActivity({
       businessId,
       actor: actorOf(locals.user!),
+      ...netOf({ request, getClientAddress }),
       action: 'DISCOUNT_DELETE',
       entityType: 'discount',
       entityId: id,

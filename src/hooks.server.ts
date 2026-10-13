@@ -1,10 +1,11 @@
 import { auth } from '$lib/server/domains/auth';
+import { actorOf, netOf, recordVisit } from '$lib/server/domains/activity/log';
 import { decideAccess, isBlockedAuthPath, normalizePath } from '$lib/server/domains/auth/path-guard';
 import { db } from '$lib/server/db';
 import { business } from '$lib/server/db/schema';
 import { DEFAULT_TZ, isBizTz } from '$lib/shared/time';
 import { eq } from 'drizzle-orm';
-import { error, redirect, type Handle } from '@sveltejs/kit';
+import { error, redirect, type Handle, type RequestEvent } from '@sveltejs/kit';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
 
@@ -53,5 +54,30 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   // Delegasi ke better-auth buat nangani route /api/auth/* secara internal
   // (refresh session cookie, dll) sebelum lanjut ke resolve() SvelteKit biasa.
-  return svelteKitHandler({ event, resolve, auth, building });
+  // Kunjungan dicatat setelah response jadi agar tidak menahan render halaman.
+  const res = await svelteKitHandler({ event, resolve, auth, building });
+  trackVisit(event, path);
+  return res;
 };
+
+// Hanya dokumen HTML yang sudah login: API, auth internal, dan aset statis tidak dicatat.
+function trackVisit(event: RequestEvent, path: string): void {
+  const biz = event.locals.business;
+  const u = event.locals.user;
+  if (!biz || !u) return;
+  if (path.startsWith('/api/')) return;
+  if (!(event.request.headers.get('accept') ?? '').includes('text/html')) return;
+  const task = recordVisit({
+    businessId: biz.id,
+    actor: actorOf(u),
+    ...netOf(event)
+  });
+  const ctx = (event.platform as { context?: { waitUntil?: (p: Promise<unknown>) => void } } | null | undefined)
+    ?.context;
+  // Dipanggil sebagai method: dilepas dari context melempar Illegal invocation.
+  try {
+    ctx?.waitUntil?.(task);
+  } catch (e) {
+    console.error('trackVisit jadwal gagal', e);
+  }
+}

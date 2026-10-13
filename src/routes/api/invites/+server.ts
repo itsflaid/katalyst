@@ -3,7 +3,7 @@ import { db } from '$lib/server/db';
 import { readJsonObject } from '$lib/server/http';
 import { staffInvitation, user } from '$lib/server/db/schema';
 import { generateInviteToken, hashInviteToken, INVITE_TTL_MS } from '$lib/server/domains/invites';
-import { actorOf, recordActivity } from '$lib/server/domains/activity/log';
+import { actorOf, netOf, recordActivity } from '$lib/server/domains/activity/log';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -29,7 +29,7 @@ async function findPendingInvite(inviteId: string, businessId: string) {
 
 // Kirim ulang me-revoke token lama dan menerbitkan token baru (link lama mati seketika).
 // Dipakai untuk invite kedaluwarsa maupun link yang hilang.
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals, getClientAddress }) => {
   requireOwner(locals);
   const businessId = locals.user!.businessId as string;
 
@@ -69,6 +69,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   await recordActivity({
     businessId,
     actor: actorOf(locals.user!),
+    ...netOf({ request, getClientAddress }),
     action: 'INVITE_RESEND',
     entityType: 'staff_invitation',
     entityId: id,
@@ -79,7 +80,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 };
 
 // Cabut undangan: link langsung mati dengan error generik (jangan bocorkan alasan ke pemegang link).
-export const DELETE: RequestHandler = async ({ request, locals }) => {
+export const DELETE: RequestHandler = async ({ request, locals, getClientAddress }) => {
   requireOwner(locals);
   const businessId = locals.user!.businessId as string;
 
@@ -94,6 +95,7 @@ export const DELETE: RequestHandler = async ({ request, locals }) => {
   await recordActivity({
     businessId,
     actor: actorOf(locals.user!),
+    ...netOf({ request, getClientAddress }),
     action: 'INVITE_REVOKE',
     entityType: 'staff_invitation',
     entityId: invite.id,
