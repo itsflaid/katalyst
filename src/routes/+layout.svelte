@@ -1,10 +1,22 @@
 <script lang="ts">
   import '../app.css';
   import { afterNavigate } from '$app/navigation';
+  import { page } from '$app/stores';
   import { fly, fade } from 'svelte/transition';
   import { Menu } from 'lucide-svelte';
+  import type { BusinessInsight } from '$lib/analytics';
+  import type { BellRestock } from '$lib/components/dashboard/insight-meta';
   import Sidebar from '$lib/components/Sidebar.svelte';
+  import InsightBell from '$lib/components/dashboard/InsightBell.svelte';
+  import InsightModal from '$lib/components/dashboard/InsightModal.svelte';
   export let data;
+
+  // Lonceng tampil bila ada insights: layout mengisinya untuk owner di semua halaman.
+  $: insights = $page.data.insights as BusinessInsight[] | undefined;
+  $: restock = $page.data.restock as BellRestock | undefined;
+  // Badge menghitung insight + produk kritis.
+  $: bellCount = (insights?.length ?? 0) + (restock?.list.length ?? 0);
+  let insightsOpen = false;
 
   // <main> adalah scroll container (bukan document); layout tidak dihancurkan saat navigasi client-side.
   // scrollTop halaman A kebawa ke halaman B, reset manual tiap pathname berubah.
@@ -15,6 +27,7 @@
   afterNavigate(({ from, to }) => {
     if (from?.url.pathname !== to?.url.pathname) mainEl?.scrollTo(0, 0);
     sidebarOpen = false;
+    insightsOpen = false;
   });
 </script>
 
@@ -36,12 +49,25 @@
           <Menu size={20} aria-hidden="true" />
         </button>
         <span class="mobile-brand">Katalyst</span>
+        {#if insights}
+          <InsightBell class="ml-auto" count={bellCount} on:click={() => (insightsOpen = true)} />
+        {/if}
       </header>
       <main bind:this={mainEl}>
         <slot />
       </main>
     </div>
   </div>
+
+  {#if insights}
+    <div class="float-bell">
+      <InsightBell variant="float" count={bellCount} on:click={() => (insightsOpen = true)} />
+    </div>
+  {/if}
+
+  {#if insightsOpen && insights}
+    <InsightModal {insights} {restock} onClose={() => (insightsOpen = false)} />
+  {/if}
 
   <!-- Mobile: drawer geser dari kiri -->
   {#if sidebarOpen}
@@ -104,6 +130,18 @@
   @media (min-width: 1024px) {
     .mobile-bar {
       display: none;
+    }
+  }
+  .float-bell {
+    display: none;
+  }
+  @media (min-width: 1024px) {
+    .float-bell {
+      display: block;
+      position: fixed;
+      top: 1rem;
+      right: 1.5rem;
+      z-index: 30;
     }
   }
   .hamburger {
