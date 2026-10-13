@@ -94,7 +94,7 @@
     },
     {
       t: 'Insight',
-      d: 'Temuan otomatis dari data, misal produk laris tapi margin tipis, cocok dinaikkan sedikit harganya.'
+      d: 'Temuan otomatis dari data, misal produk laris tapi margin tipis, cocok dinaikkan sedikit harganya. Buka lagi lewat ikon lonceng di kanan atas, sekalian pengingat restock.'
     }
   ];
 

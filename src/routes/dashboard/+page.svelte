@@ -159,16 +159,3 @@
     </div>
   </div>
 </div>
-
-<!-- Baris 4: arsip insight; toast di atas hanya tampil sekali per sesi -->
-{#if data.insights.length > 0}
-  <Card class="mt-6 ">
-    <h2 class="text-headline-sm text-ink mb-1">Insight otomatis</h2>
-    <p class="text-body-sm text-ink mb-3">30 hari terakhir</p>
-    <ul class="flex flex-col gap-2.5">
-      {#each data.insights as ins}
-        <li class="rounded border border-border-cool bg-table-header px-3 py-2.5 text-body-md text-ink">{ins.message}</li>
-      {/each}
-    </ul>
-  </Card>
-{/if}

@@ -3,17 +3,12 @@
   import { fade, fly } from 'svelte/transition';
   import { flip } from 'svelte/animate';
   import { Lightbulb, X } from 'lucide-svelte';
-  import type { BusinessInsight, InsightType } from '$lib/analytics';
+  import type { BusinessInsight } from '$lib/analytics';
   import Badge from '$lib/components/ui/Badge.svelte';
+  import { INSIGHT_META } from '$lib/components/dashboard/insight-meta';
   import { INSIGHT_TOAST_KEY, insightSignature } from '$lib/shared/insight-toast';
 
   export let insights: BusinessInsight[];
-
-  const META: Record<InsightType, { title: string; tone: 'warning' | 'positive' }> = {
-    high_revenue_low_profit: { title: 'Omzet besar, profit tipis', tone: 'warning' },
-    popular_low_margin: { title: 'Laris tapi margin tipis', tone: 'warning' },
-    high_margin_low_demand: { title: 'Margin tinggi, peminat sedikit', tone: 'positive' }
-  };
 
   let visible: BusinessInsight[] = [];
   let reduceMotion = false;
@@ -39,7 +34,7 @@
 
 {#if visible.length > 0}
   <div
-    class="pointer-events-none fixed left-4 right-4 top-[4.5rem] z-40 flex flex-col items-end gap-2 sm:left-auto sm:w-96 lg:top-4"
+    class="pointer-events-none fixed left-4 right-4 top-[4.5rem] z-40 flex flex-col items-end gap-2 sm:left-auto sm:w-96 lg:right-6 lg:top-[4.5rem]"
     role="region"
     aria-label="Insight otomatis"
     aria-live="polite"
@@ -54,7 +49,7 @@
         <div class="flex items-start gap-2">
           <Lightbulb size={16} class="mt-0.5 shrink-0 text-ink-navy" aria-hidden="true" />
           <div class="min-w-0 flex-1">
-            <Badge tone={META[ins.type].tone} size="sm">{META[ins.type].title}</Badge>
+            <Badge tone={INSIGHT_META[ins.type].tone} size="sm">{INSIGHT_META[ins.type].title}</Badge>
             <p class="mt-1.5 text-body-md text-ink">{ins.message}</p>
           </div>
           <button
