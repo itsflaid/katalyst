@@ -148,7 +148,7 @@
           {/if}
         </td>
         <td class="px-3 py-2">
-          {#if row.action === 'LOGIN' || row.action === 'LOGOUT' || row.action === 'VISIT'}
+          {#if row.userAgent || row.ip}
             <p class="text-body-sm text-ink">{describeUserAgent(row.userAgent)}</p>
             <p class="text-body-sm text-muted">{row.ip ?? '-'}</p>
             {#if row.action === 'LOGIN' && parseMeta('LOGIN', row.meta).newDevice}

@@ -1,10 +1,27 @@
 import { db } from '$lib/server/db';
 import { activityLog, user } from '$lib/server/db/schema';
+import type { RequestEvent } from '@sveltejs/kit';
 import { and, eq, gte, inArray } from 'drizzle-orm';
 import { activityRow, type ActivityInput } from './row';
 
 export type { ActivityInput };
 export { activityRow };
+
+// IP + UA pemicu aksi agar kolom Perangkat terisi di tiap baris log, bukan cuma login.
+export function netOf(e: Pick<RequestEvent, 'request' | 'getClientAddress'>): {
+  ip: string | null;
+  userAgent: string | null;
+} {
+  const ua = e.request.headers.get('user-agent');
+  const ipHeader = e.request.headers.get('cf-connecting-ip');
+  if (ipHeader) return { ip: ipHeader, userAgent: ua };
+  // cf-connecting-ip hanya ada di belakang Cloudflare; lokal jatuh ke alamat koneksi.
+  try {
+    return { ip: e.getClientAddress(), userAgent: ua };
+  } catch {
+    return { ip: null, userAgent: ua };
+  }
+}
 
 // Kunjungan sesi yang masih login, terpisah dari LOGIN agar sesi lama yang dibuka ulang tetap terlihat.
 // Jendela 30 menit per perangkat: buka-tutup tab tidak membanjiri log, perangkat baru tetap tercatat.
