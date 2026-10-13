@@ -190,9 +190,9 @@
     <!-- Bar judul putih (bukan biru) biar tidak monoton ketemu thead
          tabel yang biru: putih → biru → zebra. -->
     <div>
-      <div class="flex flex-wrap items-center justify-between gap-3 bg-surface px-5 py-3 rounded-t-panel border border-border-cool border-b-0">
-        <h3 class="text-headline-sm text-ink">Daftar Staff</h3>
-        <span class="text-body-sm text-muted tabular">{staffList.length} orang</span>
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-ink-navy  px-5 py-3 rounded-t-panel border border-border-cool border-b-1">
+        <h3 class="text-headline-sm text-white ">Daftar Staff</h3>
+        <span class="text-body-sm text-white tabular">{staffList.length} orang</span>
       </div>
 
       {#if staffList.length === 0}
