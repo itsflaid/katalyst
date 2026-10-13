@@ -56,6 +56,7 @@ try {
     describeActivity('DISCOUNT_TOGGLE', null),
     describeActivity('DISCOUNT_DELETE', null),
     describeActivity('LOGOUT', null),
+    describeActivity('VISIT', null),
     describeActivity('STAFF_JOIN', null),
     describeActivity('INVITE_RESEND', null),
     describeActivity('INVITE_REVOKE', null)
@@ -81,6 +82,7 @@ ok(
 );
 ok('staff null dilewati', describeActivity('STAFF_DELETE', { username: null, name: null }) === '');
 ok('logout tanpa ringkasan', describeActivity('LOGOUT', null) === '');
+ok('visit tanpa ringkasan', describeActivity('VISIT', null) === '');
 ok(
   'username change memakai panah',
   describeActivity('STAFF_USERNAME_CHANGE', { username: 'budi2', oldUsername: 'budi', name: 'Budi' }) === '@budi → @budi2'
@@ -113,6 +115,10 @@ ok('semua aksi valid diterima', ACTIVITY_ACTIONS.every((a) => isActivityAction(a
 ok(
   'filter aksi hanya berisi aksi valid',
   ACTION_FILTERS.every((f) => f.actions.every((a) => isActivityAction(a)))
+);
+ok(
+  'filter login mencakup visit',
+  ACTION_FILTERS.some((f) => f.key === 'login' && f.actions.includes('VISIT'))
 );
 
 let threwInvalid = false;

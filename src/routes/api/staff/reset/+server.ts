@@ -4,14 +4,14 @@ import { db } from '$lib/server/db';
 import { readJsonObject } from '$lib/server/http';
 import { user } from '$lib/server/db/schema';
 import { generateTempPassword } from '$lib/server/domains/invites';
-import { actorOf, recordActivity } from '$lib/server/domains/activity/log';
+import { actorOf, netOf, recordActivity } from '$lib/server/domains/activity/log';
 import { and, eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 // Reset password staff aktif yang lupa password: server set password sementara + cabut semua sesi staff.
 // Password sementara ditampilkan sekali ke owner; staff login pakai itu lalu wajib ganti sendiri di halaman Akun.
 // Beda dengan "Kirim ulang" di Undangan Pending (untuk akun belum jadi: link invite baru, bukan password).
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals, getClientAddress }) => {
   if (!locals.user || locals.user.role !== 'OWNER') {
     throw error(403, 'Cuma Owner yang bisa me-reset password staff.');
   }
@@ -46,6 +46,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   await recordActivity({
     businessId,
     actor: actorOf(locals.user!),
+    ...netOf({ request, getClientAddress }),
     action: 'STAFF_PASSWORD_RESET',
     entityType: 'user',
     entityId: id,
