@@ -1,4 +1,7 @@
 import { DEFAULT_TZ } from '$lib/shared/time';
+import { getLayoutInsights, getLayoutRestock } from '$lib/server/domains/stats';
+import type { BusinessInsight } from '$lib/analytics';
+import type { BellRestock } from '$lib/components/dashboard/insight-meta';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
@@ -8,10 +11,21 @@ export const load: LayoutServerLoad = async ({ locals }) => {
   // additionalFields better-auth (role/businessId) balik sebagai string biasa, bukan literal type; di-cast di sini, satu tempat.
   // Bisnis dibaca dari locals (diisi hooks) agar cukup satu query per request.
   const role = (sessionUser.role as 'OWNER' | 'STAFF' | null) ?? 'STAFF';
+  const timezone = locals.business?.timezone ?? DEFAULT_TZ;
+
+  // Lonceng (insight + restock) khusus owner: staff tak memuatnya dan tak melihat loncengnya.
+  const businessId = sessionUser.businessId as string | undefined;
+  let insights: BusinessInsight[] | undefined;
+  let restock: BellRestock | undefined;
+  if (role === 'OWNER' && businessId) {
+    [insights, restock] = await Promise.all([getLayoutInsights(businessId, timezone), getLayoutRestock(businessId)]);
+  }
 
   return {
     user: { ...sessionUser, role },
     businessName: locals.business?.name ?? null,
-    timezone: locals.business?.timezone ?? DEFAULT_TZ
+    timezone,
+    insights,
+    restock
   };
 };

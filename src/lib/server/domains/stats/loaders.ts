@@ -15,6 +15,7 @@ import {
   type ProductSummary
 } from '$lib/analytics';
 import { makeTime, type BizTz } from '$lib/shared/time';
+import type { BellRestock } from '$lib/components/dashboard/insight-meta';
 import { previousWindow, resolvePeriod } from '$lib/shared/period';
 import { queryFactsByDay, queryFactsByProduct } from '$lib/server/domains/facts/queries';
 import { queryRecentReceipts } from '$lib/server/domains/transactions/recent';
@@ -269,6 +270,50 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
     // lowMargin = getLowMarginProducts(cur, 0.15); margin = profit/revenue < 15%.
     lowMargin: getLowMarginProducts(cur, 0.15).map((p) => ({ name: p.name, margin: p.margin }))
   };
+}
+
+// Insight ringan untuk lonceng layout: cuma agregat 30 hari per produk,
+// tanpa KPI/chart/restock seperti data dashboard penuh.
+export async function getLayoutInsights(businessId: string, tz: BizTz) {
+  const T = makeTime(tz);
+  const now = new Date();
+  const curFrom = T.startOfDay(T.addDays(now, -29));
+  const [products, grouped] = await Promise.all([
+    db
+      .select({ id: product.id, name: product.name })
+      .from(product)
+      .where(eq(product.businessId, businessId)),
+    queryFactsByProduct(db, businessId, { from: curFrom, to: now })
+  ]);
+  const productNames = Object.fromEntries(products.map((p) => [p.id, p.name]));
+  return getBusinessInsights(summarizeFacts(grouped, productNames)).slice(0, 3);
+}
+
+// Ringkasan stok kritis untuk lonceng: 5 teratas + hitungan, tanpa data dashboard lain.
+export async function getLayoutRestock(businessId: string): Promise<BellRestock> {
+  const [list, counts] = await Promise.all([
+    db
+      .select({ id: product.id, name: product.name, stock: product.stock })
+      .from(product)
+      .where(
+        and(
+          eq(product.businessId, businessId),
+          eq(product.isActive, true),
+          sql`${product.stock} <= ${product.minStock}`
+        )
+      )
+      .orderBy(asc(product.stock))
+      .limit(5),
+    db
+      .select({
+        habis: sql<string>`count(*) filter (where ${product.stock} <= 0)::text`,
+        menipis: sql<string>`count(*) filter (where ${product.stock} > 0 and ${product.stock} <= ${product.minStock})::text`
+      })
+      .from(product)
+      .where(and(eq(product.businessId, businessId), eq(product.isActive, true)))
+  ]);
+  const c = counts[0];
+  return { list, habis: Number(c?.habis ?? 0), menipis: Number(c?.menipis ?? 0) };
 }
 
 export async function getDashboardPageData(businessId: string, tz: BizTz) {

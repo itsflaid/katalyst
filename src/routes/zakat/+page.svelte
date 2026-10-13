@@ -250,7 +250,7 @@
         >
           <div class="min-w-0 flex-1">
             <p
-              class="break-words text-[36px] font-extrabold leading-none tracking-tight text-ink-navy sm:text-[42px] lg:text-[48px]"
+              class="break-words text-[28px] font-extrabold leading-tight tracking-tight text-ink-navy sm:text-[42px] lg:text-[48px]"
             >
               {partial ? '~' : ''}{fmtRupiah(result.amount)}
             </p>
