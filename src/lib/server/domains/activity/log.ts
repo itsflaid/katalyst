@@ -1,10 +1,48 @@
 import { db } from '$lib/server/db';
 import { activityLog, user } from '$lib/server/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, gte, inArray } from 'drizzle-orm';
 import { activityRow, type ActivityInput } from './row';
 
 export type { ActivityInput };
 export { activityRow };
+
+// Kunjungan sesi yang masih login, terpisah dari LOGIN agar sesi lama yang dibuka ulang tetap terlihat.
+// Jendela 30 menit per perangkat: buka-tutup tab tidak membanjiri log, perangkat baru tetap tercatat.
+export async function recordVisit(s: {
+  businessId: string;
+  actor: ActivityInput['actor'];
+  ip?: string | null;
+  userAgent?: string | null;
+}): Promise<void> {
+  try {
+    if (!s.actor.id) return;
+    const ua = s.userAgent ?? null;
+    const recent = await db
+      .select({ userAgent: activityLog.userAgent })
+      .from(activityLog)
+      .where(
+        and(
+          eq(activityLog.businessId, s.businessId),
+          eq(activityLog.actorId, s.actor.id),
+          inArray(activityLog.action, ['LOGIN', 'VISIT']),
+          gte(activityLog.createdAt, new Date(Date.now() - 30 * 60 * 1000))
+        )
+      )
+      .limit(25);
+    if (recent.some((r) => r.userAgent === ua)) return;
+    await db.insert(activityLog).values(
+      activityRow({
+        businessId: s.businessId,
+        actor: s.actor,
+        action: 'VISIT',
+        ip: s.ip ?? null,
+        userAgent: ua
+      })
+    );
+  } catch (e) {
+    console.error('recordVisit gagal', e);
+  }
+}
 
 // Insert tunggal best-effort: kegagalan catat tidak boleh menggagalkan aksi utama.
 export async function recordActivity(input: ActivityInput): Promise<void> {
