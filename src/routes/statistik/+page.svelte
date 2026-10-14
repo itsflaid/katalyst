@@ -123,6 +123,33 @@
 {/if}
 
 {#key [data.range, data.rangeFrom, data.rangeTo, data.trend.labels.join(',')].join('|')}
+  <div class="grid grid-cols-2 gap-4 lg:grid-cols-4 mb-6">
+    <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
+      <p class="text-label-md uppercase text-white mb-1 truncate">Rata-rata struk</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words [overflow-wrap:anywhere]">{idr(Math.round(data.highlights.avgTicket))}</p>
+      <Badge tone={deltaTone(data.highlights.avgTicketDelta)}>{fmtDelta(data.highlights.avgTicketDelta)}</Badge>
+    </StatCard>
+    <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
+      <p class="text-label-md uppercase text-white mb-1 truncate">Hari tersibuk</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">{data.highlights.bestDayLabel}</p>
+      <p class="text-body-sm text-white/70 tabular break-words [overflow-wrap:anywhere]">{idr(data.highlights.bestDayRevenue)}</p>
+    </StatCard>
+    <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
+      <p class="text-label-md uppercase text-white mb-1 truncate">Margin tertinggi</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">{data.highlights.topMargin ? data.highlights.topMargin.name : '-'}</p>
+      {#if data.highlights.topMargin}
+        <p class="text-body-sm tabular break-words"><Badge tone="positive">{`${(data.highlights.topMargin.margin * 100).toFixed(1)}%`}</Badge></p>
+      {/if}
+    </StatCard>
+    <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
+      <p class="text-label-md uppercase text-white mb-1 truncate">Margin terendah</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">{data.highlights.lowMargin ? data.highlights.lowMargin.name : '-'}</p>
+      {#if data.highlights.lowMargin}
+        <p class="text-body-sm tabular break-words"><Badge tone="warning">{`${(data.highlights.lowMargin.margin * 100).toFixed(1)}%`}</Badge></p>
+      {/if}
+    </StatCard>
+  </div>
+
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
     <StatCard>
       <h2 class="text-headline-sm text-ink mb-1">Tren Revenue & Profit</h2>
@@ -155,33 +182,6 @@
           yFormat={perfMetric === 'margin' ? (v) => `${v}%` : fmtShort}
         />
       {/key}
-    </StatCard>
-  </div>
-
-  <div class="grid grid-cols-2 gap-4 lg:grid-cols-4 mb-6">
-    <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
-      <p class="text-label-md uppercase text-white mb-1 truncate">Rata-rata struk</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words [overflow-wrap:anywhere]">{idr(Math.round(data.highlights.avgTicket))}</p>
-      <Badge tone={deltaTone(data.highlights.avgTicketDelta)} class="rounded-full">{fmtDelta(data.highlights.avgTicketDelta)}</Badge>
-    </StatCard>
-    <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
-      <p class="text-label-md uppercase text-white mb-1 truncate">Hari tersibuk</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">{data.highlights.bestDayLabel}</p>
-      <p class="text-body-sm text-white/70 tabular break-words [overflow-wrap:anywhere]">{idr(data.highlights.bestDayRevenue)}</p>
-    </StatCard>
-    <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
-      <p class="text-label-md uppercase text-white mb-1 truncate">Margin tertinggi</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">{data.highlights.topMargin ? data.highlights.topMargin.name : '-'}</p>
-      {#if data.highlights.topMargin}
-        <p class="text-body-sm tabular break-words"><Badge tone="positive" class="rounded-full">{`${(data.highlights.topMargin.margin * 100).toFixed(1)}%`}</Badge></p>
-      {/if}
-    </StatCard>
-    <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
-      <p class="text-label-md uppercase text-white mb-1 truncate">Margin terendah</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">{data.highlights.lowMargin ? data.highlights.lowMargin.name : '-'}</p>
-      {#if data.highlights.lowMargin}
-        <p class="text-body-sm tabular break-words"><Badge tone="warning" class="rounded-full">{`${(data.highlights.lowMargin.margin * 100).toFixed(1)}%`}</Badge></p>
-      {/if}
     </StatCard>
   </div>
 
@@ -404,7 +404,7 @@
             <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(r.current.revenue)}</td>
             <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(r.current.profit)}</td>
             <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{(r.current.margin * 100).toFixed(1)}%</td>
-            <td class="px-3 py-2 whitespace-nowrap"><Badge size="sm" tone={deltaTone(r.change.profitChangePercent * 100)} class="rounded-full">{fmtDelta(r.change.profitChangePercent * 100)}</Badge></td>
+            <td class="px-3 py-2 whitespace-nowrap"><Badge size="sm" tone={deltaTone(r.change.profitChangePercent * 100)}>{fmtDelta(r.change.profitChangePercent * 100)}</Badge></td>
           </tr>
         {/each}
       </Table>
