@@ -36,21 +36,27 @@
 <div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4 mb-6">
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Revenue</p>
-    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words ">{idr(data.summary.revenue)}</p>
+    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{idr(data.summary.revenue)}</p>
     <p class="text-body-sm text-muted mb-1.5">30 hari terakhir</p>
-    <Badge tone={deltaTone(kpiDeltas.revenue)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.revenue)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge>
+    <Badge tone={deltaTone(kpiDeltas.revenue)} class="text-[11px] sm:text-label-md"
+      >{fmtDeltaShort(kpiDeltas.revenue)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge
+    >
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Transaksi</p>
     <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{num(data.transactionCount)}</p>
     <p class="text-body-sm text-muted mb-1.5">30 hari terakhir</p>
-    <Badge tone={deltaTone(kpiDeltas.transactions)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.transactions)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge>
+    <Badge tone={deltaTone(kpiDeltas.transactions)} class="text-[11px] sm:text-label-md"
+      >{fmtDeltaShort(kpiDeltas.transactions)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge
+    >
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Profit</p>
-    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words ">{idr(data.summary.profit)}</p>
+    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{idr(data.summary.profit)}</p>
     <p class="text-body-sm text-muted mb-1.5">30 hari terakhir</p>
-    <Badge tone={deltaTone(kpiDeltas.profit)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.profit)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge>
+    <Badge tone={deltaTone(kpiDeltas.profit)} class="text-[11px] sm:text-label-md"
+      >{fmtDeltaShort(kpiDeltas.profit)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge
+    >
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Margin</p>
@@ -66,22 +72,22 @@
       entrance tiap masuk halaman. -->
 {#key $page.url.pathname}
   <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
-  <Card>
-    <h2 class="text-headline-sm text-ink mb-1">Tren Revenue & Profit</h2>
-    <p class="text-body-sm text-muted mb-3">{data.trend.unitLabel} · 30 hari terakhir</p>
-    <LineChart
-      labels={trendLabels}
-      datasets={[
-        { label: 'Revenue', data: revenueTrend, color: '#172554' },
-        { label: 'Profit', data: profitTrend, color: '#16A34A' }
-      ]}
-    />
-  </Card>
-  <Card>
-    <h2 class="text-headline-sm text-ink mb-1">Revenue per Produk (Top 5)</h2>
-    <p class="text-body-sm text-muted mb-3">30 hari terakhir</p>
-    <BarChart labels={topProductLabels} data={topProductRevenue} />
-  </Card>
+    <Card>
+      <h2 class="text-headline-sm text-ink mb-1">Tren Revenue & Profit</h2>
+      <p class="text-body-sm text-muted mb-3">{data.trend.unitLabel} · 30 hari terakhir</p>
+      <LineChart
+        labels={trendLabels}
+        datasets={[
+          { label: 'Revenue', data: revenueTrend, color: '#172554' },
+          { label: 'Profit', data: profitTrend, color: '#16A34A' }
+        ]}
+      />
+    </Card>
+    <Card>
+      <h2 class="text-headline-sm text-ink mb-1">Revenue per Produk (Top 5)</h2>
+      <p class="text-body-sm text-muted mb-3">30 hari terakhir</p>
+      <BarChart labels={topProductLabels} data={topProductRevenue} />
+    </Card>
   </div>
 {/key}
 
@@ -92,7 +98,9 @@
       <div class="flex items-center justify-between gap-3 border-b border-white bg-ink-navy px-5 py-3">
         <h2 class="text-headline-sm text-white">Transaksi Terbaru</h2>
         {#if data.recentTransactions.length > 0}
-          <a href="/transactions" class="shrink-0 text-body-sm font-semibold text-white/85 hover:text-white hover:underline no-underline">Lihat lainnya →</a>
+          <a href="/transactions" class="shrink-0 text-body-sm font-semibold text-white/85 hover:text-white hover:underline no-underline"
+            >Lihat lainnya →</a
+          >
         {/if}
       </div>
       {#if data.recentTransactions.length === 0}
@@ -123,16 +131,22 @@
       <p class="text-body-sm text-white/65 mb-4">Tanya apa aja soal performa bisnismu bulan ini.</p>
 
       <div class="flex flex-col gap-2 mb-4">
-        <a href={handoffUrl('Produk mana yang marginnya paling tipis?')} class="block rounded border border-white/10 bg-white/5 px-3 py-2 text-body-sm text-white/85 no-underline hover:bg-white/10">
+        <a
+          href={handoffUrl('Produk mana yang marginnya paling tipis?')}
+          class="block rounded border border-white/10 bg-white/5 px-3 py-2 text-body-sm text-white/85 no-underline hover:bg-white/10"
+        >
           "Produk mana yang marginnya paling tipis?"
         </a>
-        <a href={handoffUrl('Kenapa profit bulan ini turun?')} class="block rounded border border-white/10 bg-white/5 px-3 py-2 text-body-sm text-white/85 no-underline hover:bg-white/10">
+        <a
+          href={handoffUrl('Kenapa profit bulan ini turun?')}
+          class="block rounded border border-white/10 bg-white/5 px-3 py-2 text-body-sm text-white/85 no-underline hover:bg-white/10"
+        >
           "Kenapa profit bulan ini turun?"
         </a>
       </div>
 
-      
-      <a  href="/copilot"
+      <a
+        href="/copilot"
         class="mt-auto flex items-center justify-center gap-2 rounded bg-status-positive text-white text-body-md font-semibold py-2 no-underline hover:opacity-90"
       >
         Buka Copilot

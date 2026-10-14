@@ -15,8 +15,7 @@ const PAGE_SIZE = 20;
 
 // Format Rp ala kasir (duplikat kecil dari +page.svelte biar pesan server
 // tidak bergantung pada helper client).
-const idr = (n: number) =>
-  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
+const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
 
 // CHECK ..._nonneg / ..._not_exceeded (SQLSTATE 23514) meledak kalau stok terpotong minus atau kuota diskon terlampaui, ada kasir lain yang menghabiskan stok/kuota di sela validasi dan penyimpanan.
 // Bentuk error beda antar driver/versi (kode di error langsung atau di `cause`), jadi nama constraint dicari di keduanya.
@@ -174,13 +173,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       createdAt: discount.createdAt
     })
     .from(discount)
-    .where(
-      and(
-        eq(discount.businessId, businessId),
-        eq(discount.isActive, true),
-        or(sql`${discount.endsAt} is null`, gte(discount.endsAt, now))
-      )
-    );
+    .where(and(eq(discount.businessId, businessId), eq(discount.isActive, true), or(sql`${discount.endsAt} is null`, gte(discount.endsAt, now))));
   const discounts = discountRows.map((d) => ({
     ...d,
     startsAt: d.startsAt.toISOString(),
@@ -188,7 +181,19 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     createdAt: d.createdAt.toISOString()
   }));
 
-  return { receipts, products, page, hasMore, staffOptions, kasir, rangeFrom, rangeTo, timezone: locals.business?.timezone ?? DEFAULT_TZ, serverNow: Date.now(), discounts };
+  return {
+    receipts,
+    products,
+    page,
+    hasMore,
+    staffOptions,
+    kasir,
+    rangeFrom,
+    rangeTo,
+    timezone: locals.business?.timezone ?? DEFAULT_TZ,
+    serverNow: Date.now(),
+    discounts
+  };
 };
 
 export const actions: Actions = {
@@ -261,9 +266,7 @@ export const actions: Actions = {
 
     const byId = new Map(dbProducts.map((p) => [p.id, p]));
     const cashierName =
-      (locals.user?.name as string | null | undefined) ??
-      ((locals.user as { username?: string | null } | null | undefined)?.username) ??
-      null;
+      (locals.user?.name as string | null | undefined) ?? (locals.user as { username?: string | null } | null | undefined)?.username ?? null;
 
     // neon-http tidak punya db.transaction interaktif; db.batch([...]) menjalankan semua statement dalam satu transaksi: struk, item, stok, ledger, dan quota diskon masuk semua atau tidak sama sekali.
     // now dipakai sebagai createdAt struk sekaligus jam cek diskon.

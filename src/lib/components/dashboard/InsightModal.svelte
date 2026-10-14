@@ -62,7 +62,9 @@
             role="tab"
             aria-selected={tab === 'insight'}
             on:click={() => (tab = 'insight')}
-            class="relative z-10 h-9 cursor-pointer rounded-full border-none text-body-md transition-colors {tab === 'insight' ? 'bg-transparent font-semibold text-ink' : 'bg-transparent font-medium text-white/80 hover:text-white'}"
+            class="relative z-10 h-9 cursor-pointer rounded-full border-none text-body-md transition-colors {tab === 'insight'
+              ? 'bg-transparent font-semibold text-ink'
+              : 'bg-transparent font-medium text-white/80 hover:text-white'}"
           >
             Insight
           </button>
@@ -71,7 +73,9 @@
             role="tab"
             aria-selected={tab === 'stok'}
             on:click={() => (tab = 'stok')}
-            class="relative z-10 h-9 cursor-pointer rounded-full border-none text-body-md transition-colors {tab === 'stok' ? 'bg-transparent font-semibold text-ink' : 'bg-transparent font-medium text-white/80 hover:text-white'}"
+            class="relative z-10 h-9 cursor-pointer rounded-full border-none text-body-md transition-colors {tab === 'stok'
+              ? 'bg-transparent font-semibold text-ink'
+              : 'bg-transparent font-medium text-white/80 hover:text-white'}"
           >
             Stok
           </button>
@@ -96,12 +100,15 @@
                 <ul class="flex flex-col">
                   {#each insights as ins (`${ins.type}:${ins.productId}`)}
                     <li class="flex gap-3 border-b border-table-divider py-3 first:pt-0 last:border-b-0 last:pb-0">
-                      <span class="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border-cool bg-white text-ink-navy shadow-level1">
+                      <span
+                        class="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border-cool bg-white text-ink-navy shadow-level1"
+                      >
                         <Lightbulb size={22} aria-hidden="true" />
                       </span>
                       <div class="min-w-0 flex-1">
                         <p class="flex items-center gap-2 text-body-md font-bold text-ink">
-                          <span class="h-2 w-2 shrink-0 rounded-full bg-status-positive-border" aria-hidden="true"></span>{INSIGHT_META[ins.type].title}
+                          <span class="h-2 w-2 shrink-0 rounded-full bg-status-positive-border" aria-hidden="true"></span>{INSIGHT_META[ins.type]
+                            .title}
                         </p>
                         <p class="mt-1 text-body-sm text-muted">{ins.message}</p>
                       </div>
@@ -117,36 +124,36 @@
                   <p class="text-body-sm text-muted">Belum ada temuan dari penjualan periode ini.</p>
                 </div>
               {/if}
+            {:else if showRestock}
+              <p class="text-body-sm text-muted">{restock?.habis} habis · {restock?.menipis} menipis</p>
+              <ul class="mt-1 flex flex-col">
+                {#each restock?.list ?? [] as p (p.id)}
+                  <li class="flex items-center gap-3 border-b border-table-divider py-3 last:border-b-0">
+                    <span
+                      class="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border-cool bg-white text-ink-navy shadow-level1"
+                    >
+                      <Package size={22} aria-hidden="true" />
+                    </span>
+                    <span class="min-w-0 flex-1 truncate text-body-md font-medium text-ink">{p.name}</span>
+                    <Badge size="sm" tone={p.stock <= 0 ? 'negative' : 'warning'}>Stok {p.stock}</Badge>
+                  </li>
+                {/each}
+              </ul>
+              <a
+                href="/products?stok=restock"
+                class="mt-2 inline-block text-body-sm font-semibold text-ink-navy hover:underline no-underline"
+                on:click={onClose}
+              >
+                Lihat semua yang perlu restock →
+              </a>
             {:else}
-              {#if showRestock}
-                <p class="text-body-sm text-muted">{restock?.habis} habis · {restock?.menipis} menipis</p>
-                <ul class="mt-1 flex flex-col">
-                  {#each restock?.list ?? [] as p (p.id)}
-                    <li class="flex items-center gap-3 border-b border-table-divider py-3 last:border-b-0">
-                      <span class="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border-cool bg-white text-ink-navy shadow-level1">
-                        <Package size={22} aria-hidden="true" />
-                      </span>
-                      <span class="min-w-0 flex-1 truncate text-body-md font-medium text-ink">{p.name}</span>
-                      <Badge size="sm" tone={p.stock <= 0 ? 'negative' : 'warning'}>Stok {p.stock}</Badge>
-                    </li>
-                  {/each}
-                </ul>
-                <a
-                  href="/products?stok=restock"
-                  class="mt-2 inline-block text-body-sm font-semibold text-ink-navy hover:underline no-underline"
-                  on:click={onClose}
-                >
-                  Lihat semua yang perlu restock →
-                </a>
-              {:else}
-                <div class="flex flex-col items-center gap-2 py-10 text-center">
-                  <span class="grid h-16 w-16 place-items-center rounded-full bg-table-header text-muted">
-                    <Package size={30} aria-hidden="true" />
-                  </span>
-                  <p class="text-body-md font-semibold text-ink">Semua stok aman</p>
-                  <p class="text-body-sm text-muted">Tidak ada produk habis atau menipis.</p>
-                </div>
-              {/if}
+              <div class="flex flex-col items-center gap-2 py-10 text-center">
+                <span class="grid h-16 w-16 place-items-center rounded-full bg-table-header text-muted">
+                  <Package size={30} aria-hidden="true" />
+                </span>
+                <p class="text-body-md font-semibold text-ink">Semua stok aman</p>
+                <p class="text-body-sm text-muted">Tidak ada produk habis atau menipis.</p>
+              </div>
             {/if}
           </div>
         {/key}

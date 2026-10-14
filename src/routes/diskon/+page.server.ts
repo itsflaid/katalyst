@@ -45,9 +45,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     createdAt: d.createdAt.toISOString()
   }));
 
-  const tab: Tab = (TABS as readonly string[]).includes(url.searchParams.get('tab') ?? '')
-    ? (url.searchParams.get('tab') as Tab)
-    : 'aktif';
+  const tab: Tab = (TABS as readonly string[]).includes(url.searchParams.get('tab') ?? '') ? (url.searchParams.get('tab') as Tab) : 'aktif';
   const counts = {
     aktif: discounts.filter((d) => d.status === 'ACTIVE').length,
     terjadwal: discounts.filter((d) => d.status === 'SCHEDULED').length,

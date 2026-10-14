@@ -32,10 +32,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   if (to) conditions.push(lte(stockMovement.createdAt, to));
 
   const [products, rows, sums] = await Promise.all([
-    db
-      .select({ id: product.id, name: product.name })
-      .from(product)
-      .where(eq(product.businessId, businessId)),
+    db.select({ id: product.id, name: product.name }).from(product).where(eq(product.businessId, businessId)),
     db
       .select({
         id: stockMovement.id,

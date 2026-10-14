@@ -11,11 +11,7 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals }) => {
   const businessId = locals.user!.businessId as string;
   // Urutan tetap: tanpa ORDER BY, baris yang di-UPDATE pindah posisi dan daftar tampak tertukar.
-  const products = await db
-    .select()
-    .from(product)
-    .where(eq(product.businessId, businessId))
-    .orderBy(asc(product.createdAt), asc(product.id));
+  const products = await db.select().from(product).where(eq(product.businessId, businessId)).orderBy(asc(product.createdAt), asc(product.id));
   // role ikut dikirim biar UI bisa menyembunyikan aksi yang memang ditolak server.
   const role: 'OWNER' | 'STAFF' = locals.user!.role === 'OWNER' ? 'OWNER' : 'STAFF';
   return { products, role };
@@ -37,9 +33,7 @@ export const actions: Actions = {
     if ('error' in initial) return fail(400, { for: 'create', message: initial.error });
 
     const id = crypto.randomUUID();
-    const insertProduct = db
-      .insert(product)
-      .values({ id, businessId, ...parsed.data, stock: initial.data });
+    const insertProduct = db.insert(product).values({ id, businessId, ...parsed.data, stock: initial.data });
 
     if (initial.data > 0) {
       // Stok awal ikut dicatat di ledger biar saldo stok bisa ditelusuri
@@ -159,11 +153,7 @@ export const actions: Actions = {
 
     // Riwayat penjualan (item struk atau ledger SALE/VOID_RESTORE) tidak boleh hilang.
     // Ledger RESTOCK/ADJUST milik produk yang belum pernah terjual ikut dibersihkan; kalau tidak, stok awal di ledger bikin produk salah input tak bisa dihapus karena FK.
-    const [sold] = await db
-      .select({ id: transactionItem.id })
-      .from(transactionItem)
-      .where(eq(transactionItem.productId, id))
-      .limit(1);
+    const [sold] = await db.select({ id: transactionItem.id }).from(transactionItem).where(eq(transactionItem.productId, id)).limit(1);
     const [moved] = await db
       .select({ id: stockMovement.id })
       .from(stockMovement)
@@ -250,8 +240,8 @@ export const actions: Actions = {
     if (stock === existing.stock) return fail(400, { for: 'adjust', message: 'Tidak ada perubahan.' });
 
     await db.batch([
-  // Ledger diproses lebih awal: selisih dihitung di DB dari stok saat statement ini jalan, bukan dari angka yang kita baca tadi.
-  // Jadi tetap benar kalau ada penjualan di sela-sela. Statement berikutnya baru set stoknya.
+      // Ledger diproses lebih awal: selisih dihitung di DB dari stok saat statement ini jalan, bukan dari angka yang kita baca tadi.
+      // Jadi tetap benar kalau ada penjualan di sela-sela. Statement berikutnya baru set stoknya.
       db.insert(stockMovement).values({
         id: crypto.randomUUID(),
         businessId,

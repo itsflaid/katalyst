@@ -22,8 +22,7 @@
   const num = (n: number) => numFmt.format(n);
   const deltaTone = (d: number | null) => (d === null || d >= 0 ? 'positive' : 'negative');
   const fmtDelta = (d: number | null) => (d === null ? 'baru' : `${d >= 0 ? '+' : ''}${d.toFixed(1)}%`);
-  const fmtShort = (v: number) =>
-    v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)} jt` : v >= 1_000 ? `${Math.round(v / 1_000)} rb` : `${v}`;
+  const fmtShort = (v: number) => (v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)} jt` : v >= 1_000 ? `${Math.round(v / 1_000)} rb` : `${v}`);
 
   $: activeRange = data.range ?? '30d';
   let fromInput: string = data.rangeFrom ?? '';
@@ -61,40 +60,40 @@
   $: avgTicketFlat = data.avgTicketPerDay.data.map((v) => v ?? 0);
   // Sumbu chart berlabel satuan pendek (jt/rb/Rp) biar tak dikira persen.
   $: avgTick = (v: number) => `${v} ${data.avgTicketPerDay.unitLabel.split(' ')[0]}`;
-  const rangeNames: Record<string, string> = { today: 'Hari ini', week: 'Minggu ini', '7d': '7 hari', '30d': '30 hari', month: 'Bulan ini', custom: 'Custom' };
+  const rangeNames: Record<string, string> = {
+    today: 'Hari ini',
+    week: 'Minggu ini',
+    '7d': '7 hari',
+    '30d': '30 hari',
+    month: 'Bulan ini',
+    custom: 'Custom'
+  };
 
   let showPeriodSheet = false;
 
   // Kartu "Performa per Produk": satu kartu + toggle metrik (client-side).
   let perfMetric: 'revenue' | 'profit' | 'margin' = 'revenue';
   $: perfSorted = [...data.productPerf]
-    .sort((a, b) =>
-      perfMetric === 'revenue' ? b.revenue - a.revenue : perfMetric === 'profit' ? b.profit - a.profit : b.margin - a.margin
-    )
+    .sort((a, b) => (perfMetric === 'revenue' ? b.revenue - a.revenue : perfMetric === 'profit' ? b.profit - a.profit : b.margin - a.margin))
     .slice(0, 8);
   $: perfUnit = perfMetric === 'margin' ? '% · 8 teratas' : `${perfMetric === 'revenue' ? 'Nominal' : 'Nominal'} · 8 teratas`;
   const perfBtn = (current: 'revenue' | 'profit' | 'margin', key: 'revenue' | 'profit' | 'margin') =>
     `rounded-[5px] border border-border-stat px-2.5 py-1 text-body-sm ${current === key ? 'bg-ink-navy text-white font-semibold' : 'bg-surface text-ink hover:bg-table-header'}`;
 
   // Warna per-bar chart estimasi hari stok: ≤3 hari merah, ≤7 amber, sisanya navy.
-  $: daysColors = data.inventory.daysList.map((p) =>
-    p.days <= 3 ? '#DC2626' : p.days <= 7 ? '#B45309' : '#172554'
-  );
+  $: daysColors = data.inventory.daysList.map((p) => (p.days <= 3 ? '#DC2626' : p.days <= 7 ? '#B45309' : '#172554'));
 </script>
 
 <PageHeader title="Statistik" subtitle="Laporan performa per periode, delta selalu dibanding periode sebelumnya yang sama panjang." />
 
 <StatCard class="mb-6 p-0">
-  <StatFilterBar
-    {activeRange}
-    rangeLabel={data.rangeLabel}
-    bind:fromInput
-    bind:toInput
-    onSelect={(k) => goWithRange(k)}
-    onApply={applyCustom}
-  />
+  <StatFilterBar {activeRange} rangeLabel={data.rangeLabel} bind:fromInput bind:toInput onSelect={(k) => goWithRange(k)} onApply={applyCustom} />
   <div class="sm:hidden flex flex-col gap-2 p-5">
-    <button type="button" on:click={() => (showPeriodSheet = true)} class="inline-flex h-9 items-center justify-between rounded border border-border-input bg-white px-3 text-body-md text-ink">
+    <button
+      type="button"
+      on:click={() => (showPeriodSheet = true)}
+      class="inline-flex h-9 items-center justify-between rounded border border-border-input bg-white px-3 text-body-md text-ink"
+    >
       <span>Periode: <strong>{rangeNames[activeRange] ?? '30 hari'}</strong></span>
       <span aria-hidden="true" class="text-muted">▾</span>
     </button>
@@ -115,11 +114,22 @@
       <div class="flex flex-col gap-2 rounded border border-border-cool p-3">
         <label class="flex flex-col gap-1 text-body-md text-ink">
           Dari
-          <input type="date" bind:value={fromInput} on:change={syncFrom} class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink" />
+          <input
+            type="date"
+            bind:value={fromInput}
+            on:change={syncFrom}
+            class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink"
+          />
         </label>
         <label class="flex flex-col gap-1 text-body-md text-ink">
           Sampai
-          <input type="date" bind:value={toInput} on:change={syncTo} min={fromInput || undefined} class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink" />
+          <input
+            type="date"
+            bind:value={toInput}
+            on:change={syncTo}
+            min={fromInput || undefined}
+            class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink"
+          />
         </label>
       </div>
     </div>
@@ -130,7 +140,9 @@
   <div class="grid grid-cols-2 gap-4 lg:grid-cols-4 mb-6">
     <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
       <p class="text-label-md uppercase text-white mb-1 truncate">Rata-rata struk</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words [overflow-wrap:anywhere]">{idr(Math.round(data.highlights.avgTicket))}</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words [overflow-wrap:anywhere]">
+        {idr(Math.round(data.highlights.avgTicket))}
+      </p>
       <Badge tone={deltaTone(data.highlights.avgTicketDelta)}>{fmtDelta(data.highlights.avgTicketDelta)}</Badge>
     </StatCard>
     <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
@@ -140,14 +152,18 @@
     </StatCard>
     <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
       <p class="text-label-md uppercase text-white mb-1 truncate">Margin tertinggi</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">{data.highlights.topMargin ? data.highlights.topMargin.name : '-'}</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">
+        {data.highlights.topMargin ? data.highlights.topMargin.name : '-'}
+      </p>
       {#if data.highlights.topMargin}
         <p class="text-body-sm tabular break-words"><Badge tone="positive">{`${(data.highlights.topMargin.margin * 100).toFixed(1)}%`}</Badge></p>
       {/if}
     </StatCard>
     <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
       <p class="text-label-md uppercase text-white mb-1 truncate">Margin terendah</p>
-      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">{data.highlights.lowMargin ? data.highlights.lowMargin.name : '-'}</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">
+        {data.highlights.lowMargin ? data.highlights.lowMargin.name : '-'}
+      </p>
       {#if data.highlights.lowMargin}
         <p class="text-body-sm tabular break-words"><Badge tone="warning">{`${(data.highlights.lowMargin.margin * 100).toFixed(1)}%`}</Badge></p>
       {/if}
@@ -217,10 +233,7 @@
     <StatCard>
       <h2 class="text-headline-sm text-ink mb-1">Tren Margin</h2>
       <p class="text-body-sm text-muted mb-3">% per hari · {data.rangeLabel}</p>
-      <LineChart
-        labels={data.trend.labels}
-        datasets={[{ label: 'Margin', data: data.marginTrend, color: '#B45309' }]}
-      />
+      <LineChart labels={data.trend.labels} datasets={[{ label: 'Margin', data: data.marginTrend, color: '#B45309' }]} />
     </StatCard>
     <StatCard>
       <h2 class="text-headline-sm text-ink mb-1">Hari dalam Seminggu</h2>
@@ -243,13 +256,7 @@
     <StatCard class="mb-6">
       <h2 class="text-headline-sm text-ink mb-1">Matriks Volume vs Margin</h2>
       <p class="text-body-sm text-muted mb-3">Ukuran titik = revenue · garis = median qty & margin periode · klik titik untuk simulasi</p>
-      <ScatterChart
-        points={data.matrix.points}
-        xLabel="Terjual (qty)"
-        yLabel="Margin (%)"
-        xLine={data.matrix.xLine}
-        yLine={data.matrix.yLine}
-      />
+      <ScatterChart points={data.matrix.points} xLabel="Terjual (qty)" yLabel="Margin (%)" xLine={data.matrix.xLine} yLine={data.matrix.yLine} />
       <div class="grid grid-cols-1 sm:grid-cols-2 sm:grid-flow-col sm:grid-rows-2 gap-2 mt-3 text-body-sm text-muted">
         <p><strong class="text-ink">Bintang</strong> (kanan atas): laku & margin baik, jaga stok.</p>
         <p><strong class="text-ink">Margin bagus, kurang laku</strong> (kiri atas): butuh promosi.</p>
@@ -304,7 +311,9 @@
   <div class="grid grid-cols-2 lg:grid-cols-[2.2fr_1fr_1fr_1fr] gap-4 mb-4">
     <StatCard class="min-w-0 overflow-hidden text-center">
       <p class="text-label-md uppercase text-ink-navy mb-1">Nilai stok</p>
-      <p class="text-num-display lg:text-[60px] font-bold leading-none text-ink-navy tabular break-words [overflow-wrap:anywhere]">{idr(data.inventory.stockValue)}</p>
+      <p class="text-num-display lg:text-[60px] font-bold leading-none text-ink-navy tabular break-words [overflow-wrap:anywhere]">
+        {idr(data.inventory.stockValue)}
+      </p>
     </StatCard>
     <StatCard tone="navy" class="min-w-0 overflow-hidden text-center">
       <p class="text-label-md uppercase text-white mb-1">Habis</p>
@@ -323,7 +332,9 @@
     </StatCard>
   </div>
   {#if data.inventory.inactiveStock.count > 0}
-    <p class="text-body-sm text-muted mb-4">Stok di produk nonaktif: {idr(data.inventory.inactiveStock.value)} ({num(data.inventory.inactiveStock.count)} produk)</p>
+    <p class="text-body-sm text-muted mb-4">
+      Stok di produk nonaktif: {idr(data.inventory.inactiveStock.value)} ({num(data.inventory.inactiveStock.count)} produk)
+    </p>
   {/if}
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
     <StatCard>
@@ -333,8 +344,12 @@
           <p class="text-body-sm text-muted">8 produk paling mendesak</p>
         </div>
         <div class="flex items-center gap-3 text-body-sm text-muted">
-          <span class="inline-flex items-center gap-1.5"><span class="inline-block h-[14px] w-[14px] rounded-[3px]" style="background-color: #DC2626;"></span>≤3 hari</span>
-          <span class="inline-flex items-center gap-1.5"><span class="inline-block h-[14px] w-[14px] rounded-[3px]" style="background-color: #B45309;"></span>≤7 hari</span>
+          <span class="inline-flex items-center gap-1.5"
+            ><span class="inline-block h-[14px] w-[14px] rounded-[3px]" style="background-color: #DC2626;"></span>≤3 hari</span
+          >
+          <span class="inline-flex items-center gap-1.5"
+            ><span class="inline-block h-[14px] w-[14px] rounded-[3px]" style="background-color: #B45309;"></span>≤7 hari</span
+          >
         </div>
       </div>
       {#if data.inventory.daysList.length > 0}
@@ -409,7 +424,9 @@
             <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(r.current.revenue)}</td>
             <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(r.current.profit)}</td>
             <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{(r.current.margin * 100).toFixed(1)}%</td>
-            <td class="px-3 py-2 whitespace-nowrap"><Badge size="sm" tone={deltaTone(r.change.profitChangePercent * 100)}>{fmtDelta(r.change.profitChangePercent * 100)}</Badge></td>
+            <td class="px-3 py-2 whitespace-nowrap"
+              ><Badge size="sm" tone={deltaTone(r.change.profitChangePercent * 100)}>{fmtDelta(r.change.profitChangePercent * 100)}</Badge></td
+            >
           </tr>
         {/each}
       </Table>

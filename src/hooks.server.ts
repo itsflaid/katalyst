@@ -47,9 +47,7 @@ export const handle: Handle = async ({ event, resolve }) => {
       .select({ id: business.id, name: business.name, timezone: business.timezone })
       .from(business)
       .where(eq(business.id, businessId));
-    event.locals.business = b
-      ? { id: b.id, name: b.name, timezone: isBizTz(b.timezone) ? b.timezone : DEFAULT_TZ }
-      : null;
+    event.locals.business = b ? { id: b.id, name: b.name, timezone: isBizTz(b.timezone) ? b.timezone : DEFAULT_TZ } : null;
   }
 
   // Delegasi ke better-auth buat nangani route /api/auth/* secara internal
@@ -72,8 +70,7 @@ function trackVisit(event: RequestEvent, path: string): void {
     actor: actorOf(u),
     ...netOf(event)
   });
-  const ctx = (event.platform as { context?: { waitUntil?: (p: Promise<unknown>) => void } } | null | undefined)
-    ?.context;
+  const ctx = (event.platform as { context?: { waitUntil?: (p: Promise<unknown>) => void } } | null | undefined)?.context;
   // Dipanggil sebagai method: dilepas dari context melempar Illegal invocation.
   try {
     ctx?.waitUntil?.(task);

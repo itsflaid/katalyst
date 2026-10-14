@@ -88,11 +88,7 @@
   </label>
   <label for="business-tz" class="flex flex-col gap-1 text-sm">
     Zona Waktu
-    <select
-      id="business-tz"
-      bind:value={tz}
-      class="h-9 rounded border border-border-input bg-white px-3 text-body-md text-ink"
-    >
+    <select id="business-tz" bind:value={tz} class="h-9 rounded border border-border-input bg-white px-3 text-body-md text-ink">
       {#each Object.entries(TZ_INFO) as [value, info]}
         <option {value}>{info.label}</option>
       {/each}

@@ -35,10 +35,7 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
   }
 
   await db.update(business).set(patch).where(eq(business.id, locals.user.businessId));
-  const [b] = await db
-    .select({ name: business.name, timezone: business.timezone })
-    .from(business)
-    .where(eq(business.id, locals.user.businessId));
+  const [b] = await db.select({ name: business.name, timezone: business.timezone }).from(business).where(eq(business.id, locals.user.businessId));
 
   return json({ name: b?.name ?? patch.name ?? '', timezone: b?.timezone ?? patch.timezone ?? DEFAULT_TZ });
 };

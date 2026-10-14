@@ -40,7 +40,10 @@ async function main() {
     await db.transaction(async (tx) => {
       const bizA = randomUUID();
       const bizB = randomUUID();
-      await tx.insert(business).values([{ id: bizA, name: 'Bisnis A' }, { id: bizB, name: 'Bisnis B' }]);
+      await tx.insert(business).values([
+        { id: bizA, name: 'Bisnis A' },
+        { id: bizB, name: 'Bisnis B' }
+      ]);
 
       const c1 = await createConversation(tx, bizA, randomUUID());
       ok('judul awal Percakapan baru', c1.title === 'Percakapan baru');
@@ -70,7 +73,10 @@ async function main() {
       await addMessage(tx, bizA, c1.id, { id: ids.u2, role: 'user', content: 'lalu apa?' });
       const base = Date.now();
       for (const [i, id] of [ids.u1, ids.t1, ids.a1, ids.n1, ids.u2].entries()) {
-        await tx.update(copilotMessage).set({ createdAt: new Date(base + i * 1000) }).where(eq(copilotMessage.id, id));
+        await tx
+          .update(copilotMessage)
+          .set({ createdAt: new Date(base + i * 1000) })
+          .where(eq(copilotMessage.id, id));
       }
       await renameFromFirstMessage(tx, bizA, c1.id, 'omzet bulan ini?');
 
@@ -85,7 +91,10 @@ async function main() {
 
       const bigId = randomUUID();
       const big = await addMessage(tx, bizA, c1.id, { id: bigId, role: 'user', content: 'y'.repeat(9000) });
-      await tx.update(copilotMessage).set({ createdAt: new Date(base + 9000) }).where(eq(copilotMessage.id, bigId));
+      await tx
+        .update(copilotMessage)
+        .set({ createdAt: new Date(base + 9000) })
+        .where(eq(copilotMessage.id, bigId));
       const afterBig = await getConversation(tx, bizA, c1.id);
       const lastUser = afterBig?.messages.filter((m) => m.role === 'user').pop();
       ok('konten dipotong 8000', big && (lastUser?.content.length ?? 0) === 8000, String(lastUser?.content.length));

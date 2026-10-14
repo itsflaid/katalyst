@@ -1,5 +1,16 @@
 // Verifikasi modul src/lib/discount.ts: 17 kasus angka + properti 200 iterasi.
-import { calculateCart, type CartLineIn, type DiscountLike, unitDiscount, getDiscountStatus, remainingQuota, isBelowCost, resolveWindow, type WindowPreset, quotaDeltas } from '../src/lib/discount';
+import {
+  calculateCart,
+  type CartLineIn,
+  type DiscountLike,
+  unitDiscount,
+  getDiscountStatus,
+  remainingQuota,
+  isBelowCost,
+  resolveWindow,
+  type WindowPreset,
+  quotaDeltas
+} from '../src/lib/discount';
 import { EXCLUSION_VIOLATION, overlapDbMessage } from '../src/lib/server/domains/discounts/errors';
 import { makeTime, type BizTime } from '../src/lib/shared/time';
 
@@ -50,12 +61,21 @@ ok('kuota null, qty=3, harga=10000, 15% → amount=4500, net=25500', cart2Out.li
 const prodDiscQuota: DiscountLike = { ...prodDisc, id: 'd2', quota: 5, quotaUsed: 0 };
 const cart3: CartLineIn[] = [{ productId: 'p1', qty: 8, price: 10000 }];
 const cart3Out = calculateCart(cart3, { productDiscounts: [prodDiscQuota], global: null, now });
-ok('quota=5, used=0, qty=8 → discountedQty=5, amount=7500, partial=true, net=72500', cart3Out.lines[0].discountedQty === 5 && cart3Out.lines[0].discountAmount === 7500 && cart3Out.lines[0].partial === true && cart3Out.lines[0].net === 72500);
+ok(
+  'quota=5, used=0, qty=8 → discountedQty=5, amount=7500, partial=true, net=72500',
+  cart3Out.lines[0].discountedQty === 5 &&
+    cart3Out.lines[0].discountAmount === 7500 &&
+    cart3Out.lines[0].partial === true &&
+    cart3Out.lines[0].net === 72500
+);
 
 const prodDiscQuota2: DiscountLike = { ...prodDisc, id: 'd3', quota: 100, quotaUsed: 98 };
 const cart4: CartLineIn[] = [{ productId: 'p1', qty: 5, price: 10000 }];
 const cart4Out = calculateCart(cart4, { productDiscounts: [prodDiscQuota2], global: null, now });
-ok('quota=100, used=98, qty=5 → discountedQty=2, amount=3000, net=47000', cart4Out.lines[0].discountedQty === 2 && cart4Out.lines[0].discountAmount === 3000 && cart4Out.lines[0].net === 47000);
+ok(
+  'quota=100, used=98, qty=5 → discountedQty=2, amount=3000, net=47000',
+  cart4Out.lines[0].discountedQty === 2 && cart4Out.lines[0].discountAmount === 3000 && cart4Out.lines[0].net === 47000
+);
 
 const prodDiscSoldOut: DiscountLike = { ...prodDisc, id: 'd4', quota: 5, quotaUsed: 5 };
 const cart5: CartLineIn[] = [{ productId: 'p1', qty: 3, price: 10000 }];
@@ -72,15 +92,38 @@ const exactEndDisc: DiscountLike = { ...prodDisc, id: 'd6', startsAt: new Date(n
 const activeAtEnd = getDiscountStatus(exactEndDisc, now);
 ok('now == endsAt → ACTIVE', activeAtEnd === 'ACTIVE');
 
-const afterEndDisc: DiscountLike = { ...prodDisc, id: 'd7', startsAt: new Date(now.getTime() - 3600_000), endsAt: new Date(now.getTime() - 1), quota: null, quotaUsed: 0 };
+const afterEndDisc: DiscountLike = {
+  ...prodDisc,
+  id: 'd7',
+  startsAt: new Date(now.getTime() - 3600_000),
+  endsAt: new Date(now.getTime() - 1),
+  quota: null,
+  quotaUsed: 0
+};
 const expired = getDiscountStatus(afterEndDisc, now);
 ok('now == endsAt+1ms → EXPIRED', expired === 'EXPIRED');
 
-const inactiveDisc: DiscountLike = { ...prodDisc, id: 'd8', isActive: false, startsAt: new Date(now.getTime() - 7200_000), endsAt: new Date(now.getTime() - 3600_000), quota: null, quotaUsed: 5 };
+const inactiveDisc: DiscountLike = {
+  ...prodDisc,
+  id: 'd8',
+  isActive: false,
+  startsAt: new Date(now.getTime() - 7200_000),
+  endsAt: new Date(now.getTime() - 3600_000),
+  quota: null,
+  quotaUsed: 5
+};
 const inactiveStatus = getDiscountStatus(inactiveDisc, now);
 ok('isActive=false + expired → INACTIVE', inactiveStatus === 'INACTIVE');
 
-const soldOutThenExpired: DiscountLike = { ...prodDisc, id: 'd9', isActive: true, startsAt: new Date(now.getTime() - 7200_000), endsAt: new Date(now.getTime() - 3600_000), quota: 5, quotaUsed: 10 };
+const soldOutThenExpired: DiscountLike = {
+  ...prodDisc,
+  id: 'd9',
+  isActive: true,
+  startsAt: new Date(now.getTime() - 7200_000),
+  endsAt: new Date(now.getTime() - 3600_000),
+  quota: 5,
+  quotaUsed: 10
+};
 const soldOutStatus = getDiscountStatus(soldOutThenExpired, now);
 ok('expired + sold out → EXPIRED', soldOutStatus === 'EXPIRED');
 
@@ -111,12 +154,21 @@ const cart9Out = calculateCart(lines8, { productDiscounts: [prodDiscSoldOut], gl
 ok('PRODUCT SOLD_OUT → GLOBAL', cart9Out.lines[0].source === 'GLOBAL' && cart9Out.lines[0].discountedQty === 2);
 
 const cart10Out = calculateCart([{ productId: 'p1', qty: 8, price: 10000 }], { productDiscounts: [prodDiscQuota], global: globalDisc, now });
-ok('PRODUCT kuota habis → global tidak menyentuh baris', cart10Out.lines[0].source === 'PRODUCT' && cart10Out.lines[0].discountedQty === 5 && cart10Out.lines[0].discountPercent === 15);
+ok(
+  'PRODUCT kuota habis → global tidak menyentuh baris',
+  cart10Out.lines[0].source === 'PRODUCT' && cart10Out.lines[0].discountedQty === 5 && cart10Out.lines[0].discountPercent === 15
+);
 
 const cart11Out = calculateCart(lines8, { productDiscounts: [prodDisc], global: null, now });
 ok('global=null → tanpa diskon global', cart11Out.lines[1].source === null);
 
-const newerDisc: DiscountLike = { ...prodDisc, id: 'd12', createdAt: new Date(now.getTime() - 1800_000), startsAt: new Date(now.getTime() - 3600_000), endsAt: new Date(now.getTime() + 3600_000) };
+const newerDisc: DiscountLike = {
+  ...prodDisc,
+  id: 'd12',
+  createdAt: new Date(now.getTime() - 1800_000),
+  startsAt: new Date(now.getTime() - 3600_000),
+  endsAt: new Date(now.getTime() + 3600_000)
+};
 const cart12Out = calculateCart([{ productId: 'p1', qty: 3, price: 10000 }], { productDiscounts: [prodDisc, newerDisc], global: null, now });
 ok('dua diskon produk → createdAt terbaru menang', cart12Out.lines[0].discountId === 'd12' && cart12Out.lines[0].discountPercent === 15);
 
@@ -125,13 +177,19 @@ console.log('\n== discount.ts: guard rugi ==');
 ok('isBelowCost(10000,8000,25)', isBelowCost(10000, 8000, 25) === true);
 ok('isBelowCost(10000,8000,20)', isBelowCost(10000, 8000, 20) === false);
 
-const cart14Out = calculateCart([
-  { productId: 'p1', qty: 5, price: 10000 },
-  { productId: 'p2', qty: 2, price: 20000 }
-], { productDiscounts: [prodDiscQuota], global: globalDisc, now });
+const cart14Out = calculateCart(
+  [
+    { productId: 'p1', qty: 5, price: 10000 },
+    { productId: 'p2', qty: 2, price: 20000 }
+  ],
+  { productDiscounts: [prodDiscQuota], global: globalDisc, now }
+);
 const deltas14 = quotaDeltas(cart14Out);
 ok('quotaDeltas: satu entri per discountId', deltas14.length === 2);
-ok('quotaDeltas: units benar', deltas14.find(d => d.discountId === prodDiscQuota.id)?.units === 5 && deltas14.find(d => d.discountId === globalDisc.id)?.units === 2);
+ok(
+  'quotaDeltas: units benar',
+  deltas14.find((d) => d.discountId === prodDiscQuota.id)?.units === 5 && deltas14.find((d) => d.discountId === globalDisc.id)?.units === 2
+);
 
 console.log('\n== discount.ts: resolveWindow ==');
 
@@ -160,15 +218,28 @@ ok('WITA DAYS_7 endsAt', iso(win(resolveWindow('DAYS_7', testNow, wita)).endsAt 
 ok('WITA DAYS_2 endsAt', iso(win(resolveWindow('DAYS_2', testNow, wita)).endsAt as Date) === '2026-09-30T15:59:59.999Z');
 
 const custom2 = win(resolveWindow('DAYS_2', testNow, wita, { startDay: '2026-10-01' }));
-ok('startDay=2026-10-01, DAYS_2 → startsAt=2026-09-30T16:00:00, endsAt=2026-10-02T15:59:59', iso(custom2.startsAt) === '2026-09-30T16:00:00.000Z' && iso(custom2.endsAt as Date) === '2026-10-02T15:59:59.999Z');
+ok(
+  'startDay=2026-10-01, DAYS_2 → startsAt=2026-09-30T16:00:00, endsAt=2026-10-02T15:59:59',
+  iso(custom2.startsAt) === '2026-09-30T16:00:00.000Z' && iso(custom2.endsAt as Date) === '2026-10-02T15:59:59.999Z'
+);
 
 ok('TODAY tanpa startDay → startsAt = now', win(resolveWindow('TODAY', testNow, wita)).startsAt.getTime() === testNow.getTime());
 
 ok('parseDay invalid', winErr(resolveWindow('TODAY', testNow, wita, { startDay: '2026-02-30' })) === 'Tanggal mulai tidak valid.');
 ok('parseDay masa lalu', winErr(resolveWindow('TODAY', testNow, wita, { startDay: '2026-09-28' })) === 'Tanggal mulai tidak boleh di masa lalu.');
-ok('CUSTOM tanpa endDay', winErr(resolveWindow('CUSTOM', testNow, wita, { startDay: '2026-10-01' })) === 'Tanggal akhir tidak boleh kosong untuk preset CUSTOM.');
-ok('CUSTOM endDay invalid', winErr(resolveWindow('CUSTOM', testNow, wita, { startDay: '2026-10-01', endDay: '2026-02-30' })) === 'Tanggal akhir tidak valid.');
-ok('CUSTOM endDay < startDay', winErr(resolveWindow('CUSTOM', testNow, wita, { startDay: '2026-10-01', endDay: '2026-09-30' })) === 'Tanggal akhir tidak boleh sebelum tanggal mulai.');
+ok(
+  'CUSTOM tanpa endDay',
+  winErr(resolveWindow('CUSTOM', testNow, wita, { startDay: '2026-10-01' })) === 'Tanggal akhir tidak boleh kosong untuk preset CUSTOM.'
+);
+ok(
+  'CUSTOM endDay invalid',
+  winErr(resolveWindow('CUSTOM', testNow, wita, { startDay: '2026-10-01', endDay: '2026-02-30' })) === 'Tanggal akhir tidak valid.'
+);
+ok(
+  'CUSTOM endDay < startDay',
+  winErr(resolveWindow('CUSTOM', testNow, wita, { startDay: '2026-10-01', endDay: '2026-09-30' })) ===
+    'Tanggal akhir tidak boleh sebelum tanggal mulai.'
+);
 
 console.log('\n== discount.ts: properti (200 iterasi) ==');
 
@@ -209,11 +280,26 @@ for (let i = 0; i < 200; i++) {
   const cart = calculateCart(linesIn, { productDiscounts: [d], global: null, now });
   const line = cart.lines[0];
 
-  if (cart.total !== cart.subtotal - cart.discountTotal) { propsFail++; continue; }
-  if (line.discountedQty < 0 || line.discountedQty > qty) { propsFail++; continue; }
-  if (line.discountAmount < 0 || line.discountAmount > line.gross) { propsFail++; continue; }
-  if (cart.total < 0) { propsFail++; continue; }
-  if (line.discountedQty === 0 && line.discountId !== null) { propsFail++; continue; }
+  if (cart.total !== cart.subtotal - cart.discountTotal) {
+    propsFail++;
+    continue;
+  }
+  if (line.discountedQty < 0 || line.discountedQty > qty) {
+    propsFail++;
+    continue;
+  }
+  if (line.discountAmount < 0 || line.discountAmount > line.gross) {
+    propsFail++;
+    continue;
+  }
+  if (cart.total < 0) {
+    propsFail++;
+    continue;
+  }
+  if (line.discountedQty === 0 && line.discountId !== null) {
+    propsFail++;
+    continue;
+  }
 
   propsPass++;
 }
@@ -223,7 +309,10 @@ ok('properti 200 iterasi', propsPass === 200, `${propsPass}/200`);
 console.log('\n== overlap 23P01 ke pesan ==');
 
 ok('kode benar + nama', overlapDbMessage({ code: '23P01' }, 'Promo A') === 'Rentang waktu bertabrakan dengan diskon "Promo A".');
-ok('kode di cause + tanpa nama', overlapDbMessage({ cause: { code: '23P01' } }, null) === 'Rentang waktu bertabrakan dengan diskon lain untuk produk ini.');
+ok(
+  'kode di cause + tanpa nama',
+  overlapDbMessage({ cause: { code: '23P01' } }, null) === 'Rentang waktu bertabrakan dengan diskon lain untuk produk ini.'
+);
 ok('kode lain terus', overlapDbMessage({ code: '23505' }, 'Promo A') === null && overlapDbMessage(new Error('x'), null) === null);
 ok('konstanta kode', EXCLUSION_VIOLATION === '23P01');
 

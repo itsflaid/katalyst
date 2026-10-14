@@ -1,12 +1,12 @@
 <script lang="ts">
-  import type { SubmitFunction } from "@sveltejs/kit";
-  import { enhance } from "$app/forms";
-  import Input from "$lib/components/ui/Input.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import SlideOver from "$lib/components/ui/SlideOver.svelte";
-  import { isBelowCost, resolveWindow, unitDiscount, type WindowPreset } from "$lib/discount";
-  import type { BizTime } from "$lib/shared/time";
-  import type { DiscountRow } from "$lib/components/discount/DiscountTable.svelte";
+  import type { SubmitFunction } from '@sveltejs/kit';
+  import { enhance } from '$app/forms';
+  import Input from '$lib/components/ui/Input.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
+  import SlideOver from '$lib/components/ui/SlideOver.svelte';
+  import { isBelowCost, resolveWindow, unitDiscount, type WindowPreset } from '$lib/discount';
+  import type { BizTime } from '$lib/shared/time';
+  import type { DiscountRow } from '$lib/components/discount/DiscountTable.svelte';
 
   export let mode: 'create' | 'edit';
   export let discount: DiscountRow | null = null;
@@ -32,24 +32,24 @@
     v === 'TODAY' || v === 'DAYS_2' || v === 'DAYS_7' || v === 'CUSTOM' || v === 'OPEN' ? v : 'TODAY';
 
   // State create
-  let cName = "";
-  let cScope: 'PRODUCT' | 'GLOBAL' = "PRODUCT";
-  let cProductId = initial?.productId ?? "";
-  let cPercent = initial?.percent ?? "";
+  let cName = '';
+  let cScope: 'PRODUCT' | 'GLOBAL' = 'PRODUCT';
+  let cProductId = initial?.productId ?? '';
+  let cPercent = initial?.percent ?? '';
   let cPreset: WindowPreset = validPreset(initial?.preset);
-  let cStartDay = "";
-  let cQuota = initial?.quota ?? "";
-  let cEndDay = "";
+  let cStartDay = '';
+  let cQuota = initial?.quota ?? '';
+  let cEndDay = '';
   let cConfirmLoss = false;
 
   // State edit (disalin dari discount agar Batal tidak mengotori tabel)
   const e = discount;
-  let eName = e?.name ?? "";
-  let ePercent = e ? String(e.percent) : "";
+  let eName = e?.name ?? '';
+  let ePercent = e ? String(e.percent) : '';
   let ePreset: WindowPreset = e?.endsAt ? 'CUSTOM' : 'OPEN';
-  let eStartDay = e && new Date(e.startsAt) > new Date() ? T.dayKey(new Date(e.startsAt)) : "";
-  let eEndDay = e?.endsAt ? T.dayKey(new Date(e.endsAt)) : "";
-  let eQuota = e?.quota !== null && e?.quota !== undefined ? String(e.quota) : "";
+  let eStartDay = e && new Date(e.startsAt) > new Date() ? T.dayKey(new Date(e.startsAt)) : '';
+  let eEndDay = e?.endsAt ? T.dayKey(new Date(e.endsAt)) : '';
+  let eQuota = e?.quota !== null && e?.quota !== undefined ? String(e.quota) : '';
   let eConfirmLoss = false;
 
   // Unifikasi agar markup form bisa dipakai dua mode (create vs edit).
@@ -74,8 +74,15 @@
       endDay: endDay.trim() || undefined
     });
     if ('error' in w) return { text: w.error, ok: false };
-    if (w.endsAt === null) return { text: `Tanpa batas waktu · mulai ${T.fmt(w.startsAt, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} ${T.short}`, ok: true };
-    return { text: `Berakhir ${T.fmt(w.endsAt, { weekday: 'long', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} ${T.short}`, ok: true };
+    if (w.endsAt === null)
+      return {
+        text: `Tanpa batas waktu · mulai ${T.fmt(w.startsAt, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} ${T.short}`,
+        ok: true
+      };
+    return {
+      text: `Berakhir ${T.fmt(w.endsAt, { weekday: 'long', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} ${T.short}`,
+      ok: true
+    };
   })(T);
 
   // Ringkasan harga dari harga jual & modal saat ini.
@@ -91,7 +98,7 @@
   $: quotaHint = scope === 'PRODUCT' ? 'Kosongkan = tanpa batas. Dihitung dalam unit.' : 'Diskon global tidak memakai kuota.';
 </script>
 
-<SlideOver title={isCreate ? 'Tambah Diskon' : 'Edit Diskon'} onClose={onClose}>
+<SlideOver title={isCreate ? 'Tambah Diskon' : 'Edit Diskon'} {onClose}>
   <form method="POST" action={isCreate ? '?/create' : '?/update'} use:enhance={onSubmit} class="flex flex-col gap-3">
     {#if !isCreate && e}
       <input type="hidden" name="id" value={e.id} />
@@ -100,7 +107,9 @@
     {/if}
 
     {#if isCreate && baselineLabel}
-      <p class="rounded border border-border-cool bg-table-header px-3 py-2 text-body-sm text-muted">Nilai awal dari simulator (baseline: {baselineLabel})</p>
+      <p class="rounded border border-border-cool bg-table-header px-3 py-2 text-body-sm text-muted">
+        Nilai awal dari simulator (baseline: {baselineLabel})
+      </p>
     {/if}
     {#if !isCreate && e}
       <p class="text-body-sm text-muted">Terpakai {e.quotaUsed} unit · status tidak diubah dari sini.</p>
@@ -128,13 +137,25 @@
         </label>
       </fieldset>
     {:else}
-      <p class="text-body-md text-ink">Cakupan: <strong>{e?.scope === 'PRODUCT' ? `Produk (${e?.productId ? (products.find((p) => p.id === e?.productId)?.name ?? '-') : '-'})` : 'Global / semua produk'}</strong> <span class="text-body-sm text-muted">(tidak bisa diubah)</span></p>
+      <p class="text-body-md text-ink">
+        Cakupan: <strong
+          >{e?.scope === 'PRODUCT'
+            ? `Produk (${e?.productId ? (products.find((p) => p.id === e?.productId)?.name ?? '-') : '-'})`
+            : 'Global / semua produk'}</strong
+        > <span class="text-body-sm text-muted">(tidak bisa diubah)</span>
+      </p>
     {/if}
 
     {#if scope === 'PRODUCT' && isCreate}
       <label for="d-product" class="flex flex-col gap-1 text-body-md text-ink">
         Produk
-        <select id="d-product" name="productId" bind:value={cProductId} class="h-9 w-full rounded border border-border-input bg-white px-3 text-body-md text-ink" required>
+        <select
+          id="d-product"
+          name="productId"
+          bind:value={cProductId}
+          class="h-9 w-full rounded border border-border-input bg-white px-3 text-body-md text-ink"
+          required
+        >
           <option value="">- Pilih produk -</option>
           {#each products as p}
             <option value={p.id}>{p.name} · jual {idr(p.sellingPrice)} · modal {idr(p.costPrice)}{p.isActive ? '' : ' (nonaktif)'}</option>
@@ -153,7 +174,9 @@
     </label>
 
     {#if priceInfo}
-      <p class="text-body-md text-ink tabular">{idr(priceInfo.price)} → <strong>{idr(priceInfo.after)}</strong> <span class="text-body-sm text-muted">(modal {idr(priceInfo.cost)})</span></p>
+      <p class="text-body-md text-ink tabular">
+        {idr(priceInfo.price)} → <strong>{idr(priceInfo.after)}</strong> <span class="text-body-sm text-muted">(modal {idr(priceInfo.cost)})</span>
+      </p>
     {/if}
 
     <fieldset class="flex flex-col gap-1 text-body-md text-ink">
@@ -161,9 +184,23 @@
       {#each PRESETS as pr}
         <label class="flex items-center gap-2 {scope === 'GLOBAL' && pr.value === 'OPEN' ? 'text-muted' : ''}">
           {#if isCreate}
-            <input type="radio" name="preset" value={pr.value} bind:group={cPreset} disabled={scope === 'GLOBAL' && pr.value === 'OPEN'} class="h-4 w-4 accent-ink-navy" />
+            <input
+              type="radio"
+              name="preset"
+              value={pr.value}
+              bind:group={cPreset}
+              disabled={scope === 'GLOBAL' && pr.value === 'OPEN'}
+              class="h-4 w-4 accent-ink-navy"
+            />
           {:else}
-            <input type="radio" name="preset" value={pr.value} bind:group={ePreset} disabled={scope === 'GLOBAL' && pr.value === 'OPEN'} class="h-4 w-4 accent-ink-navy" />
+            <input
+              type="radio"
+              name="preset"
+              value={pr.value}
+              bind:group={ePreset}
+              disabled={scope === 'GLOBAL' && pr.value === 'OPEN'}
+              class="h-4 w-4 accent-ink-navy"
+            />
           {/if}
           {pr.label}
         </label>
@@ -171,18 +208,44 @@
       <label for="d-startday" class="flex flex-col gap-1 mt-1">
         <span class="text-body-sm text-muted">Mulai tanggal (opsional, default hari ini)</span>
         {#if isCreate}
-          <input id="d-startday" type="date" name="startDay" bind:value={cStartDay} class="h-9 rounded border border-border-input bg-white px-2 text-body-sm text-ink" />
+          <input
+            id="d-startday"
+            type="date"
+            name="startDay"
+            bind:value={cStartDay}
+            class="h-9 rounded border border-border-input bg-white px-2 text-body-sm text-ink"
+          />
         {:else}
-          <input id="d-startday" type="date" name="startDay" bind:value={eStartDay} class="h-9 rounded border border-border-input bg-white px-2 text-body-sm text-ink" />
+          <input
+            id="d-startday"
+            type="date"
+            name="startDay"
+            bind:value={eStartDay}
+            class="h-9 rounded border border-border-input bg-white px-2 text-body-sm text-ink"
+          />
         {/if}
       </label>
       {#if preset === 'CUSTOM'}
         <label for="d-endday" class="flex flex-col gap-1">
           <span class="text-body-sm text-muted">Tanggal akhir</span>
           {#if isCreate}
-            <input id="d-endday" type="date" name="endDay" bind:value={cEndDay} class="h-9 rounded border border-border-input bg-white px-2 text-body-sm text-ink" required />
+            <input
+              id="d-endday"
+              type="date"
+              name="endDay"
+              bind:value={cEndDay}
+              class="h-9 rounded border border-border-input bg-white px-2 text-body-sm text-ink"
+              required
+            />
           {:else}
-            <input id="d-endday" type="date" name="endDay" bind:value={eEndDay} class="h-9 rounded border border-border-input bg-white px-2 text-body-sm text-ink" required />
+            <input
+              id="d-endday"
+              type="date"
+              name="endDay"
+              bind:value={eEndDay}
+              class="h-9 rounded border border-border-input bg-white px-2 text-body-sm text-ink"
+              required
+            />
           {/if}
         </label>
       {/if}
@@ -204,7 +267,9 @@
     {/if}
 
     {#if permanent}
-      <p class="rounded border border-status-warning-border bg-status-warning-bg px-3 py-2 text-body-sm text-status-warning">Diskon permanen sebaiknya diganti dengan mengubah harga jual.</p>
+      <p class="rounded border border-status-warning-border bg-status-warning-bg px-3 py-2 text-body-sm text-status-warning">
+        Diskon permanen sebaiknya diganti dengan mengubah harga jual.
+      </p>
     {/if}
 
     {#if form?.code === 'BELOW_COST'}

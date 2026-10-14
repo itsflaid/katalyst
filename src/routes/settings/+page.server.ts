@@ -25,13 +25,7 @@ export const load: PageServerLoad = async ({ locals }) => {
       createdAt: staffInvitation.createdAt
     })
     .from(staffInvitation)
-    .where(
-      and(
-        eq(staffInvitation.businessId, businessId),
-        isNull(staffInvitation.acceptedAt),
-        isNull(staffInvitation.revokedAt)
-      )
-    )
+    .where(and(eq(staffInvitation.businessId, businessId), isNull(staffInvitation.acceptedAt), isNull(staffInvitation.revokedAt)))
     .orderBy(desc(staffInvitation.createdAt));
 
   return {

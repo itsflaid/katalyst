@@ -72,22 +72,36 @@ async function main() {
 
       // 1. percent di luar 1–100.
       await expectFail('percent=0 ditolak', 'discount_percent_range', (s) =>
-        s.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'D', scope: 'GLOBAL', percent: 0, endsAt: new Date(Date.now() + 3600_000) })
+        s
+          .insert(discount)
+          .values({ id: randomUUID(), businessId: biz, name: 'D', scope: 'GLOBAL', percent: 0, endsAt: new Date(Date.now() + 3600_000) })
       );
       await expectFail('percent=101 ditolak', 'discount_percent_range', (s) =>
-        s.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'D', scope: 'GLOBAL', percent: 101, endsAt: new Date(Date.now() + 3600_000) })
+        s
+          .insert(discount)
+          .values({ id: randomUUID(), businessId: biz, name: 'D', scope: 'GLOBAL', percent: 101, endsAt: new Date(Date.now() + 3600_000) })
       );
       // 2. scope vs productId.
       await expectFail('PRODUCT tanpa productId ditolak', 'discount_scope_product', (s) =>
         s.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'D', scope: 'PRODUCT', percent: 10 })
       );
       await expectFail('GLOBAL dengan productId ditolak', 'discount_scope_product', (s) =>
-        s.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'D', scope: 'GLOBAL', percent: 10, productId: prod, endsAt: new Date(Date.now() + 3600_000) })
+        s.insert(discount).values({
+          id: randomUUID(),
+          businessId: biz,
+          name: 'D',
+          scope: 'GLOBAL',
+          percent: 10,
+          productId: prod,
+          endsAt: new Date(Date.now() + 3600_000)
+        })
       );
       // 3. endsAt <= startsAt.
       const now = new Date();
       await expectFail('endsAt <= startsAt ditolak', 'discount_window_valid', (s) =>
-        s.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'D', scope: 'PRODUCT', percent: 10, productId: prod, startsAt: now, endsAt: now })
+        s
+          .insert(discount)
+          .values({ id: randomUUID(), businessId: biz, name: 'D', scope: 'PRODUCT', percent: 10, productId: prod, startsAt: now, endsAt: now })
       );
       // 4. quota = 0.
       await expectFail('quota=0 ditolak', 'discount_quota_valid', (s) =>
@@ -108,7 +122,9 @@ async function main() {
         s.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'G', scope: 'GLOBAL', percent: 10 })
       );
       await expectFail('GLOBAL dengan quota ditolak', 'discount_global_time_only', (s) =>
-        s.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'G', scope: 'GLOBAL', percent: 10, quota: 5, endsAt: new Date(Date.now() + 3600_000) })
+        s
+          .insert(discount)
+          .values({ id: randomUUID(), businessId: biz, name: 'G', scope: 'GLOBAL', percent: 10, quota: 5, endsAt: new Date(Date.now() + 3600_000) })
       );
       // 8. Baris item tak valid.
       const badItem = (over: Record<string, number>) =>
@@ -141,7 +157,9 @@ async function main() {
       // 9. Insert valid: PRODUCT (quota null, endsAt null) & GLOBAL (endsAt terisi).
       try {
         await tx.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'P-OK', scope: 'PRODUCT', percent: 15, productId: prod });
-        await tx.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'G-OK', scope: 'GLOBAL', percent: 10, endsAt: new Date(Date.now() + 3600_000) });
+        await tx
+          .insert(discount)
+          .values({ id: randomUUID(), businessId: biz, name: 'G-OK', scope: 'GLOBAL', percent: 10, endsAt: new Date(Date.now() + 3600_000) });
         ok('insert PRODUCT & GLOBAL valid sukses', true);
       } catch (e) {
         ok('insert PRODUCT & GLOBAL valid sukses', false, String(e).slice(0, 160));
@@ -185,8 +203,26 @@ async function main() {
         const fxTx = randomUUID();
         await tx.insert(transaction).values({ id: fxTx, businessId: biz });
         await tx.insert(transactionItem).values([
-          { id: randomUUID(), transactionId: fxTx, productId: prod, quantity: 3, priceAtSale: 10000, costAtSale: 6000, discountedQty: 3, discountAmount: 4500 },
-          { id: randomUUID(), transactionId: fxTx, productId: prod, quantity: 1, priceAtSale: 20000, costAtSale: 12000, discountedQty: 0, discountAmount: 0 }
+          {
+            id: randomUUID(),
+            transactionId: fxTx,
+            productId: prod,
+            quantity: 3,
+            priceAtSale: 10000,
+            costAtSale: 6000,
+            discountedQty: 3,
+            discountAmount: 4500
+          },
+          {
+            id: randomUUID(),
+            transactionId: fxTx,
+            productId: prod,
+            quantity: 1,
+            priceAtSale: 20000,
+            costAtSale: 12000,
+            discountedQty: 0,
+            discountAmount: 0
+          }
         ]);
         const [crow] = await tx
           .select({ net: sql<string>`coalesce(sum(${lineNet}), 0)::text` })

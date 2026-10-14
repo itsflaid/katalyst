@@ -28,10 +28,7 @@ export interface ActivityFilter {
 }
 
 // Filter peran memakai kolom snapshot di baris log agar staff terhapus tetap ikut.
-export async function listActivity(
-  businessId: string,
-  f: ActivityFilter
-): Promise<{ rows: ActivityRow[]; hasMore: boolean }> {
+export async function listActivity(businessId: string, f: ActivityFilter): Promise<{ rows: ActivityRow[]; hasMore: boolean }> {
   const conds: SQL[] = [eq(activityLog.businessId, businessId)];
   if (f.role === 'owner') conds.push(eq(activityLog.actorRole, 'OWNER'));
   else if (f.role === 'staff') conds.push(eq(activityLog.actorRole, 'STAFF'));

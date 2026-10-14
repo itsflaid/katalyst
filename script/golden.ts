@@ -95,12 +95,8 @@ function stabilizePoints(data: unknown): unknown {
     for (const [k, v] of Object.entries(o)) {
       const sv = stabilizePoints(v);
       out[k] =
-        k === 'points' &&
-        Array.isArray(sv) &&
-        sv.every((e) => typeof (e as Record<string, unknown>)?.href === 'string')
-          ? [...sv].sort((a, b) =>
-              String((a as Record<string, unknown>).href).localeCompare(String((b as Record<string, unknown>).href))
-            )
+        k === 'points' && Array.isArray(sv) && sv.every((e) => typeof (e as Record<string, unknown>)?.href === 'string')
+          ? [...sv].sort((a, b) => String((a as Record<string, unknown>).href).localeCompare(String((b as Record<string, unknown>).href)))
           : sv;
     }
     return out;

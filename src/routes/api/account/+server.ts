@@ -22,7 +22,10 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
     throw error(400, 'Nama maksimal 100 karakter.');
   }
 
-  await db.update(user).set({ name }).where(eq(user.id, locals.user.id as string));
+  await db
+    .update(user)
+    .set({ name })
+    .where(eq(user.id, locals.user.id as string));
 
   // Catatan audit: struk lama tetap menampilkan nama lama (snapshot
   // cashier_name), struk baru pakai nama baru. Tidak ada backfill massal.

@@ -26,7 +26,11 @@ function fields(over: Record<string, string> = {}) {
 
 console.log('product-fields:');
 const valid = parseProductFields(fields());
-ok('valid lolos apa adanya', valid.data?.name === 'Kopi' && valid.data?.costPrice === 10000 && valid.data?.sellingPrice === 15000, JSON.stringify(valid));
+ok(
+  'valid lolos apa adanya',
+  valid.data?.name === 'Kopi' && valid.data?.costPrice === 10000 && valid.data?.sellingPrice === 15000,
+  JSON.stringify(valid)
+);
 ok('batas atas lolos', parseProductFields(fields({ sellingPrice: '100000000' })).data?.sellingPrice === 100000000);
 ok('100000001 ditolak', 'error' in parseProductFields(fields({ sellingPrice: '100000001' })));
 ok('3 miliar ditolak', 'error' in parseProductFields(fields({ sellingPrice: '3000000000' })));
@@ -34,7 +38,10 @@ ok('modal 100000001 ditolak', 'error' in parseProductFields(fields({ costPrice: 
 ok('modal kosong jadi 0', parseProductFields(fields({ costPrice: '' })).data?.costPrice === 0);
 ok('jual kosong ditolak', 'error' in parseProductFields(fields({ sellingPrice: '' })));
 ok('jual 0.4 ditolak', 'error' in parseProductFields(fields({ sellingPrice: '0.4' })));
-ok('jual abc dan Infinity ditolak', 'error' in parseProductFields(fields({ sellingPrice: 'abc' })) && 'error' in parseProductFields(fields({ sellingPrice: 'Infinity' })));
+ok(
+  'jual abc dan Infinity ditolak',
+  'error' in parseProductFields(fields({ sellingPrice: 'abc' })) && 'error' in parseProductFields(fields({ sellingPrice: 'Infinity' }))
+);
 ok('minStock kosong default 5', parseProductFields(fields({ minStock: '' })).data?.minStock === 5);
 ok('minStock 100001 ditolak', 'error' in parseProductFields(fields({ minStock: '100001' })));
 ok("parseInitialStock('') jadi 0", parseInitialStock(form({})).data === 0);

@@ -34,10 +34,7 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
   }
 
   // Username unik global (kolom user.username unique), cegah konflik sejak invite.
-  const [existingUser] = await db
-    .select({ id: user.id })
-    .from(user)
-    .where(eq(user.username, username));
+  const [existingUser] = await db.select({ id: user.id }).from(user).where(eq(user.username, username));
   if (existingUser) {
     throw error(409, 'Username sudah dipakai.');
   }

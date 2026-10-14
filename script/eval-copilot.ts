@@ -107,7 +107,11 @@ function buildCases(): { runnable: EvalCase[]; skipped: string[] } {
   return { runnable, skipped };
 }
 
-async function postChat(base: string, cookie: string, question: string): Promise<{ calls: CallInfo[]; done: DoneInfo | null; error: { code: string; retryAfterSec?: number } | null }> {
+async function postChat(
+  base: string,
+  cookie: string,
+  question: string
+): Promise<{ calls: CallInfo[]; done: DoneInfo | null; error: { code: string; retryAfterSec?: number } | null }> {
   const res = await fetch(`${base}/copilot/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Cookie: cookie, Origin: base },
@@ -143,7 +147,13 @@ async function postChat(base: string, cookie: string, question: string): Promise
       if (event === 'tool_start') calls.push({ name: String(data.name), args: data.args });
       else if (event === 'done') {
         const usage = data.usage as { inputTokens: number; outputTokens: number };
-        done = { model: String(data.model ?? ''), inputTokens: usage?.inputTokens ?? 0, outputTokens: usage?.outputTokens ?? 0, budgetUsed: Number(data.budgetUsed ?? 0), toolCalls: (data.toolCalls as string[]) ?? [] };
+        done = {
+          model: String(data.model ?? ''),
+          inputTokens: usage?.inputTokens ?? 0,
+          outputTokens: usage?.outputTokens ?? 0,
+          budgetUsed: Number(data.budgetUsed ?? 0),
+          toolCalls: (data.toolCalls as string[]) ?? []
+        };
       } else if (event === 'error') {
         error = { code: String(data.code ?? 'UNKNOWN'), ...(typeof data.retryAfterSec === 'number' ? { retryAfterSec: data.retryAfterSec } : {}) };
       }
@@ -154,7 +164,9 @@ async function postChat(base: string, cookie: string, question: string): Promise
 
 function checkCase(c: EvalCase, calls: CallInfo[]): { pass: boolean; detail: string } {
   if (c.expectTools.length === 0) {
-    return calls.length === 0 ? { pass: true, detail: 'tanpa tool call' } : { pass: false, detail: `memanggil ${calls.map((t) => t.name).join(',')}` };
+    return calls.length === 0
+      ? { pass: true, detail: 'tanpa tool call' }
+      : { pass: false, detail: `memanggil ${calls.map((t) => t.name).join(',')}` };
   }
   for (const name of c.expectTools) {
     const found = calls.find((t) => t.name === name);
@@ -190,7 +202,12 @@ async function main(): Promise<void> {
   }
   const maxTokens = Number(flagValue('--max-tokens') ?? '120000');
   const onlyRaw = flagValue('--only');
-  const only = onlyRaw ? onlyRaw.split(',').map((s) => s.trim()).filter(Boolean) : null;
+  const only = onlyRaw
+    ? onlyRaw
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : null;
   const { runnable, skipped } = buildCases();
   for (const s of skipped) console.log(`SKIP: ${s}`);
   const selected = only ? runnable.filter((c) => only.includes(c.id)) : runnable;
@@ -220,7 +237,9 @@ async function main(): Promise<void> {
     totalInput += input;
     inputs.push(input);
     if (result.done?.model) perModel.set(result.done.model, (perModel.get(result.done.model) ?? 0) + 1);
-    console.log(`${c.id} tool=[${result.calls.map((t) => t.name).join(',')}] args=${JSON.stringify(result.calls.map((t) => t.args))} model=${result.done?.model ?? '-'} in=${input} out=${output} budget=${result.done?.budgetUsed ?? '-'} cek=${checked.pass ? 'LOLOS' : `GAGAL ${checked.detail}`} manusia: ${c.note}${attempt > 0 ? ' (ulang 1x)' : ''}`);
+    console.log(
+      `${c.id} tool=[${result.calls.map((t) => t.name).join(',')}] args=${JSON.stringify(result.calls.map((t) => t.args))} model=${result.done?.model ?? '-'} in=${input} out=${output} budget=${result.done?.budgetUsed ?? '-'} cek=${checked.pass ? 'LOLOS' : `GAGAL ${checked.detail}`} manusia: ${c.note}${attempt > 0 ? ' (ulang 1x)' : ''}`
+    );
     if (totalInput > maxTokens) {
       console.log(`Berhenti: total token masuk ${totalInput} melebihi ${maxTokens}.`);
       break;
@@ -228,7 +247,9 @@ async function main(): Promise<void> {
     if (i < selected.length - 1) await sleep(15000);
   }
   inputs.sort((a, b) => a - b);
-  console.log(`\nkasus=${selected.length} lolos-otomatis=${autoPass} p50=${quantile(inputs, 0.5)} p95=${quantile(inputs, 0.95)} model=${[...perModel].map(([m, n]) => `${m}x${n}`).join(',') || '-'} RATE_LIMITED=${rateLimited}`);
+  console.log(
+    `\nkasus=${selected.length} lolos-otomatis=${autoPass} p50=${quantile(inputs, 0.5)} p95=${quantile(inputs, 0.95)} model=${[...perModel].map(([m, n]) => `${m}x${n}`).join(',') || '-'} RATE_LIMITED=${rateLimited}`
+  );
 }
 
 void main();

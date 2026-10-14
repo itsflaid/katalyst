@@ -110,11 +110,7 @@ function isWeekend(date: Date): boolean {
 }
 
 function isSpikeWindow(date: Date): boolean {
-  return (
-    date.getUTCMonth() === SPIKE_MONTH &&
-    date.getUTCDate() >= SPIKE_DAY_START &&
-    date.getUTCDate() <= SPIKE_DAY_END
-  );
+  return date.getUTCMonth() === SPIKE_MONTH && date.getUTCDate() >= SPIKE_DAY_START && date.getUTCDate() <= SPIKE_DAY_END;
 }
 
 function applyVolatility(base: number, level: Volatility): number {
@@ -151,10 +147,7 @@ async function main() {
       body: { email: placeholderEmail(acc.username), password: 'password', name: acc.name }
     });
     accountIds[acc.username] = signUp.user.id;
-    await db
-      .update(user)
-      .set({ role: acc.role, businessId, username: acc.username })
-      .where(eq(user.id, signUp.user.id));
+    await db.update(user).set({ role: acc.role, businessId, username: acc.username }).where(eq(user.id, signUp.user.id));
   }
 
   const ownerId = accountIds['owner123'];

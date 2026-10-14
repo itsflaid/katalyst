@@ -17,12 +17,7 @@
 
   function onInput(e: Event) {
     const input = e.currentTarget as HTMLInputElement;
-    const next = reformatMoneyInput(
-      input.value,
-      input.selectionStart ?? input.value.length,
-      shown,
-      (e as InputEvent).inputType
-    );
+    const next = reformatMoneyInput(input.value, input.selectionStart ?? input.value.length, shown, (e as InputEvent).inputType);
     input.value = next.text;
     input.setSelectionRange(next.caret, next.caret);
     value = next.value;
@@ -30,16 +25,7 @@
   }
 </script>
 
-<input
-  {id}
-  type="text"
-  inputmode="numeric"
-  autocomplete="off"
-  value={shown}
-  class={cn(inputClass, className)}
-  on:input={onInput}
-  {...$$restProps}
-/>
+<input {id} type="text" inputmode="numeric" autocomplete="off" value={shown} class={cn(inputClass, className)} on:input={onInput} {...$$restProps} />
 {#if name}
   <input type="hidden" {name} {value} />
 {/if}

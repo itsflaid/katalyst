@@ -83,11 +83,7 @@ function r3Scope(file: string): boolean {
 }
 
 function r4Scope(file: string): boolean {
-  return (
-    file.startsWith('src/lib/analytics/') ||
-    file === 'src/lib/simulation.ts' ||
-    file === 'src/lib/shared/period.ts'
-  );
+  return file.startsWith('src/lib/analytics/') || file === 'src/lib/simulation.ts' || file === 'src/lib/shared/period.ts';
 }
 // R4: yang dilarang BACAAAN JAM (konstruksi kosong / Date.now), bukan
 // konstruksi deterministik new Date(x) dari komponen kalender (dipakai
@@ -111,7 +107,9 @@ function extractCommentText(line: string): string | null {
 }
 
 function isDirective(text: string): boolean {
-  return /@ts-(?:expect-error|ignore|nocheck|check)|eslint-(?:disable|enable)|svelte-ignore|prettier-ignore|\/\/\/\s*<reference|@vite-ignore/.test(text);
+  return /@ts-(?:expect-error|ignore|nocheck|check)|eslint-(?:disable|enable)|svelte-ignore|prettier-ignore|\/\/\/\s*<reference|@vite-ignore/.test(
+    text
+  );
 }
 
 function r5Check(file: string, lines: string[]) {
@@ -151,7 +149,7 @@ function r5Check(file: string, lines: string[]) {
       currentBlock.push(commentText);
     } else {
       if (currentBlock.length > 3) {
-        const allFormula = currentBlock.every(c => R5_FORMULA_LINE_RE.test(c));
+        const allFormula = currentBlock.every((c) => R5_FORMULA_LINE_RE.test(c));
         if (!allFormula) {
           violations.push({ file, line: i - currentBlock.length + 1, rule: 'R5e:long-block', snippet: `${currentBlock.length} baris` });
         }
@@ -160,7 +158,7 @@ function r5Check(file: string, lines: string[]) {
     }
   }
   if (currentBlock.length > 3) {
-    const allFormula = currentBlock.every(c => R5_FORMULA_LINE_RE.test(c));
+    const allFormula = currentBlock.every((c) => R5_FORMULA_LINE_RE.test(c));
     if (!allFormula) {
       violations.push({ file, line: lines.length - currentBlock.length + 1, rule: 'R5e:long-block', snippet: `${currentBlock.length} baris` });
     }
@@ -209,7 +207,7 @@ function main() {
         }
       }
     });
-    
+
     // R5
     r5Check(file, lines);
   }

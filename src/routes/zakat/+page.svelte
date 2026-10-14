@@ -1,4 +1,3 @@
-
 <script lang="ts">
   import { enhance } from '$app/forms';
   import type { SubmitFunction } from '@sveltejs/kit';
@@ -33,57 +32,43 @@
       await update({ reset: false });
     };
 
-  const moneyTip =
-    'Ketik angkanya saja; titik pemisah ribuan muncul otomatis. Kosong = belum diisi; ketik 0 bila memang tidak ada.';
+  const moneyTip = 'Ketik angkanya saja; titik pemisah ribuan muncul otomatis. Kosong = belum diisi; ketik 0 bila memang tidak ada.';
 
   const help = {
     gold: {
-      about:
-        'Harga 1 gram emas, dipakai menghitung nisab (nisab gram × harga ini). Lihat di toko emas langganan atau situs harga emas harian.',
-      example:
-        'Harga Rp1.350.000 per gram → ketik 1350000. Angka ini hanya contoh; isi sesuai harga hari ini.',
+      about: 'Harga 1 gram emas, dipakai menghitung nisab (nisab gram × harga ini). Lihat di toko emas langganan atau situs harga emas harian.',
+      example: 'Harga Rp1.350.000 per gram → ketik 1350000. Angka ini hanya contoh; isi sesuai harga hari ini.',
       tip: 'Ketik angkanya saja; titik pemisah ribuan muncul otomatis. Perbarui kira-kira sebulan sekali.'
     },
     nisab: {
       about:
         'Batas minimum harta, dalam gram emas, agar zakat wajib. Standarnya 85 gram; ubah hanya bila lembaga zakat yang diikuti menetapkan lain.',
-      example:
-        'Standar 85 gram → ketik 85. Nisab dalam rupiah = 85 × harga emas per gram, tampil di Rincian.',
+      example: 'Standar 85 gram → ketik 85. Nisab dalam rupiah = 85 × harga emas per gram, tampil di Rincian.',
       tip: 'Isi bilangan bulat saja, tanpa koma.'
     },
     haul: {
-      about:
-        'Tanggal harta dagang pertama kali mencapai nisab. Zakat wajib setelah genap 1 haul (±354 hari) dihitung dari tanggal ini.',
-      example:
-        'Mulai 20 Oktober 2025 → jatuh tempo 9 Oktober 2026. Pilih lewat kalender atau ketik tanggalnya.',
+      about: 'Tanggal harta dagang pertama kali mencapai nisab. Zakat wajib setelah genap 1 haul (±354 hari) dihitung dari tanggal ini.',
+      example: 'Mulai 20 Oktober 2025 → jatuh tempo 9 Oktober 2026. Pilih lewat kalender atau ketik tanggalnya.',
       tip: 'Belum yakin tanggalnya? Kosongkan dulu dan tanyakan ke BAZNAS atau amil zakat.'
     },
     valuation: {
-      about:
-        'Cara menilai barang dagangan yang masih ada di stok. Harga jual: stok dinilai harga jual × jumlah. Harga modal: harga beli × jumlah.',
-      example:
-        'Stok 10 unit, modal Rp7.000, jual Rp10.000 → harga jual = Rp100.000, harga modal = Rp70.000.',
+      about: 'Cara menilai barang dagangan yang masih ada di stok. Harga jual: stok dinilai harga jual × jumlah. Harga modal: harga beli × jumlah.',
+      example: 'Stok 10 unit, modal Rp7.000, jual Rp10.000 → harga jual = Rp100.000, harga modal = Rp70.000.',
       tip: 'Aplikasi tidak menentukan metode mana yang benar; tanyakan ke amil zakat.'
     },
     cash: {
-      about:
-        'Uang tunai dan saldo rekening usaha saat ini. Bukan omzet dan bukan laba.',
-      example:
-        'Tunai Rp3.500.000 + rekening Rp6.500.000 → ketik 10000000.',
+      about: 'Uang tunai dan saldo rekening usaha saat ini. Bukan omzet dan bukan laba.',
+      example: 'Tunai Rp3.500.000 + rekening Rp6.500.000 → ketik 10000000.',
       tip: moneyTip
     },
     receivable: {
-      about:
-        'Uang yang masih ditagih ke pelanggan dan diperkirakan bisa tertagih, misalnya kasbon pelanggan. Piutang yang macet tidak dimasukkan.',
-      example:
-        'Pelanggan A Rp500.000 + pelanggan B Rp750.000 → ketik 1250000.',
+      about: 'Uang yang masih ditagih ke pelanggan dan diperkirakan bisa tertagih, misalnya kasbon pelanggan. Piutang yang macet tidak dimasukkan.',
+      example: 'Pelanggan A Rp500.000 + pelanggan B Rp750.000 → ketik 1250000.',
       tip: moneyTip
     },
     debt: {
-      about:
-        'Utang usaha yang harus dilunasi dalam waktu dekat atau sudah jatuh tempo, misalnya tagihan supplier. Mengurangi aset bersih.',
-      example:
-        'Tagihan supplier Rp2.000.000 + cicilan jatuh tempo Rp1.000.000 → ketik 3000000.',
+      about: 'Utang usaha yang harus dilunasi dalam waktu dekat atau sudah jatuh tempo, misalnya tagihan supplier. Mengurangi aset bersih.',
+      example: 'Tagihan supplier Rp2.000.000 + cicilan jatuh tempo Rp1.000.000 → ketik 3000000.',
       tip: moneyTip
     }
   };
@@ -129,10 +114,7 @@
         : 'Haul sudah genap.';
 
   // Selisih aset bersih terhadap nisab.
-  $: nisabGap =
-    result && result.nisab !== null
-      ? result.netAssets - result.nisab
-      : null;
+  $: nisabGap = result && result.nisab !== null ? result.netAssets - result.nisab : null;
 
   const fmtTanggal = (iso: string | null) => {
     if (!iso) return '-';
@@ -142,13 +124,7 @@
     return y && m && d ? `${d}/${m}/${y}` : iso;
   };
 
-  $: nisabPct =
-    result && result.nisab !== null && result.nisab > 0
-      ? Math.min(
-          100,
-          Math.max(0, (result.netAssets / result.nisab) * 100)
-        )
-      : 0;
+  $: nisabPct = result && result.nisab !== null && result.nisab > 0 ? Math.min(100, Math.max(0, (result.netAssets / result.nisab) * 100)) : 0;
 
   $: nisabText =
     nisabGap === null
@@ -159,10 +135,7 @@
 </script>
 
 {#if form?.message}
-  <p
-    role="alert"
-    class="mb-4 rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative"
-  >
+  <p role="alert" class="mb-4 rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative">
     {form.message}
   </p>
 {/if}
@@ -171,57 +144,35 @@
   <!-- HERO + PROGRESS -->
   <div class="relative mb-6">
     <!-- Hero navy -->
-    <StatCard
-      tone="navy"
-      class="relative z-20 p-6 shadow-lg lg:p-10"
-    >
+    <StatCard tone="navy" class="relative z-20 p-6 shadow-lg lg:p-10">
       <div class="flex flex-col gap-6 lg:flex-row lg:items-center">
         <!-- Headline -->
         <div class="min-w-0 flex-1">
-          <h2
-            class="text-[32px] font-extrabold leading-[1.1] tracking-tight text-white sm:text-[40px] lg:text-[48px]"
-          >
+          <h2 class="text-[32px] font-extrabold leading-[1.1] tracking-tight text-white sm:text-[40px] lg:text-[48px]">
             Zakat perdagangan,
-            <span class="text-[#4ADE80]">
-              terhitung dari datamu sendiri
-            </span>
+            <span class="text-[#4ADE80]"> terhitung dari datamu sendiri </span>
           </h2>
 
           <p class="mt-4 text-base leading-relaxed text-white/75 lg:text-lg">
-            Nisab ikut harga emas hari ini.
-            Estimasi {fmtPercent(ZAKAT_RATE)}
+            Nisab ikut harga emas hari ini. Estimasi {fmtPercent(ZAKAT_RATE)}
             × aset bersih setelah genap 1 haul.
           </p>
         </div>
 
         <!-- Nisab information -->
-        <div
-          class="w-full shrink-0 rounded-xl border border-white/10 bg-white/10 px-5 py-4 shadow-sm lg:w-[320px]"
-        >
-          <p
-            class="text-xs font-medium uppercase tracking-wide text-white/70"
-          >
-            Nisab saat ini
-          </p>
+        <div class="w-full shrink-0 rounded-xl border border-white/10 bg-white/10 px-5 py-4 shadow-sm lg:w-[320px]">
+          <p class="text-xs font-medium uppercase tracking-wide text-white/70">Nisab saat ini</p>
 
-          <p
-            class="mt-1 break-words text-2xl font-extrabold leading-tight text-white lg:text-[30px]"
-          >
-            {result.nisab === null
-              ? '-'
-              : fmtRupiah(result.nisab)}
+          <p class="mt-1 break-words text-2xl font-extrabold leading-tight text-white lg:text-[30px]">
+            {result.nisab === null ? '-' : fmtRupiah(result.nisab)}
           </p>
 
           <p class="mt-2 text-xs text-white/70">
             {input.nisabGrams} gram ×
-            {input.goldPricePerGram === null
-              ? '-'
-              : `${fmtRupiah(input.goldPricePerGram)} per gram`}
+            {input.goldPricePerGram === null ? '-' : `${fmtRupiah(input.goldPricePerGram)} per gram`}
           </p>
 
-          <div
-            class="mt-4 flex flex-wrap gap-x-6 gap-y-3 border-t border-white/15 pt-3 text-xs"
-          >
+          <div class="mt-4 flex flex-wrap gap-x-6 gap-y-3 border-t border-white/15 pt-3 text-xs">
             <div class="min-w-0">
               <p class="text-white/60">Mulai haul</p>
               <p class="mt-1 font-semibold text-white">
@@ -232,9 +183,7 @@
             <div class="min-w-0">
               <p class="text-white/60">Valuasi stok</p>
               <p class="mt-1 font-semibold text-white">
-                {input.valuation === 'COST'
-                  ? 'Harga modal'
-                  : 'Harga jual'}
+                {input.valuation === 'COST' ? 'Harga modal' : 'Harga jual'}
               </p>
             </div>
           </div>
@@ -244,16 +193,10 @@
 
     <!-- Card progress -->
     <div class="relative z-0 -mt-8 px-4 sm:px-6 lg:px-8">
-      <StatCard
-        class="relative rounded-xl border border-black/10 bg-white p-5 pt-12 shadow-lg lg:p-6 lg:pt-14"
-      >
-        <div
-          class="flex flex-wrap items-start justify-between gap-3"
-        >
+      <StatCard class="relative rounded-xl border border-black/10 bg-white p-5 pt-12 shadow-lg lg:p-6 lg:pt-14">
+        <div class="flex flex-wrap items-start justify-between gap-3">
           <div class="min-w-0 flex-1">
-            <p
-              class="break-words text-[28px] font-extrabold leading-tight tracking-tight text-ink-navy sm:text-[42px] lg:text-[48px]"
-            >
+            <p class="break-words text-[28px] font-extrabold leading-tight tracking-tight text-ink-navy sm:text-[42px] lg:text-[48px]">
               {amountUncertain ? '~' : ''}{fmtRupiah(result.amount)}
             </p>
 
@@ -264,20 +207,13 @@
             {/if}
           </div>
 
-          <div
-            class="flex shrink-0 flex-col items-end gap-2"
-          >
-            <Badge
-              tone={statusMeta[result.status].tone}
-              class="rounded-full"
-            >
+          <div class="flex shrink-0 flex-col items-end gap-2">
+            <Badge tone={statusMeta[result.status].tone} class="rounded-full">
               {statusMeta[result.status].label}
             </Badge>
 
             {#if partial}
-              <Badge tone="neutral" class="rounded-full">
-                Estimasi parsial
-              </Badge>
+              <Badge tone="neutral" class="rounded-full">Estimasi parsial</Badge>
             {/if}
           </div>
         </div>
@@ -292,9 +228,7 @@
             aria-label="Posisi aset terhadap nisab"
           >
             <div
-              class="h-full rounded-full transition-[width] duration-300 {nisabGap >= 0
-                ? 'bg-status-positive'
-                : 'bg-status-warning'}"
+              class="h-full rounded-full transition-[width] duration-300 {nisabGap >= 0 ? 'bg-status-positive' : 'bg-status-warning'}"
               style="width: {nisabPct}%"
             ></div>
           </div>
@@ -317,8 +251,7 @@
         {#if partial}
           <p class="mt-2 text-sm leading-relaxed text-muted">
             Belum diisi:
-            {result.missing.map((m) => missingLabel[m]).join(', ')}.
-            Yang kosong dihitung 0.
+            {result.missing.map((m) => missingLabel[m]).join(', ')}. Yang kosong dihitung 0.
           </p>
         {/if}
       </StatCard>
@@ -327,60 +260,40 @@
 
   <!-- RINCIAN -->
   <StatCard class="mb-4">
-    <h2 class="mb-3 text-headline-sm text-ink">
-      Rincian
-    </h2>
+    <h2 class="mb-3 text-headline-sm text-ink">Rincian</h2>
 
     <dl class="flex flex-col gap-1.5 text-body-md">
-      <div
-        class="flex justify-between gap-3 border-b border-table-divider py-1.5"
-      >
+      <div class="flex justify-between gap-3 border-b border-table-divider py-1.5">
         <dt class="text-muted">
-          Stok ({input.valuation === 'COST'
-            ? 'harga modal'
-            : 'harga jual'})
+          Stok ({input.valuation === 'COST' ? 'harga modal' : 'harga jual'})
         </dt>
         <dd class="tabular text-ink">
           {fmtRupiah(result.stockValue)}
         </dd>
       </div>
 
-      <div
-        class="flex justify-between gap-3 border-b border-table-divider py-1.5"
-      >
+      <div class="flex justify-between gap-3 border-b border-table-divider py-1.5">
         <dt class="text-muted">Kas</dt>
         <dd class="tabular text-ink">
-          {input.cash === null
-            ? 'belum diisi'
-            : fmtRupiah(input.cash)}
+          {input.cash === null ? 'belum diisi' : fmtRupiah(input.cash)}
         </dd>
       </div>
 
-      <div
-        class="flex justify-between gap-3 border-b border-table-divider py-1.5"
-      >
+      <div class="flex justify-between gap-3 border-b border-table-divider py-1.5">
         <dt class="text-muted">Piutang lancar</dt>
         <dd class="tabular text-ink">
-          {input.receivable === null
-            ? 'belum diisi'
-            : fmtRupiah(input.receivable)}
+          {input.receivable === null ? 'belum diisi' : fmtRupiah(input.receivable)}
         </dd>
       </div>
 
-      <div
-        class="flex justify-between gap-3 border-b border-table-divider py-1.5"
-      >
+      <div class="flex justify-between gap-3 border-b border-table-divider py-1.5">
         <dt class="text-muted">Utang jatuh tempo</dt>
         <dd class="tabular text-ink">
-          {input.debt === null
-            ? 'belum diisi'
-            : fmtRupiah(input.debt)}
+          {input.debt === null ? 'belum diisi' : fmtRupiah(input.debt)}
         </dd>
       </div>
 
-      <div
-        class="flex justify-between gap-3 border-b border-table-divider py-1.5"
-      >
+      <div class="flex justify-between gap-3 border-b border-table-divider py-1.5">
         <dt class="text-muted">Aset bersih</dt>
         <dd class="tabular font-semibold text-ink">
           {fmtRupiah(result.netAssets)}
@@ -392,28 +305,20 @@
           Nisab ({input.nisabGrams} gram)
         </dt>
         <dd class="tabular text-ink">
-          {result.nisab === null
-            ? 'isi harga emas dulu'
-            : fmtRupiah(result.nisab)}
+          {result.nisab === null ? 'isi harga emas dulu' : fmtRupiah(result.nisab)}
         </dd>
       </div>
     </dl>
 
     <p class="mt-2 text-body-sm text-muted">
-      Tarif {fmtPercent(ZAKAT_RATE)} × aset bersih, dibayar bila
-      aset bersih mencapai nisab dan haul genap.
+      Tarif {fmtPercent(ZAKAT_RATE)} × aset bersih, dibayar bila aset bersih mencapai nisab dan haul genap.
     </p>
   </StatCard>
 {:else}
   <Card class="mb-4">
-    <h2 class="mb-1 text-headline-sm text-ink">
-      Mulai hitung zakat
-    </h2>
+    <h2 class="mb-1 text-headline-sm text-ink">Mulai hitung zakat</h2>
 
-    <p class="text-body-md text-muted">
-      Isi pengaturan dan posisi keuangan di bawah agar
-      hasil estimasi muncul di sini.
-    </p>
+    <p class="text-body-md text-muted">Isi pengaturan dan posisi keuangan di bawah agar hasil estimasi muncul di sini.</p>
   </Card>
 {/if}
 
@@ -422,116 +327,56 @@
 <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
   <!-- Pengaturan zakat -->
   <StatCard class="flex flex-col">
-    <h2 class="mb-1 text-headline-sm text-ink">
-      Pengaturan Zakat
-    </h2>
+    <h2 class="mb-1 text-headline-sm text-ink">Pengaturan Zakat</h2>
 
-    <p class="mb-3 text-body-sm text-muted">
-      Harga emas, nisab, dan cara menghitung stok.
-    </p>
+    <p class="mb-3 text-body-sm text-muted">Harga emas, nisab, dan cara menghitung stok.</p>
 
-    <form
-      method="POST"
-      action="?/saveSetting"
-      use:enhance={refresh}
-      class="flex flex-1 flex-col gap-3"
-    >
+    <form method="POST" action="?/saveSetting" use:enhance={refresh} class="flex flex-1 flex-col gap-3">
       <div class="flex flex-col gap-1">
-        <div
-          class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink"
-        >
-          <label for="z-gold">
-            Harga emas per gram (Rp)
-          </label>
+        <div class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink">
+          <label for="z-gold"> Harga emas per gram (Rp) </label>
 
-          <FieldHelp
-            id="help-z-gold"
-            label="Harga emas per gram"
-            {...help.gold}
-          />
+          <FieldHelp id="help-z-gold" label="Harga emas per gram" {...help.gold} />
         </div>
 
-        <MoneyInput
-          id="z-gold"
-          class="h-12 rounded-lg text-body-lg"
-          name="goldPrice"
-          bind:value={goldPrice}
-          placeholder="cth. 1.350.000"
-        />
+        <MoneyInput id="z-gold" class="h-12 rounded-lg text-body-lg" name="goldPrice" bind:value={goldPrice} placeholder="cth. 1.350.000" />
       </div>
 
       {#if data.setting}
         <p class="text-body-sm text-muted">
-          {data.setting.goldAgeDays === null
-            ? 'Harga emas belum pernah diisi.'
-            : `Diperbarui ${data.setting.goldAgeDays} hari lalu.`}
+          {data.setting.goldAgeDays === null ? 'Harga emas belum pernah diisi.' : `Diperbarui ${data.setting.goldAgeDays} hari lalu.`}
 
           {#if data.setting.goldAgeDays !== null && data.setting.goldAgeDays > 30}
-            <Badge tone="warning" size="sm">
-              lebih dari 30 hari, perbarui
-            </Badge>
+            <Badge tone="warning" size="sm">lebih dari 30 hari, perbarui</Badge>
           {/if}
         </p>
       {/if}
 
       <div class="flex flex-col gap-1">
-        <div
-          class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink"
-        >
+        <div class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink">
           <label for="z-nisab">Nisab (gram)</label>
 
-          <FieldHelp
-            id="help-z-nisab"
-            label="Nisab"
-            {...help.nisab}
-          />
+          <FieldHelp id="help-z-nisab" label="Nisab" {...help.nisab} />
         </div>
 
-        <Input
-          id="z-nisab"
-          class="h-12 rounded-lg text-body-lg"
-          type="number"
-          name="nisabGrams"
-          min="1"
-          bind:value={nisabGrams}
-        />
+        <Input id="z-nisab" class="h-12 rounded-lg text-body-lg" type="number" name="nisabGrams" min="1" bind:value={nisabGrams} />
       </div>
 
       <div class="flex flex-col gap-1">
-        <div
-          class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink"
-        >
+        <div class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink">
           <label for="z-haul">Tanggal mulai haul</label>
 
-          <FieldHelp
-            id="help-z-haul"
-            label="Tanggal mulai haul"
-            {...help.haul}
-          />
+          <FieldHelp id="help-z-haul" label="Tanggal mulai haul" {...help.haul} />
         </div>
 
-        <Input
-          id="z-haul"
-          class="h-12 rounded-lg text-body-lg"
-          type="date"
-          name="haulStartDate"
-          bind:value={haulStartDate}
-        />
+        <Input id="z-haul" class="h-12 rounded-lg text-body-lg" type="date" name="haulStartDate" bind:value={haulStartDate} />
       </div>
 
       <div class="flex flex-col gap-1">
-        <div
-          class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink"
-        >
-          <label for="z-valuasi">
-            Metode valuasi stok
-          </label>
+        <div class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink">
+          <label for="z-valuasi"> Metode valuasi stok </label>
 
-          <FieldHelp
-            id="help-z-valuasi"
-            label="Metode valuasi stok"
-            {...help.valuation}
-          />
+          <FieldHelp id="help-z-valuasi" label="Metode valuasi stok" {...help.valuation} />
         </div>
 
         <select
@@ -545,96 +390,45 @@
         </select>
       </div>
 
-      <Button type="submit" class="mt-auto h-11 self-center px-8">
-        Simpan pengaturan
-      </Button>
+      <Button type="submit" class="mt-auto h-11 self-center px-8">Simpan pengaturan</Button>
     </form>
   </StatCard>
 
   <!-- Posisi keuangan -->
   <StatCard class="flex flex-col">
-    <h2 class="mb-1 text-headline-sm text-ink">
-      Posisi keuangan
-    </h2>
+    <h2 class="mb-1 text-headline-sm text-ink">Posisi keuangan</h2>
 
-    <p class="mb-3 text-body-sm text-muted">
-      Kondisi kas, piutang, dan utang usahamu saat ini.
-    </p>
+    <p class="mb-3 text-body-sm text-muted">Kondisi kas, piutang, dan utang usahamu saat ini.</p>
 
-    <form
-      method="POST"
-      action="?/saveBalance"
-      use:enhance={refresh}
-      class="flex flex-1 flex-col gap-3"
-    >
+    <form method="POST" action="?/saveBalance" use:enhance={refresh} class="flex flex-1 flex-col gap-3">
       <div class="flex flex-col gap-1">
-        <div
-          class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink"
-        >
+        <div class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink">
           <label for="z-cash">Kas (Rp)</label>
 
-          <FieldHelp
-            id="help-z-cash"
-            label="Kas"
-            {...help.cash}
-          />
+          <FieldHelp id="help-z-cash" label="Kas" {...help.cash} />
         </div>
 
-        <MoneyInput
-          id="z-cash"
-          class="h-12 rounded-lg text-body-lg"
-          name="cash"
-          bind:value={cash}
-          placeholder="belum diisi"
-        />
+        <MoneyInput id="z-cash" class="h-12 rounded-lg text-body-lg" name="cash" bind:value={cash} placeholder="belum diisi" />
       </div>
 
       <div class="flex flex-col gap-1">
-        <div
-          class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink"
-        >
-          <label for="z-receivable">
-            Piutang lancar (Rp)
-          </label>
+        <div class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink">
+          <label for="z-receivable"> Piutang lancar (Rp) </label>
 
-          <FieldHelp
-            id="help-z-receivable"
-            label="Piutang lancar"
-            {...help.receivable}
-          />
+          <FieldHelp id="help-z-receivable" label="Piutang lancar" {...help.receivable} />
         </div>
 
-        <MoneyInput
-          id="z-receivable"
-          class="h-12 rounded-lg text-body-lg"
-          name="receivable"
-          bind:value={receivable}
-          placeholder="belum diisi"
-        />
+        <MoneyInput id="z-receivable" class="h-12 rounded-lg text-body-lg" name="receivable" bind:value={receivable} placeholder="belum diisi" />
       </div>
 
       <div class="flex flex-col gap-1">
-        <div
-          class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink"
-        >
-          <label for="z-debt">
-            Utang jatuh tempo (Rp)
-          </label>
+        <div class="flex flex-wrap items-center gap-1.5 text-body-sm font-semibold text-ink">
+          <label for="z-debt"> Utang jatuh tempo (Rp) </label>
 
-          <FieldHelp
-            id="help-z-debt"
-            label="Utang jatuh tempo"
-            {...help.debt}
-          />
+          <FieldHelp id="help-z-debt" label="Utang jatuh tempo" {...help.debt} />
         </div>
 
-        <MoneyInput
-          id="z-debt"
-          class="h-12 rounded-lg text-body-lg"
-          name="debt"
-          bind:value={debt}
-          placeholder="belum diisi"
-        />
+        <MoneyInput id="z-debt" class="h-12 rounded-lg text-body-lg" name="debt" bind:value={debt} placeholder="belum diisi" />
       </div>
 
       {#if data.setting?.balanceAgeDays !== null && data.setting?.balanceAgeDays !== undefined}
@@ -643,9 +437,7 @@
         </p>
       {/if}
 
-      <Button type="submit" class="mt-auto h-11 self-center px-8">
-        Simpan posisi keuangan
-      </Button>
+      <Button type="submit" class="mt-auto h-11 self-center px-8">Simpan posisi keuangan</Button>
     </form>
   </StatCard>
 </div>
@@ -653,15 +445,10 @@
 <!-- CATATAN -->
 <StatCard class="mt-4 w-fit mx-auto">
   <p class="flex items-start gap-2.5 text-body-md text-ink">
-    <ShieldCheck
-      size={20}
-      class="shrink-0 text-status-positive"
-    />
+    <ShieldCheck size={20} class="shrink-0 text-status-positive" />
 
     <span>
-      <strong>
-        Estimasi berdasarkan data yang Anda isi, bukan fatwa.
-      </strong>
+      <strong> Estimasi berdasarkan data yang Anda isi, bukan fatwa. </strong>
       Konfirmasi ke BAZNAS atau lembaga amil zakat.
     </span>
   </p>

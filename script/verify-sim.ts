@@ -110,9 +110,17 @@ console.log('\n== S4: paritas kasir ==');
     const quota = useQuota ? ri(0, qty + 5) : null;
     const now = new Date('2026-09-15T10:00:00Z');
     const d: DiscountLike = {
-      id: 'd', name: 'D', scope: 'PRODUCT', percent: pct, productId: 'p',
-      isActive: true, startsAt: new Date('2026-09-01T00:00:00Z'),
-      endsAt: new Date('2026-09-30T00:00:00Z'), quota, quotaUsed: 0, createdAt: now
+      id: 'd',
+      name: 'D',
+      scope: 'PRODUCT',
+      percent: pct,
+      productId: 'p',
+      isActive: true,
+      startsAt: new Date('2026-09-01T00:00:00Z'),
+      endsAt: new Date('2026-09-30T00:00:00Z'),
+      quota,
+      quotaUsed: 0,
+      createdAt: now
     };
     const cart = calculateCart([{ productId: 'p', qty, price: P }], { productDiscounts: [d], global: null, now });
     const r = simulate({
@@ -148,10 +156,18 @@ console.log('\n== S5: validasi ==');
   throws('price negatif', () => simulate({ baseline: base, product: prod, levers: { price: -1 } }));
   throws('cost NaN', () => simulate({ baseline: base, product: prod, levers: { cost: NaN } }));
   throws('units negatif', () => simulate({ baseline: base, product: prod, levers: { discount: { kind: 'percent', pct: 10, units: -2 } } }));
-  throws('qty override Infinity', () =>
-    simulate({ baseline: base, product: prod, levers: { volume: { kind: 'override', qty: Infinity } } }));
-  const s = sanitizeLevers({ price: -3.4, cost: 6000.6, discount: { kind: 'percent', pct: 150.4, units: -2.2 }, volume: { kind: 'override', qty: 9.6 } });
-  ok('sanitize clamp+round', s.price === 0 && s.cost === 6001 && s.discount?.kind === 'percent' && (s.discount as { pct: number }).pct === 100, JSON.stringify(s));
+  throws('qty override Infinity', () => simulate({ baseline: base, product: prod, levers: { volume: { kind: 'override', qty: Infinity } } }));
+  const s = sanitizeLevers({
+    price: -3.4,
+    cost: 6000.6,
+    discount: { kind: 'percent', pct: 150.4, units: -2.2 },
+    volume: { kind: 'override', qty: 9.6 }
+  });
+  ok(
+    'sanitize clamp+round',
+    s.price === 0 && s.cost === 6001 && s.discount?.kind === 'percent' && (s.discount as { pct: number }).pct === 100,
+    JSON.stringify(s)
+  );
   let sanitizedOk = true;
   try {
     simulate({ baseline: base, product: prod, levers: s });
@@ -170,8 +186,7 @@ console.log('\n== S6: breakEvenQty ==');
   const input: SimInput = { baseline, product: prod, levers: { price: 11000 } };
   const r = simulate(input);
   const n = r.breakEvenQty;
-  const profitAt = (q: number) =>
-    simulate({ ...input, levers: { ...input.levers, volume: { kind: 'override', qty: q } } }).simulated.profit;
+  const profitAt = (q: number) => simulate({ ...input, levers: { ...input.levers, volume: { kind: 'override', qty: q } } }).simulated.profit;
   ok('n bukan null', n !== null, String(n));
   if (n !== null) {
     ok('profitAt(n) ≥ target', profitAt(n) >= r.statusQuo.profit, `${profitAt(n)} vs ${r.statusQuo.profit}`);
@@ -202,7 +217,10 @@ console.log('\n== S7: maxDiscountPct ==');
       levers: {}
     });
     const m = r.maxDiscountPct;
-    if (m === null || !Number.isInteger(m)) { good = false; continue; }
+    if (m === null || !Number.isInteger(m)) {
+      good = false;
+      continue;
+    }
     if (isBelowCost(P, c, m)) good = false;
     if (m < 100 && !isBelowCost(P, c, m + 1)) good = false;
   }
@@ -230,8 +248,18 @@ console.log('\n== S8: nol histori ==');
     levers: { volume: { kind: 'override', qty: 50 } }
   });
   ok('flag NO_HISTORY', r.flags.includes('NO_HISTORY'));
-  const nums = [r.actual.revenue, r.actual.profit, r.statusQuo.revenue, r.simulated.revenue, r.simulated.profit,
-    r.simulated.margin, r.unit.unitProfit, r.drift.price, r.drift.cost, r.impact.vsStatusQuo.marginPoints];
+  const nums = [
+    r.actual.revenue,
+    r.actual.profit,
+    r.statusQuo.revenue,
+    r.simulated.revenue,
+    r.simulated.profit,
+    r.simulated.margin,
+    r.unit.unitProfit,
+    r.drift.price,
+    r.drift.cost,
+    r.impact.vsStatusQuo.marginPoints
+  ];
   ok('semua angka finite', nums.every(Number.isFinite), JSON.stringify(nums));
   ok('impact dari nol = null', r.impact.vsStatusQuo.revenue === null && r.impact.vsStatusQuo.profit === null);
 }
@@ -245,7 +273,10 @@ console.log('\n== S9: monotonik diskon ==');
     let prev = Infinity;
     for (let pct = 0; pct <= 100; pct += 7) {
       const r = simulate({ baseline, product: { sellingPrice: P, costPrice: c }, levers: { discount: { kind: 'percent', pct } } });
-      if (r.simulated.revenue > prev) { good = false; break; }
+      if (r.simulated.revenue > prev) {
+        good = false;
+        break;
+      }
       prev = r.simulated.revenue;
     }
   }
@@ -309,36 +340,72 @@ console.log('\n== S12: respons permintaan ==');
   ok('harga tetap: factor 1, qty 100, profit 400rb', same.demand.factor === 1 && same.qty.simulated === 100 && same.simulated.profit === 400000);
 
   const up = simulate({ baseline, product, levers: { price: 11000, demand: on } });
-  ok('harga 11rb: qty ≈86,68, profit 433.392', Math.abs(up.qty.simulated - 86.68) < 0.05 && up.simulated.profit === 433392, `${up.qty.simulated}/${up.simulated.profit}`);
+  ok(
+    'harga 11rb: qty ≈86,68, profit 433.392',
+    Math.abs(up.qty.simulated - 86.68) < 0.05 && up.simulated.profit === 433392,
+    `${up.qty.simulated}/${up.simulated.profit}`
+  );
 
   const far = simulate({ baseline, product, levers: { price: 60000, demand: on } });
-  ok('harga 60rb: qty ≈6,80, profit 367.423 < 400rb', Math.abs(far.qty.simulated - 6.8) < 0.05 && far.simulated.profit === 367423, `${far.qty.simulated}/${far.simulated.profit}`);
+  ok(
+    'harga 60rb: qty ≈6,80, profit 367.423 < 400rb',
+    Math.abs(far.qty.simulated - 6.8) < 0.05 && far.simulated.profit === 367423,
+    `${far.qty.simulated}/${far.simulated.profit}`
+  );
   ok('harga 60rb: outOfRange + bukan PROFITABLE', far.outOfRange === true && assessScenario(far).code !== 'PROFITABLE');
 
   const atPeak = simulate({ baseline, product, levers: { price: 13000, demand: on } });
-  ok('puncak di batas +30% (harga 13000)', up.peak !== null && up.peak.price === 13000 && up.peak.profit === atPeak.simulated.profit, JSON.stringify(up.peak));
+  ok(
+    'puncak di batas +30% (harga 13000)',
+    up.peak !== null && up.peak.price === 13000 && up.peak.profit === atPeak.simulated.profit,
+    JSON.stringify(up.peak)
+  );
   const lowBound = simulate({ baseline, product: { sellingPrice: 10000, costPrice: 1000 }, levers: { demand: on } });
   ok('puncak dijepit batas −30% (harga 7000)', lowBound.peak !== null && lowBound.peak.price === 7000, JSON.stringify(lowBound.peak));
 
   const oor = simulate({ baseline, product, levers: { price: 13500, demand: on } });
-  ok('13500: OUT_OF_RANGE + profit 478.146', oor.qty.simulated > 63 && oor.qty.simulated < 64 && oor.simulated.profit === 478146 && assessScenario(oor).code === 'OUT_OF_RANGE', `${oor.qty.simulated}/${oor.simulated.profit}`);
+  ok(
+    '13500: OUT_OF_RANGE + profit 478.146',
+    oor.qty.simulated > 63 && oor.qty.simulated < 64 && oor.simulated.profit === 478146 && assessScenario(oor).code === 'OUT_OF_RANGE',
+    `${oor.qty.simulated}/${oor.simulated.profit}`
+  );
 
   const floor = simulate({ baseline, product, levers: { price: 1, demand: on } });
-  ok('plafon 3×: factor 3, qty 300, flag', floor.demand.factor === DEMAND_MAX_FACTOR && floor.qty.simulated === 300 && floor.flags.includes('VOLUME_CAPPED'));
+  ok(
+    'plafon 3×: factor 3, qty 300, flag',
+    floor.demand.factor === DEMAND_MAX_FACTOR && floor.qty.simulated === 300 && floor.flags.includes('VOLUME_CAPPED')
+  );
 
   ok('batas ±30%: 13000 aman', simulate({ baseline, product, levers: { price: 13000 } }).outOfRange === false);
-  ok('batas ±30%: 14000 dan 6999 keluar', simulate({ baseline, product, levers: { price: 14000 } }).outOfRange === true && simulate({ baseline, product, levers: { price: 6999 } }).outOfRange === true);
-  ok('diskon 50% tanpa ubah harga ikut keluar', simulate({ baseline, product, levers: { discount: { kind: 'percent', pct: 50 } } }).outOfRange === true);
+  ok(
+    'batas ±30%: 14000 dan 6999 keluar',
+    simulate({ baseline, product, levers: { price: 14000 } }).outOfRange === true &&
+      simulate({ baseline, product, levers: { price: 6999 } }).outOfRange === true
+  );
+  ok(
+    'diskon 50% tanpa ubah harga ikut keluar',
+    simulate({ baseline, product, levers: { discount: { kind: 'percent', pct: 50 } } }).outOfRange === true
+  );
 
   const disc = simulate({ baseline, product, levers: { discount: { kind: 'percent', pct: 15 }, demand: on } });
-  ok('diskon 15%: qty ≈127,61, profit 319.016', Math.abs(disc.qty.simulated - 127.61) < 0.05 && disc.simulated.profit === 319016, `${disc.qty.simulated}/${disc.simulated.profit}`);
+  ok(
+    'diskon 15%: qty ≈127,61, profit 319.016',
+    Math.abs(disc.qty.simulated - 127.61) < 0.05 && disc.simulated.profit === 319016,
+    `${disc.qty.simulated}/${disc.simulated.profit}`
+  );
 
   const quota = simulate({ baseline, product, levers: { discount: { kind: 'percent', pct: 15, units: 10 }, demand: on } });
-  ok('kuota: factor dari harga list + flag + tanpa puncak', quota.demand.factor === 1 && quota.flags.includes('QUOTA_DEMAND_IGNORED') && quota.peak === null);
+  ok(
+    'kuota: factor dari harga list + flag + tanpa puncak',
+    quota.demand.factor === 1 && quota.flags.includes('QUOTA_DEMAND_IGNORED') && quota.peak === null
+  );
 
   const manual = simulate({ baseline, product, levers: { price: 11000, volume: { kind: 'override', qty: 50 }, demand: on } });
   const manualOld = simulate({ baseline, product, levers: { price: 11000, volume: { kind: 'override', qty: 50 } } });
-  ok('override: model mati + identik perilaku lama', manual.demand.applied === false && JSON.stringify(manual.simulated) === JSON.stringify(manualOld.simulated));
+  ok(
+    'override: model mati + identik perilaku lama',
+    manual.demand.applied === false && JSON.stringify(manual.simulated) === JSON.stringify(manualOld.simulated)
+  );
 
   // Qty tak naik saat harga naik (e bawaan > 0, volPct 0).
   let mono = true;
@@ -356,7 +423,10 @@ console.log('\n== S12: respons permintaan ==');
 
   const drop13 = simulate({ baseline, product, levers: { price: 13000, demand: on } });
   ok('maxVolumeDrop 13rb ≈ 0,42', drop13.maxVolumeDrop !== null && Math.abs(drop13.maxVolumeDrop - 0.42) < 1e-9, String(drop13.maxVolumeDrop));
-  ok('maxVolumeDrop null tanpa histori', simulate({ baseline: { qty: 0, gross: 0, discount: 0, cost: 0, discountedQty: 0 }, product, levers: {} }).maxVolumeDrop === null);
+  ok(
+    'maxVolumeDrop null tanpa histori',
+    simulate({ baseline: { qty: 0, gross: 0, discount: 0, cost: 0, discountedQty: 0 }, product, levers: {} }).maxVolumeDrop === null
+  );
 
   let threw = false;
   try {
@@ -365,7 +435,11 @@ console.log('\n== S12: respons permintaan ==');
     threw = e instanceof RangeError;
   }
   ok('demand kind asing melempar RangeError', threw);
-  ok('sanitize: on lolos, asing jadi off', JSON.stringify(sanitizeLevers({ demand: { kind: 'on' } })) === JSON.stringify({ demand: { kind: 'on' } }) && JSON.stringify(sanitizeLevers({ demand: { kind: 'aneh' } as never })) === JSON.stringify({ demand: { kind: 'off' } }));
+  ok(
+    'sanitize: on lolos, asing jadi off',
+    JSON.stringify(sanitizeLevers({ demand: { kind: 'on' } })) === JSON.stringify({ demand: { kind: 'on' } }) &&
+      JSON.stringify(sanitizeLevers({ demand: { kind: 'aneh' } as never })) === JSON.stringify({ demand: { kind: 'off' } })
+  );
 
   // Tak ada NaN/Infinity: harga 0..5×, 200 baseline acak.
   let finite = true;

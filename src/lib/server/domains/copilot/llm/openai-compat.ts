@@ -85,7 +85,10 @@ async function* readEvents(body: ReadableStream<Uint8Array>): AsyncIterable<LlmE
           closed = true;
           break;
         }
-        let json: { choices?: { delta?: { content?: unknown; tool_calls?: unknown }; finish_reason?: unknown }[]; usage?: { prompt_tokens?: unknown; completion_tokens?: unknown } };
+        let json: {
+          choices?: { delta?: { content?: unknown; tool_calls?: unknown }; finish_reason?: unknown }[];
+          usage?: { prompt_tokens?: unknown; completion_tokens?: unknown };
+        };
         try {
           json = JSON.parse(payload);
         } catch {

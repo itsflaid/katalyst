@@ -10,8 +10,7 @@
   $: T = makeTime(data.timezone ?? DEFAULT_TZ);
   $: fmtDate = (d: string | Date) => T.fmt(d, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const reasonLabel: Record<string, string> = { SALE: 'Penjualan', VOID_RESTORE: 'Void', RESTOCK: 'Restock', ADJUST: 'Koreksi' };
-  const reasonTone = (r: string) =>
-    r === 'RESTOCK' ? 'positive' : r === 'SALE' ? 'neutral' : r === 'VOID_RESTORE' ? 'neutral' : 'warning';
+  const reasonTone = (r: string) => (r === 'RESTOCK' ? 'positive' : r === 'SALE' ? 'neutral' : r === 'VOID_RESTORE' ? 'neutral' : 'warning');
 
   let reasonInput = data.reason ?? '';
   let productInput = data.productFilter ?? '';
@@ -23,9 +22,18 @@
 <ProductTabs isOwner={true} />
 
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-  <Card><p class="text-label-sm uppercase text-muted">Masuk (restock + void)</p><p class="text-num-display text-status-positive tabular">+{data.summary.masuk}</p></Card>
-  <Card><p class="text-label-sm uppercase text-muted">Terjual</p><p class="text-num-display text-status-negative tabular">−{data.summary.terjual}</p></Card>
-  <Card><p class="text-label-sm uppercase text-muted">Koreksi bersih</p><p class="text-num-display text-ink tabular">{data.summary.koreksi >= 0 ? `+${data.summary.koreksi}` : data.summary.koreksi}</p></Card>
+  <Card
+    ><p class="text-label-sm uppercase text-muted">Masuk (restock + void)</p>
+    <p class="text-num-display text-status-positive tabular">+{data.summary.masuk}</p></Card
+  >
+  <Card
+    ><p class="text-label-sm uppercase text-muted">Terjual</p>
+    <p class="text-num-display text-status-negative tabular">−{data.summary.terjual}</p></Card
+  >
+  <Card
+    ><p class="text-label-sm uppercase text-muted">Koreksi bersih</p>
+    <p class="text-num-display text-ink tabular">{data.summary.koreksi >= 0 ? `+${data.summary.koreksi}` : data.summary.koreksi}</p></Card
+  >
 </div>
 
 <Card class="mb-4">
@@ -55,7 +63,13 @@
     </label>
     <label class="flex flex-col gap-1 text-body-md text-ink">
       Sampai
-      <input type="date" name="to" bind:value={toInput} min={fromInput || undefined} class="h-9 rounded border border-border-input bg-white px-2 text-body-sm text-ink" />
+      <input
+        type="date"
+        name="to"
+        bind:value={toInput}
+        min={fromInput || undefined}
+        class="h-9 rounded border border-border-input bg-white px-2 text-body-sm text-ink"
+      />
     </label>
     <button type="submit" class="h-9 rounded bg-ink-navy border border-ink-navy text-white text-label-lg px-4 cursor-pointer">Terapkan</button>
     <a href="/products/stok" class="h-9 inline-flex items-center rounded border border-border-input px-4 text-body-md text-ink no-underline">Reset</a>
@@ -71,8 +85,12 @@
     {#each data.movements as m}
       <tr>
         <td class="px-3 py-2 text-body-sm text-muted whitespace-nowrap">{fmtDate(m.createdAt)}</td>
-        <td class="px-3 py-2 whitespace-nowrap"><a href={`/products/${m.productId}`} class="text-ink-navy font-semibold hover:underline">{m.productName}</a></td>
-        <td class="px-3 py-2 tabular font-semibold whitespace-nowrap {m.qtyChange >= 0 ? 'text-status-positive' : 'text-status-negative'}">{m.qtyChange >= 0 ? `+${m.qtyChange}` : m.qtyChange}</td>
+        <td class="px-3 py-2 whitespace-nowrap"
+          ><a href={`/products/${m.productId}`} class="text-ink-navy font-semibold hover:underline">{m.productName}</a></td
+        >
+        <td class="px-3 py-2 tabular font-semibold whitespace-nowrap {m.qtyChange >= 0 ? 'text-status-positive' : 'text-status-negative'}"
+          >{m.qtyChange >= 0 ? `+${m.qtyChange}` : m.qtyChange}</td
+        >
         <td class="px-3 py-2 whitespace-nowrap"><Badge size="sm" tone={reasonTone(m.reason)}>{reasonLabel[m.reason] ?? m.reason}</Badge></td>
         <td class="px-3 py-2 text-muted">{m.note ?? '-'}</td>
         <td class="px-3 py-2 text-muted whitespace-nowrap">{m.createdByName ?? '-'}</td>

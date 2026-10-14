@@ -54,7 +54,18 @@ const flat = buildSimulatePriceData({
 });
 ok('volume 0 tanpa tuas impas', flat.volumeScenarios[0].profitVsNowText === '0,0%');
 
-const codes: SimFlag[] = ['NO_HISTORY', 'BELOW_COST', 'LOW_MARGIN', 'DISCOUNT_ON_CHANGED_PRICE', 'PROMO_SCALED_WITH_VOLUME', 'DRIFT_PRICE', 'DRIFT_COST', 'OUT_OF_RANGE_PRICE', 'VOLUME_CAPPED', 'QUOTA_DEMAND_IGNORED'];
+const codes: SimFlag[] = [
+  'NO_HISTORY',
+  'BELOW_COST',
+  'LOW_MARGIN',
+  'DISCOUNT_ON_CHANGED_PRICE',
+  'PROMO_SCALED_WITH_VOLUME',
+  'DRIFT_PRICE',
+  'DRIFT_COST',
+  'OUT_OF_RANGE_PRICE',
+  'VOLUME_CAPPED',
+  'QUOTA_DEMAND_IGNORED'
+];
 const texts = codes.map(simFlagText);
 ok('sepuluh flag punya teks', texts.every((t) => typeof t === 'string' && t.length > 0) && new Set(texts).size === codes.length);
 
@@ -78,7 +89,10 @@ const cheap = buildSimulatePriceData({
   targetPrice: 5000,
   volumePcts: [0]
 });
-ok('di bawah modal ditandai', cheap.flags.some((f) => f.code === 'BELOW_COST' && f.text.length > 0));
+ok(
+  'di bawah modal ditandai',
+  cheap.flags.some((f) => f.code === 'BELOW_COST' && f.text.length > 0)
+);
 
 ok('tanpa NaN atau Infinity', finiteDeep(JSON.parse(JSON.stringify(multi))) && finiteDeep(JSON.parse(JSON.stringify(single))));
 
@@ -97,9 +111,20 @@ const single0 = buildSimulatePriceData({
   priceDelta: 2000,
   volumePcts: [0]
 });
-ok('model selalu aktif: qty 0% dari model (≈76,07, bukan 100)', Math.abs(single0.volumeScenarios[0].qty - 76.07) < 0.05 && single0.volumeScenarios[0].profit === 410792, `${single0.volumeScenarios[0].qty}/${single0.volumeScenarios[0].profit}`);
-ok('demand + drop terisi', typeof single0.demand.dropPer10PctText === 'string' && single0.demand.dropPer10PctText.length > 0 && single0.demand.factorText.length > 0);
-ok('puncak di batas +30% (harga 13000)', single0.peak !== null && single0.peak.price === 13000 && single0.peak.priceText === 'Rp13.000', JSON.stringify(single0.peak));
+ok(
+  'model selalu aktif: qty 0% dari model (≈76,07, bukan 100)',
+  Math.abs(single0.volumeScenarios[0].qty - 76.07) < 0.05 && single0.volumeScenarios[0].profit === 410792,
+  `${single0.volumeScenarios[0].qty}/${single0.volumeScenarios[0].profit}`
+);
+ok(
+  'demand + drop terisi',
+  typeof single0.demand.dropPer10PctText === 'string' && single0.demand.dropPer10PctText.length > 0 && single0.demand.factorText.length > 0
+);
+ok(
+  'puncak di batas +30% (harga 13000)',
+  single0.peak !== null && single0.peak.price === 13000 && single0.peak.priceText === 'Rp13.000',
+  JSON.stringify(single0.peak)
+);
 
 const far = buildSimulatePriceData({
   product,
@@ -116,9 +141,6 @@ ok('harga 60rb: bukan PROFITABLE', far.assessment.code !== 'PROFITABLE', far.ass
 ok('baru bebas NaN/Infinity', finiteDeep(JSON.parse(JSON.stringify(single0))) && finiteDeep(JSON.parse(JSON.stringify(far))));
 
 const sensView = JSON.stringify(toModelView(single0));
-ok(
-  'proyeksi baru tanpa angka mentah',
-  !sensView.includes('410792') && sensView.includes('Rp410.792') && sensView.includes('dropPer10PctText')
-);
+ok('proyeksi baru tanpa angka mentah', !sensView.includes('410792') && sensView.includes('Rp410.792') && sensView.includes('dropPer10PctText'));
 
 if (failed) process.exit(1);
