@@ -1,4 +1,4 @@
-# AGENTS.md
+﻿# AGENTS.md
 
 Aturan menulis komentar di repo ini. Berlaku untuk agen dan manusia, di semua file (`.ts`, `.svelte`, `.js`, `.cjs`, `.css`, `.jsonc`, skrip).
 
