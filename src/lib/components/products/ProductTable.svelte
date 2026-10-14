@@ -55,7 +55,7 @@
         {#if isOwner}
           <ActiveToggle product={p} onSubmit={onSubmit} />
         {:else}
-          <Badge size="sm" tone={p.isActive ? "positive" : "neutral"}>{p.isActive ? "Aktif" : "Nonaktif"}</Badge>
+          <Badge size="sm" tone={p.isActive ? "positive" : "negative"}>{p.isActive ? "Aktif" : "Nonaktif"}</Badge>
         {/if}
       </td>
       <td class="px-3 py-2 whitespace-nowrap">

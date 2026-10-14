@@ -1,10 +1,9 @@
 <script lang="ts">
   import { cn } from '$lib/shared/utils';
 
-  // Nama tone mengikuti 4 status semantik tema, bukan
-  // "success/warning/danger" generik Tailwind, biar konsisten sama
-  // bahasa yang dipakai di lib/analytics.ts (insight type, dsb).
-  export let tone: 'positive' | 'warning' | 'negative' | 'neutral' = 'neutral';
+  // Tone solid mengikuti gambar acuan: hijau, mustard,
+  // merah, abu, dan navy untuk produk di keranjang.
+  export let tone: 'positive' | 'warning' | 'negative' | 'neutral' | 'navy' = 'neutral';
   // sm untuk tampilan kompak (role, status, persentase); md untuk ukuran KPI dashboard.
   export let size: 'sm' | 'md' = 'md';
   let className = '';
@@ -13,13 +12,14 @@
 
 <span
   class={cn(
-    'inline-flex items-center rounded border whitespace-nowrap',
-    size === 'md' && 'px-2 py-0.5 text-label-md',
-    size === 'sm' && 'px-1.5 py-px text-[10px] leading-[14px] font-semibold tracking-wide',
-    tone === 'positive' && 'bg-status-positive-bg text-status-positive border-status-positive-border',
-    tone === 'warning' && 'bg-status-warning-bg text-status-warning border-status-warning-border',
-    tone === 'negative' && 'bg-status-negative-bg text-status-negative border-status-negative-border',
-    tone === 'neutral' && 'bg-status-neutral-bg text-status-neutral border-status-neutral-border',
+    'inline-flex items-center whitespace-nowrap rounded-[10px] font-bold',
+    size === 'md' && 'px-2.5 py-1 text-label-md',
+    size === 'sm' && 'px-2 py-0.5 text-[10px] leading-[14px] tracking-wide',
+    tone === 'positive' && 'bg-[#15803D] text-white',
+    tone === 'warning' && 'bg-[#D4A000] text-white',
+    tone === 'negative' && 'bg-[#B91C1C] text-white',
+    tone === 'neutral' && 'bg-[#6B7280] text-white',
+    tone === 'navy' && 'bg-ink-navy text-white',
     className
   )}
 >

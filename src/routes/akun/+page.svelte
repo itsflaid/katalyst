@@ -98,7 +98,7 @@
       </label>
       <div class="flex items-center gap-2 text-body-md">
         <span class="text-muted">{data.username}</span>
-        <Badge size="sm" tone={data.role === 'OWNER' ? 'neutral' : 'positive'}>{data.role}</Badge>
+        <Badge size="sm" tone={data.role === 'OWNER' ? 'positive' : 'neutral'}>{data.role}</Badge>
       </div>
       {#if nameError}<p role="alert" class="text-body-sm text-status-negative">{nameError}</p>{/if}
       <div><Button type="submit" disabled={savingName}>{savingName ? 'Menyimpan...' : 'Simpan Nama'}</Button></div>

@@ -3,6 +3,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import ProductTile from '$lib/components/transaksi/ProductTile.svelte';
+  import ProductRow from '$lib/components/transaksi/ProductRow.svelte';
   import { enhance } from '$app/forms';
   import { goto, invalidateAll } from '$app/navigation';
   import { onMount } from 'svelte';
@@ -11,7 +12,7 @@
   import { calculateCart, getDiscountStatus, unitDiscount } from '$lib/discount';
   import { lineNetOf } from '$lib/analytics';
   import { makeTime, DEFAULT_TZ, type BizTime } from '$lib/shared/time';
-  import { Search, ChevronDown, Minus, Plus, Trash2, Check, Pencil, X } from 'lucide-svelte';
+  import { Search, ChevronDown, Minus, Plus, Trash2, Check, Pencil, X, LayoutGrid, List } from 'lucide-svelte';
   export let data;
   export let form;
 
@@ -95,12 +96,29 @@
   let copyMsgTimer: ReturnType<typeof setTimeout> | null = null;
   let query = '';
   let gridEl: HTMLDivElement | null = null;
+  let viewMode: 'grid' | 'list' = 'grid';
+
+  // Mode tampilan tersimpan per perangkat; gagal baca/tulis diabaikan.
+  function toggleView() {
+    viewMode = viewMode === 'grid' ? 'list' : 'grid';
+    try {
+      localStorage.setItem('katalyst-tx-view', viewMode);
+    } catch {
+      // Penyimpanan penuh atau diblokir: mode tetap berlaku sesi ini.
+    }
+  }
 
   // Jam server: offset dihitung sekali saat load; semua perhitungan diskon
   // client memakai now ini (diperbarui tiap 30 detik).
   const clockOffset = (data.serverNow ?? Date.now()) - Date.now();
   let tick = 0;
   onMount(() => {
+    try {
+      const saved = localStorage.getItem('katalyst-tx-view');
+      if (saved === 'list' || saved === 'grid') viewMode = saved;
+    } catch {
+      // Mode default grid dipakai bila simpanan tidak terbaca.
+    }
     const iv = setInterval(() => (tick += 1), 30000);
     return () => {
       clearInterval(iv);
@@ -284,7 +302,20 @@
     <Card>
       <div class="flex items-center justify-between gap-3">
         <h2 class="text-headline-sm text-ink">Pilih Produk</h2>
-        <span class="hidden text-body-sm text-muted sm:inline">Ketuk produk untuk menambahkan ke kasir</span>
+        <button
+          type="button"
+          on:click={toggleView}
+          title={viewMode === 'grid' ? 'Ubah ke mode daftar' : 'Ubah ke mode kotak'}
+          aria-label={viewMode === 'grid' ? 'Ubah ke mode daftar' : 'Ubah ke mode kotak'}
+          aria-pressed={viewMode === 'list'}
+          class="grid h-9 w-9 shrink-0 place-items-center rounded border border-ink-navy bg-white text-ink-navy hover:bg-ink-navy/5"
+        >
+          {#if viewMode === 'grid'}
+            <List size={18} aria-hidden="true" />
+          {:else}
+            <LayoutGrid size={18} aria-hidden="true" />
+          {/if}
+        </button>
       </div>
       {#if data.products.length > 0}
         <div class="relative mt-3">
@@ -293,7 +324,7 @@
             bind:value={query}
             placeholder="Cari nama produk"
             aria-label="Cari nama produk"
-            class="h-10 w-full rounded border border-ink-navy bg-white pl-3 pr-10 text-body-md text-ink placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-ink-navy/20"
+            class="h-10 w-full rounded-full border border-ink-navy bg-white pl-4 pr-10 text-body-md text-ink placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-ink-navy/20"
           />
           <Search size={18} class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-navy" />
         </div>
@@ -304,6 +335,22 @@
         <div bind:this={gridEl} class="mt-3 max-h-[356px] overflow-y-auto overscroll-contain p-1 -m-1">
           {#if productCards.length === 0}
             <p class="text-body-md text-muted">Produk "{query}" tidak ditemukan.</p>
+          {:else if viewMode === 'list'}
+            <div class="flex flex-col gap-2">
+              {#each productCards as c (c.id)}
+                <ProductRow
+                  name={c.name}
+                  stock={c.stock}
+                  netPrice={c.netPrice}
+                  grossPrice={c.sellingPrice}
+                  discountPercent={c.discountPercent}
+                  status={c.status}
+                  inCart={c.inCart}
+                  maxed={c.maxed}
+                  on:click={() => addProduct(c.id)}
+                />
+              {/each}
+            </div>
           {:else}
             <div class="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5">
               {#each productCards as c (c.id)}
