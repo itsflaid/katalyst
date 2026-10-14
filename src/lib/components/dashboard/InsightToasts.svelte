@@ -68,7 +68,8 @@
           <div class="min-w-0 flex-1">
             <Badge tone="warning" size="sm">Perlu restock</Badge>
             <p class="mt-1.5 text-body-md text-ink">
-              {restock?.habis} habis · {restock?.menipis} menipis: {stockNames.join(', ')}{#if stockMore > 0} +{stockMore} lainnya{/if}
+              {restock?.habis} habis · {restock?.menipis} menipis: {stockNames.join(', ')}{#if stockMore > 0}
+                +{stockMore} lainnya{/if}
             </p>
             <a href="/products?stok=restock" class="mt-1 inline-block text-body-sm font-semibold text-ink-navy hover:underline no-underline">
               Lihat yang perlu restock →

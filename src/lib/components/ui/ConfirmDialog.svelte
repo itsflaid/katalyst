@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { fade, scale } from "svelte/transition";
-  export let title = "Konfirmasi";
+  import { fade, scale } from 'svelte/transition';
+  export let title = 'Konfirmasi';
   export let onClose: () => void;
 </script>
 

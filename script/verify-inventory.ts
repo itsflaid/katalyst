@@ -15,7 +15,14 @@ function finiteDeep(value: unknown): boolean {
   return true;
 }
 
-function item(name: string, stock: number, minStock: number, costPrice: number, isActive: boolean, sold: number): [InventoryProduct, [string, number]] {
+function item(
+  name: string,
+  stock: number,
+  minStock: number,
+  costPrice: number,
+  isActive: boolean,
+  sold: number
+): [InventoryProduct, [string, number]] {
   return [{ id: name, name, stock, minStock, costPrice, isActive }, [name, sold]];
 }
 
@@ -36,9 +43,22 @@ const products = rows.map(([p]) => p);
 const sold = new Map(rows.map(([, s]) => s));
 
 const data = buildInventoryData(products, sold, 'all', 10);
-ok('ringkasan sembilan aktif', data.summary.activeCount === 9 && data.summary.outCount === 0 && data.summary.lowCount === 3 && data.summary.deadCount === 0 && data.summary.urgentCount === 5);
-ok('nonaktif terpisah', data.summary.inactive.count === 2 && data.summary.inactive.stockValue === 120000 && data.summary.inactive.stockValueText === 'Rp120.000');
-ok('nonaktif tidak di daftar', data.items.every((i) => i.name !== 'Terasi Udang 250g' && i.name !== 'Kecap Manis 500ml'));
+ok(
+  'ringkasan sembilan aktif',
+  data.summary.activeCount === 9 &&
+    data.summary.outCount === 0 &&
+    data.summary.lowCount === 3 &&
+    data.summary.deadCount === 0 &&
+    data.summary.urgentCount === 5
+);
+ok(
+  'nonaktif terpisah',
+  data.summary.inactive.count === 2 && data.summary.inactive.stockValue === 120000 && data.summary.inactive.stockValueText === 'Rp120.000'
+);
+ok(
+  'nonaktif tidak di daftar',
+  data.items.every((i) => i.name !== 'Terasi Udang 250g' && i.name !== 'Kecap Manis 500ml')
+);
 ok(
   'kalimat siap pakai',
   data.summary.lines[0] === '9 produk aktif: 0 habis, 3 menipis, 5 diperkirakan habis dalam 7 hari.' &&
@@ -48,19 +68,28 @@ ok(
 const urgent = buildInventoryData(products, sold, 'urgent', 10);
 ok(
   'urutan hampir habis',
-  urgent.items.map((i) => i.name).join('|') === 'Kerupuk Kepiting 250g|Keripik Pisang Manis 200g|Amplang Ikan Tenggiri 250g|Kerupuk Ikan Curah 500g|Sarung Samarinda'
+  urgent.items.map((i) => i.name).join('|') ===
+    'Kerupuk Kepiting 250g|Keripik Pisang Manis 200g|Amplang Ikan Tenggiri 250g|Kerupuk Ikan Curah 500g|Sarung Samarinda'
 );
-ok(
-  'teks hari menutup',
-  urgent.items.map((i) => i.daysCoverText).join('|') === '±2,5 hari|±2,8 hari|±3,1 hari|±3,5 hari|±7 hari'
-);
+ok('teks hari menutup', urgent.items.map((i) => i.daysCoverText).join('|') === '±2,5 hari|±2,8 hari|±3,1 hari|±3,5 hari|±7 hari');
 ok('filter habis kosong', buildInventoryData(products, sold, 'out', 10).empty);
 
 const outRows = [item('Kosong', 0, 5, 1000, true, 4)[0], item('Ada', 10, 5, 1000, true, 5)[0]];
-const outOnly = buildInventoryData(outRows, new Map([['Kosong', 4], ['Ada', 5]]), 'out', 10);
+const outOnly = buildInventoryData(
+  outRows,
+  new Map([
+    ['Kosong', 4],
+    ['Ada', 5]
+  ]),
+  'out',
+  10
+);
 ok(
   'habis tampil pertama dan satu-satunya',
-  outOnly.items.length === 1 && outOnly.items[0].name === 'Kosong' && outOnly.items[0].statusText === 'habis' && outOnly.items[0].daysCoverText === 'habis'
+  outOnly.items.length === 1 &&
+    outOnly.items[0].name === 'Kosong' &&
+    outOnly.items[0].statusText === 'habis' &&
+    outOnly.items[0].daysCoverText === 'habis'
 );
 
 const deadRows = [item('Mati', 8, 5, 1000, true, 0)[0]];

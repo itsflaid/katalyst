@@ -67,14 +67,8 @@ export interface CartOut {
   total: number;
 }
 
-function selectProductDiscount(
-  discounts: DiscountLike[],
-  productId: string,
-  now: Date
-): DiscountLike | null {
-  const active = discounts.filter(
-    (d) => d.scope === 'PRODUCT' && d.productId === productId && getDiscountStatus(d, now) === 'ACTIVE'
-  );
+function selectProductDiscount(discounts: DiscountLike[], productId: string, now: Date): DiscountLike | null {
+  const active = discounts.filter((d) => d.scope === 'PRODUCT' && d.productId === productId && getDiscountStatus(d, now) === 'ACTIVE');
   if (active.length === 0) return null;
   active.sort((a, b) => {
     if (b.createdAt.getTime() !== a.createdAt.getTime()) return b.createdAt.getTime() - a.createdAt.getTime();
@@ -89,10 +83,7 @@ function selectProductDiscount(
 // line.net            = gross − discountAmount
 // subtotal = Σ line.gross;  discountTotal = Σ line.discountAmount
 // total    = subtotal − discountTotal
-export function calculateCart(
-  lines: CartLineIn[],
-  ctx: { productDiscounts: DiscountLike[]; global: DiscountLike | null; now: Date }
-): CartOut {
+export function calculateCart(lines: CartLineIn[], ctx: { productDiscounts: DiscountLike[]; global: DiscountLike | null; now: Date }): CartOut {
   const { productDiscounts, global, now } = ctx;
   const linesOut: CartLineOut[] = [];
   let subtotal = 0;

@@ -86,7 +86,8 @@ export const DELETE: RequestHandler = async ({ request, locals, getClientAddress
 
   const parsedDelete = await readJsonObject(request);
   if (!parsedDelete.ok) throw error(400, parsedDelete.message);
-  const inviteId = typeof (parsedDelete.body as { inviteId?: unknown }).inviteId === 'string' ? (parsedDelete.body as { inviteId: string }).inviteId : '';
+  const inviteId =
+    typeof (parsedDelete.body as { inviteId?: unknown }).inviteId === 'string' ? (parsedDelete.body as { inviteId: string }).inviteId : '';
   if (!inviteId) throw error(400, 'inviteId wajib diisi.');
 
   const invite = await findPendingInvite(inviteId, businessId);

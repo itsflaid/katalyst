@@ -67,13 +67,7 @@ export async function queryMovementWeekly(businessId: string, from: Date, to: Da
       qty: sql<string>`sum(${stockMovement.qtyChange})::text`
     })
     .from(stockMovement)
-    .where(
-      and(
-        eq(stockMovement.businessId, businessId),
-        gte(stockMovement.createdAt, from),
-        lte(stockMovement.createdAt, to)
-      )
-    )
+    .where(and(eq(stockMovement.businessId, businessId), gte(stockMovement.createdAt, from), lte(stockMovement.createdAt, to)))
     .groupBy(weekExpr, stockMovement.reason);
   return rows.map((r) => ({ week: r.week, reason: r.reason, qty: Number(r.qty) }));
 }

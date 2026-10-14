@@ -123,9 +123,17 @@ console.log('\n== F4: paritas struk dengan kasir ==');
     const quota = rand() < 0.5 ? null : ri(1, 12);
     const now = new Date('2026-09-15T10:00:00Z');
     const d: DiscountLike = {
-      id: 'd1', name: 'D1', scope: 'PRODUCT', percent: pct, productId: 'p0',
-      isActive: true, startsAt: new Date('2026-09-01T00:00:00Z'),
-      endsAt: new Date('2026-09-30T00:00:00Z'), quota, quotaUsed: 0, createdAt: now
+      id: 'd1',
+      name: 'D1',
+      scope: 'PRODUCT',
+      percent: pct,
+      productId: 'p0',
+      isActive: true,
+      startsAt: new Date('2026-09-01T00:00:00Z'),
+      endsAt: new Date('2026-09-30T00:00:00Z'),
+      quota,
+      quotaUsed: 0,
+      createdAt: now
     };
     const cart = calculateCart(lines, { productDiscounts: [d], global: null, now });
     const rows = cart.lines.map((l) => ({ quantity: l.qty, priceAtSale: l.price, discountAmount: l.discountAmount }));
@@ -152,7 +160,11 @@ console.log('\n== F6: ZERO_FACTS ==');
 {
   const m = metricsOf(ZERO_FACTS);
   const vals = [m.qty, m.gross, m.discount, m.revenue, m.cost, m.profit, m.margin, m.discountRate, m.avgGrossPrice, m.avgNetPrice, m.avgCost];
-  ok('semua 0 dan finite', vals.every((v) => v === 0 && Number.isFinite(v)), JSON.stringify(m));
+  ok(
+    'semua 0 dan finite',
+    vals.every((v) => v === 0 && Number.isFinite(v)),
+    JSON.stringify(m)
+  );
   ok('addFacts identitas', JSON.stringify(addFacts(ZERO_FACTS, ZERO_FACTS)) === JSON.stringify(ZERO_FACTS));
 }
 
@@ -164,7 +176,10 @@ console.log('\n== F7: fillDailySeries ==');
   const to = T.startOfDay(new Date('2026-09-14T00:00:00Z'));
   const rows = fillDailySeries(new Map(), { from, to, T });
   ok('inklusif 5 hari', rows.length === 5, String(rows.length));
-  ok('hari kosong = 0 (margin 0)', rows.every((r) => r.revenue === 0 && r.cost === 0 && r.profit === 0 && r.margin === 0 && r.tx === 0));
+  ok(
+    'hari kosong = 0 (margin 0)',
+    rows.every((r) => r.revenue === 0 && r.cost === 0 && r.profit === 0 && r.margin === 0 && r.tx === 0)
+  );
   // Transaksi di sekitar tengah malam lokal: 16:30Z = WIB 23:30 (29 Sep),
   // WITA/WIT sudah 30 Sep (rujukan verify-time).
   const instant = new Date('2026-09-29T16:30:00Z');

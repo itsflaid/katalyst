@@ -31,9 +31,7 @@ export interface ParsedDiscountForm {
   quota: number | null;
 }
 
-export type DiscountFormResult =
-  | { data: ParsedDiscountForm }
-  | { error: string; code?: string; lossProducts?: { id: string; name: string }[] };
+export type DiscountFormResult = { data: ParsedDiscountForm } | { error: string; code?: string; lossProducts?: { id: string; name: string }[] };
 
 const PRESETS: WindowPreset[] = ['TODAY', 'DAYS_2', 'DAYS_7', 'CUSTOM', 'OPEN'];
 

@@ -162,9 +162,17 @@ export function buildMetricRows(input: MetricRowsInput): MetricRowsResult {
     return {
       ok: true,
       data: {
-        metric, metricLabel: METRIC_LABEL[metric], groupBy, groupLabel: GROUP_LABEL[groupBy],
+        metric,
+        metricLabel: METRIC_LABEL[metric],
+        groupBy,
+        groupLabel: GROUP_LABEL[groupBy],
         total: { value, valueText: formatValue(metric, value) },
-        rows: [], summary: { best: null, worst: null }, notes, shown: 0, totalGroups: 0, truncated: false
+        rows: [],
+        summary: { best: null, worst: null },
+        notes,
+        shown: 0,
+        totalGroups: 0,
+        truncated: false
       }
     };
   }
@@ -181,7 +189,12 @@ export function buildMetricRows(input: MetricRowsInput): MetricRowsResult {
     if (order === 'chronological') buckets.sort((a, b) => a.label.localeCompare(b.label, 'id-ID'));
     const totalFacts = sumFacts(buckets.map((b) => b.facts));
     const totalTx = input.totalTxCount ?? buckets.reduce((s, b) => s + b.txCount, 0);
-    const total = metric === 'tx_count' ? totalTx : metric === 'avg_ticket' ? avgTicketOf(metricsOf(totalFacts).revenue, totalTx) : metricValue(metric, totalFacts, totalTx);
+    const total =
+      metric === 'tx_count'
+        ? totalTx
+        : metric === 'avg_ticket'
+          ? avgTicketOf(metricsOf(totalFacts).revenue, totalTx)
+          : metricValue(metric, totalFacts, totalTx);
     if (metric === 'tx_count') notes.push('Satu struk bisa memuat beberapa produk; jumlah per produk tidak dijumlahkan.');
     return finish({ metric, groupBy, total, buckets, order, limit, notes, additive, share: additive && metric !== 'tx_count', occurrences: false });
   }
@@ -204,7 +217,18 @@ export function buildMetricRows(input: MetricRowsInput): MetricRowsResult {
     const facts = sumFacts([...byHour.values()]);
     const tx = [...byHour.values()].reduce((s, r) => s + r.txCount, 0);
     notes.push('Hanya jam dalam rentang jam transaksi yang tercatat.');
-    return finish({ metric, groupBy, total: metricValue(metric, facts, tx), buckets, order, limit, notes, additive, share: additive, occurrences: false });
+    return finish({
+      metric,
+      groupBy,
+      total: metricValue(metric, facts, tx),
+      buckets,
+      order,
+      limit,
+      notes,
+      additive,
+      share: additive,
+      occurrences: false
+    });
   }
 
   if (groupBy === 'weekday') {
@@ -229,8 +253,21 @@ export function buildMetricRows(input: MetricRowsInput): MetricRowsResult {
     const facts = sumFacts([...byDay.values()]);
     const tx = [...byDay.values()].reduce((s, r) => s + r.txCount, 0);
     if (additive) notes.push('Peringkat memakai rata-rata per hari karena jumlah tiap nama hari dalam periode bisa berbeda.');
-    const rank = (b: Bucket) => (additive ? (b.occurrences ? metricValue(metric, b.facts, b.txCount) / b.occurrences : 0) : metricValue(metric, b.facts, b.txCount));
-    return finish({ metric, groupBy, total: metricValue(metric, facts, tx), buckets: perDow, order, limit, notes, additive, share: additive, occurrences: additive, rank });
+    const rank = (b: Bucket) =>
+      additive ? (b.occurrences ? metricValue(metric, b.facts, b.txCount) / b.occurrences : 0) : metricValue(metric, b.facts, b.txCount);
+    return finish({
+      metric,
+      groupBy,
+      total: metricValue(metric, facts, tx),
+      buckets: perDow,
+      order,
+      limit,
+      notes,
+      additive,
+      share: additive,
+      occurrences: additive,
+      rank
+    });
   }
 
   const fromDay = T.dayKey(window.from);
@@ -251,7 +288,18 @@ export function buildMetricRows(input: MetricRowsInput): MetricRowsResult {
     }
     const facts = sumFacts([...byDay.values()]);
     const tx = [...byDay.values()].reduce((s, r) => s + r.txCount, 0);
-    return finish({ metric, groupBy, total: metricValue(metric, facts, tx), buckets, order, limit, notes, additive, share: additive, occurrences: false });
+    return finish({
+      metric,
+      groupBy,
+      total: metricValue(metric, facts, tx),
+      buckets,
+      order,
+      limit,
+      notes,
+      additive,
+      share: additive,
+      occurrences: false
+    });
   }
 
   if (groupBy === 'week') {
@@ -286,7 +334,18 @@ export function buildMetricRows(input: MetricRowsInput): MetricRowsResult {
     }
     const facts = sumFacts([...byDay.values()]);
     const tx = [...byDay.values()].reduce((s, r) => s + r.txCount, 0);
-    return finish({ metric, groupBy, total: metricValue(metric, facts, tx), buckets, order, limit, notes, additive, share: additive, occurrences: false });
+    return finish({
+      metric,
+      groupBy,
+      total: metricValue(metric, facts, tx),
+      buckets,
+      order,
+      limit,
+      notes,
+      additive,
+      share: additive,
+      occurrences: false
+    });
   }
 
   const months: { key: string; label: string; partial: boolean }[] = [];
@@ -299,7 +358,11 @@ export function buildMetricRows(input: MetricRowsInput): MetricRowsResult {
     const firstKey = `${y}-${String(m + 1).padStart(2, '0')}-01`;
     const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
     const lastKey = `${y}-${String(m + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-    months.push({ key, label: `${SHORT_MONTH[m]} ${y}${firstKey < fromDay || lastKey > toDay ? ' (sebagian)' : ''}`, partial: firstKey < fromDay || lastKey > toDay });
+    months.push({
+      key,
+      label: `${SHORT_MONTH[m]} ${y}${firstKey < fromDay || lastKey > toDay ? ' (sebagian)' : ''}`,
+      partial: firstKey < fromDay || lastKey > toDay
+    });
     m += 1;
     if (m > 11) {
       m = 0;
@@ -320,7 +383,18 @@ export function buildMetricRows(input: MetricRowsInput): MetricRowsResult {
   });
   const facts = sumFacts([...byDay.values()]);
   const tx = [...byDay.values()].reduce((s, r) => s + r.txCount, 0);
-  return finish({ metric, groupBy, total: metricValue(metric, facts, tx), buckets, order, limit, notes, additive, share: additive, occurrences: false });
+  return finish({
+    metric,
+    groupBy,
+    total: metricValue(metric, facts, tx),
+    buckets,
+    order,
+    limit,
+    notes,
+    additive,
+    share: additive,
+    occurrences: false
+  });
 }
 
 function finish(args: {
@@ -362,7 +436,10 @@ function finish(args: {
   return {
     ok: true,
     data: {
-      metric, metricLabel: METRIC_LABEL[metric], groupBy, groupLabel: GROUP_LABEL[groupBy],
+      metric,
+      metricLabel: METRIC_LABEL[metric],
+      groupBy,
+      groupLabel: GROUP_LABEL[groupBy],
       total: { value: total, valueText: formatValue(metric, total) },
       rows,
       summary: { best: hasSummary ? pick(ordered[0]) : null, worst: hasSummary ? pick(ordered[ordered.length - 1]) : null },

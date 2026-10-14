@@ -1,12 +1,7 @@
 import { createLlmClient } from '../src/lib/server/domains/copilot/llm/index';
 import { createOpenAiCompatClient } from '../src/lib/server/domains/copilot/llm/openai-compat';
 import { createPooledClient } from '../src/lib/server/domains/copilot/llm/pool';
-import {
-  LlmHttpError,
-  type LlmClient,
-  type LlmEvent,
-  type LlmRequest
-} from '../src/lib/server/domains/copilot/llm/types';
+import { LlmHttpError, type LlmClient, type LlmEvent, type LlmRequest } from '../src/lib/server/domains/copilot/llm/types';
 
 let passCount = 0;
 let failCount = 0;
@@ -80,7 +75,10 @@ console.log('\n== kontrak adapter ==');
     baseReq
   );
   ok('(1) model pertama', isModelFirst(events), JSON.stringify(events));
-  ok('(1) teks + stop', events.some((e) => e.type === 'text' && e.delta === 'Halo') && events.some((e) => e.type === 'finish' && e.reason === 'stop'));
+  ok(
+    '(1) teks + stop',
+    events.some((e) => e.type === 'text' && e.delta === 'Halo') && events.some((e) => e.type === 'finish' && e.reason === 'stop')
+  );
 }
 
 {
@@ -111,7 +109,11 @@ console.log('\n== kontrak adapter ==');
     baseReq
   );
   const calls = events.filter((e) => e.type === 'tool_call');
-  ok('(3) dua tool urut index', calls.length === 2 && calls[0].type === 'tool_call' && calls[0].id === 'c1' && calls[1].type === 'tool_call' && calls[1].id === 'c2', JSON.stringify(events));
+  ok(
+    '(3) dua tool urut index',
+    calls.length === 2 && calls[0].type === 'tool_call' && calls[0].id === 'c1' && calls[1].type === 'tool_call' && calls[1].id === 'c2',
+    JSON.stringify(events)
+  );
 }
 
 {
@@ -134,11 +136,19 @@ console.log('\n== kontrak adapter ==');
       baseUrl: 'https://x.test',
       apiKey: 'k',
       model: 'm1',
-      fetchImpl: fakeFetch([chunk({ content: 'Jawaban', reasoning: 'rahasia', reasoning_content: 'sangat rahasia', thought: 'pikir' }), chunk({}, 'stop'), DONE])
+      fetchImpl: fakeFetch([
+        chunk({ content: 'Jawaban', reasoning: 'rahasia', reasoning_content: 'sangat rahasia', thought: 'pikir' }),
+        chunk({}, 'stop'),
+        DONE
+      ])
     }),
     baseReq
   );
-  ok('(5) penalaran diabaikan', !JSON.stringify(events).includes('rahasia') && events.some((e) => e.type === 'text' && e.delta === 'Jawaban'), JSON.stringify(events));
+  ok(
+    '(5) penalaran diabaikan',
+    !JSON.stringify(events).includes('rahasia') && events.some((e) => e.type === 'text' && e.delta === 'Jawaban'),
+    JSON.stringify(events)
+  );
 }
 
 {
@@ -155,7 +165,11 @@ console.log('\n== kontrak adapter ==');
       baseUrl: 'https://x.test',
       apiKey: 'k',
       model: 'm1',
-      fetchImpl: fakeFetch([chunk({ tool_calls: [{ index: 0, id: 'c1', function: { name: 't', arguments: '{"period":' } }] }), chunk({}, 'tool_calls'), DONE])
+      fetchImpl: fakeFetch([
+        chunk({ tool_calls: [{ index: 0, id: 'c1', function: { name: 't', arguments: '{"period":' } }] }),
+        chunk({}, 'tool_calls'),
+        DONE
+      ])
     }),
     baseReq
   );
@@ -168,13 +182,20 @@ console.log('\n== kontrak adapter ==');
     createOpenAiCompatClient({ baseUrl: 'https://x.test', apiKey: 'k', model: 'm1', fetchImpl: fakeFetch([chunk({ content: 'setengah' })]) }),
     baseReq
   );
-  ok('(8) stream terputus jadi error', events.some((e) => e.type === 'finish' && e.reason === 'error'), JSON.stringify(events));
+  ok(
+    '(8) stream terputus jadi error',
+    events.some((e) => e.type === 'finish' && e.reason === 'error'),
+    JSON.stringify(events)
+  );
 }
 
 console.log('\n== kolam failover ==');
 
 function member(model: string, chunks: string[], status = 200, headers: Record<string, string> = {}) {
-  return { model, client: createOpenAiCompatClient({ baseUrl: 'https://x.test', apiKey: 'k', model, fetchImpl: fakeFetch(chunks, status, headers) }) };
+  return {
+    model,
+    client: createOpenAiCompatClient({ baseUrl: 'https://x.test', apiKey: 'k', model, fetchImpl: fakeFetch(chunks, status, headers) })
+  };
 }
 const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
 
@@ -187,12 +208,20 @@ const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
   });
   const events = await collect(pool, baseReq);
   const first = events[0];
-  ok('(9) pindah saat 429, failovers=1', first?.type === 'model' && first.model === 'm2' && first.failovers === 1 && tried.join(',') === 'm1,m2', JSON.stringify({ events, tried }));
+  ok(
+    '(9) pindah saat 429, failovers=1',
+    first?.type === 'model' && first.model === 'm2' && first.failovers === 1 && tried.join(',') === 'm1,m2',
+    JSON.stringify({ events, tried })
+  );
 }
 
 {
   const t5xx: string[] = [];
-  const pool5xx = createPooledClient([member('m1', [], 500), member('m2', okChunks)], { maxFailover: 2, cooldowns: new Map(), onAttempt: (m) => t5xx.push(m) });
+  const pool5xx = createPooledClient([member('m1', [], 500), member('m2', okChunks)], {
+    maxFailover: 2,
+    cooldowns: new Map(),
+    onAttempt: (m) => t5xx.push(m)
+  });
   const e5xx = await collect(pool5xx, baseReq);
   const failingFetch = (() => Promise.reject(new Error('jaringan putus'))) as typeof fetch;
   const poolTimeout = createPooledClient(
@@ -203,7 +232,10 @@ const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
     { maxFailover: 2, cooldowns: new Map() }
   );
   const eTimeout = await collect(poolTimeout, baseReq);
-  ok('(10) 5xx dan timeout memicu pindah', e5xx[0]?.type === 'model' && e5xx[0].model === 'm2' && eTimeout[0]?.type === 'model' && eTimeout[0].model === 'm2' && t5xx.join(',') === 'm1,m2');
+  ok(
+    '(10) 5xx dan timeout memicu pindah',
+    e5xx[0]?.type === 'model' && e5xx[0].model === 'm2' && eTimeout[0]?.type === 'model' && eTimeout[0].model === 'm2' && t5xx.join(',') === 'm1,m2'
+  );
 }
 
 {
@@ -215,9 +247,17 @@ const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
       throw new Error('putus di tengah');
     }
   };
-  const pool = createPooledClient([{ model: 'm1', client: failAfterFirst }, member('m2', okChunks)], { maxFailover: 2, cooldowns: new Map(), onAttempt: (m) => tried.push(m) });
+  const pool = createPooledClient([{ model: 'm1', client: failAfterFirst }, member('m2', okChunks)], {
+    maxFailover: 2,
+    cooldowns: new Map(),
+    onAttempt: (m) => tried.push(m)
+  });
   const err = await collectFails(pool, baseReq);
-  ok('(11) gagal setelah event pertama tidak pindah', err instanceof Error && err.message === 'putus di tengah' && tried.join(',') === 'm1', `${String(err)} tried=${tried}`);
+  ok(
+    '(11) gagal setelah event pertama tidak pindah',
+    err instanceof Error && err.message === 'putus di tengah' && tried.join(',') === 'm1',
+    `${String(err)} tried=${tried}`
+  );
 }
 
 {
@@ -301,7 +341,11 @@ const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
     { maxFailover: 2, cooldowns: new Map(), onAttempt: (m) => tried.push(m) }
   );
   const err = await collectFails(pool, baseReq);
-  ok('(18) abort tidak pindah', err instanceof DOMException && err.name === 'AbortError' && tried.join(',') === 'm1', `${String(err)} tried=${tried}`);
+  ok(
+    '(18) abort tidak pindah',
+    err instanceof DOMException && err.name === 'AbortError' && tried.join(',') === 'm1',
+    `${String(err)} tried=${tried}`
+  );
 }
 
 {
@@ -328,7 +372,12 @@ const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
   const events = await collect(client, baseReq);
   ok(
     '(20) extraBody per model',
-    bodies.length === 2 && bodies[0]['reasoning_effort'] === 'low' && bodies[1]['reasoning_effort'] === 'none' && bodies[1]['include_reasoning'] === undefined && events[0]?.type === 'model' && events[0].model === 'qwen/qwen3.8-27b',
+    bodies.length === 2 &&
+      bodies[0]['reasoning_effort'] === 'low' &&
+      bodies[1]['reasoning_effort'] === 'none' &&
+      bodies[1]['include_reasoning'] === undefined &&
+      events[0]?.type === 'model' &&
+      events[0].model === 'qwen/qwen3.8-27b',
     JSON.stringify(bodies.map((b) => ({ model: b['model'], reasoning_effort: b['reasoning_effort'] })))
   );
 }
@@ -344,11 +393,18 @@ const okChunks = [chunk({ content: 'siap' }), chunk({}, 'stop'), DONE];
   });
   const events = await collect(pool, baseReq);
   const first = events[0];
-  ok('(21) cooldown dilewati terhitung failover', first?.type === 'model' && first.model === 'm2' && first.failovers === 1 && tried.join(',') === 'm2', JSON.stringify({ first, tried }));
+  ok(
+    '(21) cooldown dilewati terhitung failover',
+    first?.type === 'model' && first.model === 'm2' && first.failovers === 1 && tried.join(',') === 'm2',
+    JSON.stringify({ first, tried })
+  );
 }
 
 {
-  const pool = createPooledClient([member('m1', [], 429, { 'retry-after': '5' }), member('m2', [], 429, { 'retry-after': '30' })], { maxFailover: 2, cooldowns: new Map() });
+  const pool = createPooledClient([member('m1', [], 429, { 'retry-after': '5' }), member('m2', [], 429, { 'retry-after': '30' })], {
+    maxFailover: 2,
+    cooldowns: new Map()
+  });
   const err = await collectFails(pool, baseReq);
   ok('(22) 429 memakai Retry-After terbesar', err instanceof LlmHttpError && err.status === 429 && err.retryAfterMs === 30000, String(err));
 }
@@ -396,8 +452,16 @@ if (process.argv.includes('--live')) {
         maxTokens: 600,
         temperature: 0
       });
-      ok(`live ${model}: tool_call muncul`, liveEvents.some((e) => e.type === 'tool_call'), JSON.stringify(liveEvents).slice(0, 400));
-      ok(`live ${model}: usage muncul`, liveEvents.some((e) => e.type === 'usage'), JSON.stringify(liveEvents).slice(0, 400));
+      ok(
+        `live ${model}: tool_call muncul`,
+        liveEvents.some((e) => e.type === 'tool_call'),
+        JSON.stringify(liveEvents).slice(0, 400)
+      );
+      ok(
+        `live ${model}: usage muncul`,
+        liveEvents.some((e) => e.type === 'usage'),
+        JSON.stringify(liveEvents).slice(0, 400)
+      );
     }
   }
 }

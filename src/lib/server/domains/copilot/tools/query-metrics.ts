@@ -40,9 +40,7 @@ export interface QueryMetricsData {
   notes: string[];
 }
 
-export type QueryMetricsResult =
-  | { ok: true; data: QueryMetricsData }
-  | { ok: false; code: 'INVALID_ARGS'; message: string };
+export type QueryMetricsResult = { ok: true; data: QueryMetricsData } | { ok: false; code: 'INVALID_ARGS'; message: string };
 
 export function buildQueryMetricsData(input: {
   metric: Metric;
@@ -91,7 +89,7 @@ export async function queryMetrics(ctx: ToolContext, input: unknown): Promise<To
   });
   if (!checked.ok) return failure(TOOL, 'INVALID_ARGS', checked.message);
   const metric = checked.value.metric as Metric;
-  const groupBy = ((checked.value.group_by ?? 'none') as GroupBy);
+  const groupBy = (checked.value.group_by ?? 'none') as GroupBy;
   const productQuery = checked.value.product as string | undefined;
   if (productQuery !== undefined && groupBy === 'product') {
     return failure(TOOL, 'INVALID_ARGS', 'Filter produk tidak dipakai bersama kelompok per produk.');
@@ -115,10 +113,20 @@ export async function queryMetrics(ctx: ToolContext, input: unknown): Promise<To
     const resolved = resolveProduct(productQuery, products);
     if (resolved.kind === 'not_found') {
       const names = resolved.candidates.map((c) => c.name).join(', ');
-      return failure(TOOL, 'PRODUCT_NOT_FOUND', `Produk '${resolved.query}' tidak ditemukan.${names ? ` Yang mirip: ${names}.` : ''}`, resolved.candidates);
+      return failure(
+        TOOL,
+        'PRODUCT_NOT_FOUND',
+        `Produk '${resolved.query}' tidak ditemukan.${names ? ` Yang mirip: ${names}.` : ''}`,
+        resolved.candidates
+      );
     }
     if (resolved.kind === 'ambiguous') {
-      return failure(TOOL, 'AMBIGUOUS_PRODUCT', `Ada ${resolved.candidates.length} produk yang cocok dengan '${resolved.query}'.`, resolved.candidates);
+      return failure(
+        TOOL,
+        'AMBIGUOUS_PRODUCT',
+        `Ada ${resolved.candidates.length} produk yang cocok dengan '${resolved.query}'.`,
+        resolved.candidates
+      );
     }
     productIds = [resolved.product.id];
     resolvedProduct = resolved.product;

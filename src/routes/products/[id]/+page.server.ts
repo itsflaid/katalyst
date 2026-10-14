@@ -45,5 +45,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     .orderBy(desc(stockMovement.createdAt))
     .limit(20);
 
-  return { product: p, performance, movements, role: locals.user!.role === 'OWNER' ? 'OWNER' : 'STAFF', timezone: locals.business?.timezone ?? DEFAULT_TZ };
+  return {
+    product: p,
+    performance,
+    movements,
+    role: locals.user!.role === 'OWNER' ? 'OWNER' : 'STAFF',
+    timezone: locals.business?.timezone ?? DEFAULT_TZ
+  };
 };

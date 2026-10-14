@@ -30,7 +30,11 @@
   }
 </script>
 
-<div class={desktopOnly ? 'hidden sm:flex items-stretch gap-0 divide-x divide-border-stat' : 'flex flex-col sm:flex-row items-stretch gap-0 divide-y sm:divide-y-0 sm:divide-x divide-border-stat'}>
+<div
+  class={desktopOnly
+    ? 'hidden sm:flex items-stretch gap-0 divide-x divide-border-stat'
+    : 'flex flex-col sm:flex-row items-stretch gap-0 divide-y sm:divide-y-0 sm:divide-x divide-border-stat'}
+>
   <div class="flex flex-col justify-center gap-1 px-4 py-3">
     <span class="text-body-sm text-muted">Periode</span>
     <span class="relative inline-flex">
