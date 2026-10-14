@@ -57,6 +57,10 @@
 
   const btn = (current: string, key: string) =>
     `rounded border px-2.5 py-1.5 text-body-sm ${current === key ? 'border-ink-navy bg-ink-navy text-white font-semibold' : 'border-border-input bg-white text-ink hover:bg-table-header'}`;
+  // Hari tanpa struk digambar 0 (datar di bawah), bukan bolong.
+  $: avgTicketFlat = data.avgTicketPerDay.data.map((v) => v ?? 0);
+  // Sumbu chart berlabel satuan pendek (jt/rb/Rp) biar tak dikira persen.
+  $: avgTick = (v: number) => `${v} ${data.avgTicketPerDay.unitLabel.split(' ')[0]}`;
   const rangeNames: Record<string, string> = { today: 'Hari ini', week: 'Minggu ini', '7d': '7 hari', '30d': '30 hari', month: 'Bulan ini', custom: 'Custom' };
 
   let showPeriodSheet = false;
@@ -202,8 +206,9 @@
       <p class="text-body-sm text-muted mb-3">{data.avgTicketPerDay.unitLabel} · {data.rangeLabel}</p>
       <LineChart
         labels={data.trend.labels}
-        datasets={[{ label: 'Rata-rata struk', data: data.avgTicketPerDay.data, color: '#0284C7' }]}
+        datasets={[{ label: 'Rata-rata struk', data: avgTicketFlat, color: '#0284C7' }]}
         spanGaps={false}
+        yFormat={avgTick}
       />
     </StatCard>
   </div>
