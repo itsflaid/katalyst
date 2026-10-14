@@ -86,7 +86,9 @@ export function zakatOf(input: ZakatInput, adjustment = 0): ZakatResult {
           ? 'HAUL_PENDING'
           : 'DUE';
   // Rupiah tanpa sen: dibulatkan sekali di akhir agar rincian cocok dengan total.
-  const amount = nisabReached === true && netAssets > 0 ? Math.round(ZAKAT_RATE * netAssets) : 0;
+  // Kewajiban cuma ada bila nisab tercapai DAN haul genap DAN aset bersih positif.
+  const amount =
+    nisabReached === true && reached === true && netAssets > 0 ? Math.round(ZAKAT_RATE * netAssets) : 0;
   return {
     stockValue,
     assets,
