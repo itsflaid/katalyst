@@ -114,5 +114,64 @@ console.log('\n== dampak simulasi ==');
   ok('melewati nisab terdeteksi', cross.before.nisabReached === false && cross.after.nisabReached === true && cross.crossesNisab === true);
 }
 
+// Aset 125jt ≥ nisab 114,75jt; tempo 2026-10-09, sehari sebelum genap.
+const pendingRich: ZakatInput = {
+  ...base,
+  stockSelling: 110_000_000,
+  cash: 10_000_000,
+  receivable: 5_000_000,
+  debt: 0,
+  today: '2026-10-08'
+};
+
+console.log('\n== haul belum genap ==');
+{
+  const r = zakatOf(pendingRich);
+  ok('nisab tercapai tapi jumlah 0', r.nisabReached === true && r.amount === 0, `amount=${r.amount}`);
+  ok('status HAUL_PENDING', r.haul.reached === false && r.status === 'HAUL_PENDING');
+}
+
+console.log('\n== tepat dan lewat tempo ==');
+{
+  const due = zakatOf({ ...pendingRich, today: '2026-10-09' });
+  ok('tepat tempo wajib', due.haul.daysLeft === 0 && due.haul.reached === true && due.status === 'DUE' && due.amount === Math.round(ZAKAT_RATE * 125_000_000), `amount=${due.amount}`);
+  const late = zakatOf({ ...pendingRich, today: '2026-10-10' });
+  ok('lewat tempo tetap wajib', late.haul.reached === true && late.status === 'DUE' && late.amount === Math.round(ZAKAT_RATE * 125_000_000), `amount=${late.amount}`);
+}
+
+console.log('\n== haul tak diketahui ==');
+{
+  const r = zakatOf({ ...pendingRich, haulStartDate: null });
+  ok('tanggal hilang jumlah 0', r.haul.reached === null && r.amount === 0 && r.status === 'HAUL_PENDING' && r.missing.includes('haulStart'));
+}
+
+console.log('\n== haul genap tanpa nisab ==');
+{
+  const r = zakatOf({ ...base, haulStartDate: '2024-01-01' });
+  ok('di bawah nisab jumlah 0 walau haul genap', r.haul.reached === true && r.nisabReached === false && r.amount === 0 && r.status === 'BELOW_NISAB');
+}
+
+console.log('\n== haul genap tanpa harga emas ==');
+{
+  const r = zakatOf({ ...pendingRich, haulStartDate: '2024-01-01', goldPricePerGram: null });
+  ok('tanpa harga emas jumlah 0', r.status === 'NEEDS_GOLD_PRICE' && r.amount === 0);
+}
+
+console.log('\n== simulasi sebelum haul genap ==');
+{
+  const imp = zakatImpactOf(pendingRich, { statusQuo: 1_000_000, simulated: 5_000_000 });
+  ok('sebelum-sesudah Rp0 selisih Rp0', imp.before.amount === 0 && imp.after.amount === 0 && imp.deltaAmount === 0);
+  ok('selisih aset tetap tercatat', imp.deltaNetAssets === 4_000_000 && imp.after.netAssets === imp.before.netAssets + 4_000_000);
+  const cross = zakatImpactOf(base, { statusQuo: 0, simulated: 30_000_000 });
+  ok('lintas nisab terdeteksi tapi belum jatuh tempo', cross.crossesNisab === true && cross.before.amount === 0 && cross.after.amount === 0 && cross.deltaAmount === 0);
+}
+
+console.log('\n== simulasi sesudah haul genap ==');
+{
+  const dueRich: ZakatInput = { ...pendingRich, haulStartDate: '2024-01-01' };
+  const imp = zakatImpactOf(dueRich, { statusQuo: 0, simulated: 10_000_000 });
+  ok('haul genap menghitung normal', imp.before.amount === Math.round(ZAKAT_RATE * 125_000_000) && imp.after.amount === Math.round(ZAKAT_RATE * 135_000_000) && imp.deltaAmount === Math.round(ZAKAT_RATE * 10_000_000), `delta=${imp.deltaAmount}`);
+}
+
 console.log(`\n${passCount} passed, ${failCount} failed\n`);
 if (failCount > 0) process.exit(1);
