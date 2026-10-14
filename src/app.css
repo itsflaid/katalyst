@@ -18,25 +18,25 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Scrollbar global ramping selaras tema: Firefox + Chromium.
+/* Scrollbar global navy tipis: Firefox + Chromium.
    Track transparan biar menyatu sama canvas krem / card putih. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: #172554 transparent;
 }
 *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 *::-webkit-scrollbar-track {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #172554;
   border-radius: 9999px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #0f172a;
 }
 
 /* Varian buat permukaan navy gelap (sidebar, panel copilot). */
