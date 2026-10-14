@@ -118,6 +118,8 @@
   $: result = data.zakat?.result ?? null;
   $: input = data.zakat?.input ?? null;
   $: partial = (result?.missing.length ?? 1) > 0;
+  // Tanda estimasi hanya untuk jumlah positif; nol aturan (haul/nisab) tampil tegas.
+  $: amountUncertain = partial && (result?.amount ?? 0) > 0;
 
   $: haulText =
     !result || result.haul.daysLeft === null
@@ -252,7 +254,7 @@
             <p
               class="break-words text-[28px] font-extrabold leading-tight tracking-tight text-ink-navy sm:text-[42px] lg:text-[48px]"
             >
-              {partial ? '~' : ''}{fmtRupiah(result.amount)}
+              {amountUncertain ? '~' : ''}{fmtRupiah(result.amount)}
             </p>
 
             {#if nisabGap !== null}
@@ -301,6 +303,16 @@
         <p class="mt-3 text-sm text-muted">
           Sisa haul: {haulText}
         </p>
+
+        {#if result.status === 'HAUL_PENDING'}
+          <p class="mt-2 text-sm leading-relaxed text-ink">
+            {#if result.haul.daysLeft === null}
+              Haul belum bisa dihitung karena tanggal mulai belum diisi — kewajiban zakat saat ini Rp0. Isi tanggalnya di pengaturan.
+            {:else}
+              Haul belum genap — kewajiban zakat saat ini Rp0. Jatuh tempo {fmtTanggal(result.haul.dueDate)}.
+            {/if}
+          </p>
+        {/if}
 
         {#if partial}
           <p class="mt-2 text-sm leading-relaxed text-muted">
