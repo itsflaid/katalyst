@@ -14,7 +14,7 @@
 
 <a href="/products" class="text-body-sm text-muted hover:text-ink no-underline hover:underline">← Kembali ke Produk</a>
 <PageHeader title={data.product.name} subtitle={`Harga modal ${idr(data.product.costPrice)} · Harga jual ${idr(data.product.sellingPrice)}`} class="!mt-2">
-  <span slot="badge"><Badge size="sm" tone={data.product.isActive ? 'positive' : 'neutral'}>{data.product.isActive ? 'Aktif' : 'Nonaktif'}</Badge></span>
+  <span slot="badge"><Badge size="sm" tone={data.product.isActive ? 'positive' : 'negative'}>{data.product.isActive ? 'Aktif' : 'Nonaktif'}</Badge></span>
 </PageHeader>
 
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">

@@ -1,5 +1,6 @@
 <script lang="ts">
   import Badge from '$lib/components/ui/Badge.svelte';
+  import { Package } from 'lucide-svelte';
   export let name: string;
   export let stock: number;
   export let netPrice: number;
@@ -9,13 +10,8 @@
   export let inCart = 0;
   export let maxed = false;
   const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
-  // Inisial dua huruf cukup sebagai pengenal visual tanpa foto produk.
-  $: initials = ((n: string) => {
-    const words = n.trim().split(/\s+/).filter(Boolean);
-    if (words.length === 0) return '?';
-    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-    return (words[0][0] + words[1][0]).toUpperCase();
-  })(name);
+  // Produk di keranjang memakai ikon dan badge navy biar status terpilih kebaca.
+  $: tapped = inCart > 0 && status !== 'habis';
   $: disabled = status === 'habis' || maxed;
   $: label = `${name}, ${idr(netPrice)}, ${status === 'habis' ? 'habis' : `sisa ${stock}`}${inCart > 0 ? `, di keranjang ${inCart}` : ''}`;
 </script>
@@ -36,13 +32,13 @@
     <span class="absolute -left-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded bg-ink-navy px-1 text-label-sm tabular text-white">{inCart}</span>
   {/if}
   <span class="flex items-start justify-between gap-2">
-    <span class="grid h-7 w-7 shrink-0 place-items-center rounded text-label-md {inCart > 0 && status !== 'habis' ? 'bg-ink-navy text-white' : 'bg-status-neutral-bg text-ink-navy'}">{initials}</span>
+    <span class="grid h-7 w-7 shrink-0 place-items-center rounded text-label-md {tapped ? 'bg-ink-navy text-white' : 'bg-status-neutral-bg text-ink-navy'}"><Package size={16} aria-hidden="true" /></span>
     {#if status === 'habis'}
       <Badge size="sm" tone="negative">Habis</Badge>
     {:else if status === 'menipis'}
-      <Badge size="sm" tone="warning">Sisa {stock}</Badge>
+      <Badge size="sm" tone={tapped ? 'navy' : 'warning'}>Sisa {stock}</Badge>
     {:else}
-      <span class="inline-flex items-center whitespace-nowrap rounded border border-status-positive-border bg-status-positive-bg px-1.5 py-px text-[10px] font-semibold leading-[14px] tracking-wide text-status-positive">Sisa {stock}</span>
+      <Badge size="sm" tone={tapped ? 'navy' : 'positive'}>Sisa {stock}</Badge>
     {/if}
   </span>
   <span class="flex min-h-0 flex-col gap-0.5">
@@ -51,7 +47,7 @@
       {#if discountPercent !== null}
         <s class="text-body-sm tabular text-muted">{idr(grossPrice)}</s>
         <span class="text-body-md font-bold tabular text-ink-navy">{idr(netPrice)}</span>
-        <Badge size="sm" tone="positive">−{discountPercent}%</Badge>
+        <Badge size="sm" tone={tapped ? 'navy' : 'positive'}>−{discountPercent}%</Badge>
       {:else}
         <span class="text-body-md font-bold tabular text-ink-navy">{idr(netPrice)}</span>
       {/if}
