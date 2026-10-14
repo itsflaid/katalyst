@@ -329,6 +329,9 @@
     </div>
     <form class="copilot-form shrink-0 border-t border-white/10 px-4 py-4 sm:px-6" on:submit|preventDefault={() => ask()}>
       <div class="mx-auto flex max-w-4xl items-center gap-2 border border-white/15 bg-white/[0.06] p-1.5"><input bind:value={draft} disabled={sending} maxlength="800" placeholder="Tanyakan sesuatu tentang bisnis Anda..." class="min-w-0 flex-1 bg-transparent px-3 py-2 text-base text-white outline-none placeholder:text-white/35 disabled:opacity-60 sm:text-body-md" aria-label="Pertanyaan untuk Copilot" /><button type="submit" disabled={sending || !draft.trim() || cooldownSec > 0} aria-label="Kirim" title={cooldownSec > 0 ? `Tunggu ${cooldownSec} detik` : undefined} class="grid h-9 w-9 place-items-center rounded-panel bg-status-positive text-white disabled:opacity-50"><Send size={16} /></button></div>
+      <p class="mx-auto mt-2 max-w-4xl px-1 text-center text-xs text-white/60">
+        Pertanyaanmu dikirim ke AI (Groq) dan dapat tersimpan hingga 30 hari. Jangan tulis data pribadi.
+      </p>
     </form>
   </section>
 

@@ -255,6 +255,11 @@
     ? zakatImpactOf(data.zakat, { statusQuo: result.statusQuo.profit, simulated: result.simulated.profit })
     : null;
   $: zakatPartial = (zakatImpact?.before.missing.length ?? 1) > 0;
+  // Tanda estimasi hanya untuk jumlah positif; nol aturan tampil tegas.
+  $: zakatBeforeUncertain = zakatPartial && (zakatImpact?.before.amount ?? 0) > 0;
+  $: zakatAfterUncertain = zakatPartial && (zakatImpact?.after.amount ?? 0) > 0;
+  // Haul sama untuk sebelum/sesudah (penyesuaian cuma mengubah aset).
+  $: zakatHaulDue = zakatImpact?.before.haul.reached === true;
   $: maxRev = Math.max(sqRev, result.simulated.revenue, 1);
   $: maxProfit = Math.max(sqProfit, result.simulated.profit, 1);
   $: maxQty = Math.max(histQty, simQty, 1);
@@ -685,15 +690,28 @@
         {#if zakatImpact && zakatImpact.before.status !== 'NEEDS_GOLD_PRICE'}
           <p class="text-body-sm text-muted mb-3">Skenario {prod?.name ?? 'produk ini'} pada rentang {data.rangeLabel ?? 'baseline'}.</p>
           <dl class="flex flex-col gap-2 text-body-md">
-            <div class="flex justify-between"><dt class="text-muted">Zakat sekarang</dt><dd class="tabular text-ink">{zakatPartial ? '~' : ''}{idr(zakatImpact.before.amount)}</dd></div>
-            <div class="flex justify-between"><dt class="text-muted">Zakat simulasi</dt><dd class="tabular text-ink">{zakatPartial ? '~' : ''}{idr(zakatImpact.after.amount)}</dd></div>
+            <div class="flex justify-between"><dt class="text-muted">Zakat sekarang</dt><dd class="tabular text-ink">{zakatBeforeUncertain ? '~' : ''}{idr(zakatImpact.before.amount)}</dd></div>
+            <div class="flex justify-between"><dt class="text-muted">Zakat simulasi</dt><dd class="tabular text-ink">{zakatAfterUncertain ? '~' : ''}{idr(zakatImpact.after.amount)}</dd></div>
             <div class="flex justify-between">
               <dt class="text-muted">Selisih</dt>
               <dd class="tabular font-semibold {zakatImpact.deltaAmount >= 0 ? 'text-status-positive' : 'text-status-negative'}">{zakatImpact.deltaAmount >= 0 ? '+' : ''}{idr(zakatImpact.deltaAmount)}</dd>
             </div>
           </dl>
           {#if zakatImpact.crossesNisab}
-            <p class="text-body-sm text-status-warning mt-3">Skenario ini melewati batas nisab, status kewajiban zakat berubah.</p>
+            {#if zakatHaulDue}
+              <p class="text-body-sm text-status-warning mt-3">Skenario ini melewati batas nisab, status kewajiban zakat berubah.</p>
+            {:else}
+              <p class="text-body-sm text-status-warning mt-3">Skenario ini melewati batas nisab, tapi haul belum genap sehingga zakat belum jatuh tempo.</p>
+            {/if}
+          {/if}
+          {#if !zakatHaulDue}
+            <p class="text-body-sm text-muted mt-2">
+              {#if zakatImpact.before.haul.daysLeft === null}
+                Isi tanggal mulai haul di halaman Zakat agar jatuh tempo bisa dihitung; zakat saat ini Rp0.
+              {:else}
+                Haul belum genap sehingga zakat belum jatuh tempo; kedua jumlah di atas Rp0.
+              {/if}
+            </p>
           {/if}
           {#if zakatPartial}
             <p class="text-body-sm text-muted mt-2">Estimasi parsial: sebagian data zakat belum diisi.</p>
