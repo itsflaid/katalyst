@@ -100,3 +100,17 @@ export async function findOverlap(businessId: string, productId: string, startsA
     .where(and(...conds));
   return rows;
 }
+
+// Produk calon target diskon (untuk dropdown form).
+export async function listDiscountProducts(businessId: string) {
+  return db
+    .select({
+      id: product.id,
+      name: product.name,
+      sellingPrice: product.sellingPrice,
+      costPrice: product.costPrice,
+      isActive: product.isActive
+    })
+    .from(product)
+    .where(eq(product.businessId, businessId));
+}
