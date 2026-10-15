@@ -50,6 +50,10 @@ Akun demo setelah seed:
 
 Semua akun masuk pakai username (owner undang staff pakai username, tanpa email).
 
+## Skrip uji
+
+Skrip yang menulis data (`verify:e2e-discount`, `db:seed:demo`) hanya boleh jalan ke DB scratch: set `DATABASE_URL`, `SCRATCH_DB_HOST` (hostname-nya saja), dan `ALLOW_DESTRUCTIVE_DB=1` di env sesi, lalu skrip berhenti sendiri bila target bukan scratch. Pakai connection string direct (tanpa `-pooler`) untuk skrip dan migrasi.
+
 ## Tech stack
 
 - SvelteKit
