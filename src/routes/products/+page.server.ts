@@ -1,18 +1,20 @@
-import { db } from '$lib/server/db';
-import { product, stockMovement, transactionItem } from '$lib/server/db/schema';
-import { getOwnedProduct, parseProductFields, parseInitialStock } from '$lib/server/domains/products';
+import {
+  adjustProduct,
+  createProduct,
+  deleteProduct,
+  listProducts,
+  restockProduct,
+  toggleProduct,
+  updateProduct
+} from '$lib/server/domains/products';
 import { requireOwner, requireTenant } from '$lib/server/domains/auth/guards';
 import { actorOf, netOf, recordActivity } from '$lib/server/domains/activity/log';
-import { eq, and, inArray, sql, asc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
-// crypto.randomUUID global (bukan import 'crypto') biar jalan di Workers.
-// Node 19+ dan semua browser modern juga menyediakannya.
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
   const { businessId, role } = requireTenant(locals);
-  // Urutan tetap: tanpa ORDER BY, baris yang di-UPDATE pindah posisi dan daftar tampak tertukar.
-  const products = await db.select().from(product).where(eq(product.businessId, businessId)).orderBy(asc(product.createdAt), asc(product.id));
+  const products = await listProducts(businessId);
   // role ikut dikirim biar UI bisa menyembunyikan aksi yang memang ditolak server.
   return { products, role };
 };
@@ -21,78 +23,35 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
   create: async ({ request, locals, getClientAddress }) => {
-    const { businessId, userId, user } = requireOwner(locals);
+    const { businessId, userId, user: actor } = requireOwner(locals);
 
-    const form = await request.formData();
-    const parsed = parseProductFields(form);
-    if ('error' in parsed) return fail(400, { for: 'create', message: parsed.error });
-    const initial = parseInitialStock(form);
-    if ('error' in initial) return fail(400, { for: 'create', message: initial.error });
-
-    const id = crypto.randomUUID();
-    const insertProduct = db.insert(product).values({ id, businessId, ...parsed.data, stock: initial.data });
-
-    if (initial.data > 0) {
-      // Stok awal ikut dicatat di ledger biar saldo stok bisa ditelusuri
-      // dari nol (bukan muncul begitu saja).
-      await db.batch([
-        insertProduct,
-        db.insert(stockMovement).values({
-          id: crypto.randomUUID(),
-          businessId,
-          productId: id,
-          qtyChange: initial.data,
-          reason: 'RESTOCK',
-          note: 'Stok awal',
-          createdBy: userId
-        })
-      ]);
-    } else {
-      await insertProduct;
-    }
+    const result = await createProduct(businessId, userId, await request.formData());
+    if (!result.ok) return fail(result.code, { for: result.for, message: result.message });
     await recordActivity({
       businessId,
-      actor: actorOf(user),
+      actor: actorOf(actor),
       ...netOf({ request, getClientAddress }),
       action: 'PRODUCT_CREATE',
       entityType: 'product',
-      entityId: id,
-      meta: { name: parsed.data.name, sellingPrice: parsed.data.sellingPrice, costPrice: parsed.data.costPrice }
+      entityId: result.data.id,
+      meta: { name: result.data.name, sellingPrice: result.data.sellingPrice, costPrice: result.data.costPrice }
     });
     return { success: true };
   },
 
   update: async ({ request, locals, getClientAddress }) => {
-    const { businessId, user } = requireOwner(locals);
+    const { businessId, user: actor } = requireOwner(locals);
 
-    const form = await request.formData();
-    const id = String(form.get('id') ?? '');
-    const parsed = parseProductFields(form);
-    if ('error' in parsed) return fail(400, { for: 'update', message: parsed.error });
-    const old = await getOwnedProduct(id, businessId);
-    if (!old) {
-      return fail(404, { for: 'update', message: 'Produk tidak ditemukan.' });
-    }
-    // parsed.data tidak berisi stock → stok tidak tersentuh.
-    await db
-      .update(product)
-      .set({ ...parsed.data, updatedAt: new Date() })
-      .where(and(eq(product.id, id), eq(product.businessId, businessId)));
-    // fields hanya label yang berubah agar meta ringan dibaca di log.
-    const fields: string[] = [];
-    if (parsed.data.name !== old.name) fields.push('nama');
-    if (parsed.data.costPrice !== old.costPrice) fields.push('modal');
-    if (parsed.data.sellingPrice !== old.sellingPrice) fields.push('jual');
-    if (parsed.data.minStock !== old.minStock) fields.push('minStok');
-    if (parsed.data.isActive !== old.isActive) fields.push('aktif');
+    const result = await updateProduct(businessId, await request.formData());
+    if (!result.ok) return fail(result.code, { for: result.for, message: result.message });
     await recordActivity({
       businessId,
-      actor: actorOf(user),
+      actor: actorOf(actor),
       ...netOf({ request, getClientAddress }),
       action: 'PRODUCT_UPDATE',
       entityType: 'product',
-      entityId: id,
-      meta: { name: parsed.data.name, fields }
+      entityId: result.data.id,
+      meta: { name: result.data.name, fields: result.data.fields }
     });
     return { success: true };
   },
@@ -101,74 +60,35 @@ export const actions: Actions = {
   // dengan stok: produk stok 0 tetap "aktif" tapi otomatis tersembunyi di
   // kasir dan berlabel Habis.
   toggle: async ({ request, locals, getClientAddress }) => {
-    const { businessId, user } = requireOwner(locals);
+    const { businessId, user: actor } = requireOwner(locals);
 
-    const form = await request.formData();
-    const id = String(form.get('id') ?? '');
-    const isActive = form.get('isActive') === 'on';
-    const existing = await getOwnedProduct(id, businessId);
-    if (!existing) {
-      return fail(404, { for: 'toggle', message: 'Produk tidak ditemukan.' });
-    }
-    await db
-      .update(product)
-      .set({ isActive, updatedAt: new Date() })
-      .where(and(eq(product.id, id), eq(product.businessId, businessId)));
+    const result = await toggleProduct(businessId, await request.formData());
+    if (!result.ok) return fail(result.code, { for: result.for, message: result.message });
     await recordActivity({
       businessId,
-      actor: actorOf(user),
+      actor: actorOf(actor),
       ...netOf({ request, getClientAddress }),
       action: 'PRODUCT_TOGGLE',
       entityType: 'product',
-      entityId: id,
-      meta: { name: existing.name, isActive }
+      entityId: result.data.id,
+      meta: { name: result.data.name, isActive: result.data.isActive }
     });
     return { success: true };
   },
 
   delete: async ({ request, locals, getClientAddress }) => {
-    const { businessId, user } = requireOwner(locals);
+    const { businessId, user: actor } = requireOwner(locals);
 
-    const form = await request.formData();
-    const id = String(form.get('id') ?? '');
-    const existing = await getOwnedProduct(id, businessId);
-    if (!existing) {
-      return fail(404, { for: 'delete', message: 'Produk tidak ditemukan.' });
-    }
-
-    const hasSalesHistory = () =>
-      fail(400, {
-        for: 'delete',
-        message: 'Produk sudah punya riwayat penjualan, nonaktifkan saja.'
-      });
-
-    // Riwayat penjualan (item struk atau ledger SALE/VOID_RESTORE) tidak boleh hilang.
-    // Ledger RESTOCK/ADJUST milik produk yang belum pernah terjual ikut dibersihkan; kalau tidak, stok awal di ledger bikin produk salah input tak bisa dihapus karena FK.
-    const [sold] = await db.select({ id: transactionItem.id }).from(transactionItem).where(eq(transactionItem.productId, id)).limit(1);
-    const [moved] = await db
-      .select({ id: stockMovement.id })
-      .from(stockMovement)
-      .where(and(eq(stockMovement.productId, id), inArray(stockMovement.reason, ['SALE', 'VOID_RESTORE'])))
-      .limit(1);
-    if (sold || moved) return hasSalesHistory();
-
-    try {
-      await db.batch([
-        db.delete(stockMovement).where(eq(stockMovement.productId, id)),
-        db.delete(product).where(and(eq(product.id, id), eq(product.businessId, businessId)))
-      ]);
-    } catch {
-      // Ada penjualan yang masuk di sela cek dan hapus (FK menolak).
-      return hasSalesHistory();
-    }
+    const result = await deleteProduct(businessId, await request.formData());
+    if (!result.ok) return fail(result.code, { for: result.for, message: result.message });
     await recordActivity({
       businessId,
-      actor: actorOf(user),
+      actor: actorOf(actor),
       ...netOf({ request, getClientAddress }),
       action: 'PRODUCT_DELETE',
       entityType: 'product',
-      entityId: id,
-      meta: { name: existing.name }
+      entityId: result.data.id,
+      meta: { name: result.data.name }
     });
     return { success: true };
   },
@@ -177,34 +97,8 @@ export const actions: Actions = {
   restock: async ({ request, locals }) => {
     const { businessId, userId } = requireOwner(locals);
 
-    const form = await request.formData();
-    const id = String(form.get('id') ?? '');
-    const qty = Number(form.get('qty'));
-    const note = String(form.get('note') ?? '').trim() || null;
-    if (!Number.isInteger(qty) || qty < 1 || qty > 100000) {
-      return fail(400, { for: 'restock', message: 'Jumlah restock harus bilangan bulat 1–100000.' });
-    }
-    if (!(await getOwnedProduct(id, businessId))) {
-      return fail(404, { for: 'restock', message: 'Produk tidak ditemukan.' });
-    }
-
-    await db.batch([
-      // Naik di SQL (stock = stock + qty), bukan baca-hitung-tulis dari JS,
-      // jadi penjualan yang masuk bersamaan tidak tertimpa.
-      db
-        .update(product)
-        .set({ stock: sql`${product.stock} + ${qty}`, updatedAt: new Date() })
-        .where(and(eq(product.id, id), eq(product.businessId, businessId))),
-      db.insert(stockMovement).values({
-        id: crypto.randomUUID(),
-        businessId,
-        productId: id,
-        qtyChange: qty,
-        reason: 'RESTOCK',
-        note,
-        createdBy: userId
-      })
-    ]);
+    const result = await restockProduct(businessId, userId, await request.formData());
+    if (!result.ok) return fail(result.code, { for: result.for, message: result.message });
     return { success: true };
   },
 
@@ -212,35 +106,8 @@ export const actions: Actions = {
   adjust: async ({ request, locals }) => {
     const { businessId, userId } = requireOwner(locals);
 
-    const form = await request.formData();
-    const id = String(form.get('id') ?? '');
-    const stock = Number(form.get('stock'));
-    const note = String(form.get('note') ?? '').trim();
-    if (!Number.isInteger(stock) || stock < 0 || stock > 1000000) {
-      return fail(400, { for: 'adjust', message: 'Stok harus bilangan bulat 0–1000000.' });
-    }
-    if (!note) return fail(400, { for: 'adjust', message: 'Alasan koreksi wajib diisi.' });
-    const existing = await getOwnedProduct(id, businessId);
-    if (!existing) return fail(404, { for: 'adjust', message: 'Produk tidak ditemukan.' });
-    if (stock === existing.stock) return fail(400, { for: 'adjust', message: 'Tidak ada perubahan.' });
-
-    await db.batch([
-      // Ledger diproses lebih awal: selisih dihitung di DB dari stok saat statement ini jalan, bukan dari angka yang kita baca tadi.
-      // Jadi tetap benar kalau ada penjualan di sela-sela. Statement berikutnya baru set stoknya.
-      db.insert(stockMovement).values({
-        id: crypto.randomUUID(),
-        businessId,
-        productId: id,
-        qtyChange: sql<number>`${stock}::integer - (select ${product.stock} from ${product} where ${product.id} = ${id})`,
-        reason: 'ADJUST',
-        note,
-        createdBy: userId
-      }),
-      db
-        .update(product)
-        .set({ stock, updatedAt: new Date() })
-        .where(and(eq(product.id, id), eq(product.businessId, businessId)))
-    ]);
+    const result = await adjustProduct(businessId, userId, await request.formData());
+    if (!result.ok) return fail(result.code, { for: result.for, message: result.message });
     return { success: true };
   }
 };

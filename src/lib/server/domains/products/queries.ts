@@ -1,6 +1,11 @@
 import { db } from '$lib/server/db';
 import { product } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
+
+export async function listProducts(businessId: string) {
+  // Urutan tetap: tanpa ORDER BY, baris yang di-UPDATE pindah posisi dan daftar tampak tertukar.
+  return db.select().from(product).where(eq(product.businessId, businessId)).orderBy(asc(product.createdAt), asc(product.id));
+}
 
 export async function getOwnedProduct(id: string, businessId: string) {
   const [row] = await db
