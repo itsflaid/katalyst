@@ -1,6 +1,6 @@
 import { toModelView } from '../src/lib/server/domains/copilot/model-view';
 import { buildSimulatePriceData, simFlagText } from '../src/lib/server/domains/copilot/tools/simulate-price';
-import type { SimFlag } from '../src/lib/simulation';
+import type { SimFlag } from '../src/lib/analytics/simulation';
 
 let failed = 0;
 function ok(label: string, pass: boolean, detail = '') {

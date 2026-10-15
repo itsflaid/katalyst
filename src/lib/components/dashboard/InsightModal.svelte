@@ -14,7 +14,7 @@
   // Tab hanya berarti bila keduanya ada isi.
   $: showTabs = hasInsights && showRestock;
   // Modal dipasang ulang tiap lonceng diklik, jadi tab awal cukup dihitung sekali.
-  let tab: 'insight' | 'stok' = insights.length > 0 ? 'insight' : 'stok';
+  let tab: 'insight' | 'stock' = insights.length > 0 ? 'insight' : 'stock';
 </script>
 
 <svelte:window on:keydown={(e) => e.key === 'Escape' && onClose()} />
@@ -55,7 +55,7 @@
           <span
             aria-hidden="true"
             class="absolute bottom-1 left-1 top-1 w-[calc(50%-0.25rem)] rounded-full bg-white transition-transform duration-200 motion-reduce:transition-none"
-            style:transform={tab === 'stok' ? 'translateX(100%)' : 'translateX(0)'}
+            style:transform={tab === 'stock' ? 'translateX(100%)' : 'translateX(0)'}
           ></span>
           <button
             type="button"
@@ -71,9 +71,9 @@
           <button
             type="button"
             role="tab"
-            aria-selected={tab === 'stok'}
-            on:click={() => (tab = 'stok')}
-            class="relative z-10 h-9 cursor-pointer rounded-full border-none text-body-md transition-colors {tab === 'stok'
+            aria-selected={tab === 'stock'}
+            on:click={() => (tab = 'stock')}
+            class="relative z-10 h-9 cursor-pointer rounded-full border-none text-body-md transition-colors {tab === 'stock'
               ? 'bg-transparent font-semibold text-ink'
               : 'bg-transparent font-medium text-white/80 hover:text-white'}"
           >
@@ -94,7 +94,7 @@
         </div>
       {:else}
         {#key tab}
-          <div in:fly={{ x: tab === 'stok' ? 16 : -16, duration: 150 }}>
+          <div in:fly={{ x: tab === 'stock' ? 16 : -16, duration: 150 }}>
             {#if tab === 'insight'}
               {#if hasInsights}
                 <ul class="flex flex-col">

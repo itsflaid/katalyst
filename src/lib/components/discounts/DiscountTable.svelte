@@ -21,7 +21,7 @@
   import { enhance } from '$app/forms';
   import Button from '$lib/components/ui/Button.svelte';
   import Table from '$lib/components/ui/Table.svelte';
-  import DiscountStatusBadge from '$lib/components/discount/DiscountStatusBadge.svelte';
+  import DiscountStatusBadge from '$lib/components/discounts/DiscountStatusBadge.svelte';
   import type { BizTime } from '$lib/shared/time';
 
   export let discounts: DiscountRow[];

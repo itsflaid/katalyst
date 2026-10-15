@@ -20,7 +20,7 @@ import {
   type Facts,
   type TransactionItemLike
 } from '../src/lib/analytics';
-import { calculateCart, type DiscountLike } from '../src/lib/discount';
+import { calculateCart, type DiscountLike } from '../src/lib/shared/discount';
 import { makeTime } from '../src/lib/shared/time';
 
 let passCount = 0;

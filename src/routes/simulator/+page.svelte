@@ -6,11 +6,11 @@
   import Badge from '$lib/components/ui/Badge.svelte';
   import Tooltip from '$lib/components/ui/Tooltip.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
-  import StatCard from '$lib/components/statistik/StatCard.svelte';
-  import StatFilterBar from '$lib/components/statistik/StatFilterBar.svelte';
+  import StatCard from '$lib/components/statistics/StatCard.svelte';
+  import StatFilterBar from '$lib/components/statistics/StatFilterBar.svelte';
   import { goto } from '$app/navigation';
   import { fmtQty } from '$lib/shared/format';
-  import { assessScenario, sanitizeLevers, simulate, type ScenarioCode } from '$lib/simulation';
+  import { assessScenario, sanitizeLevers, simulate, type ScenarioCode } from '$lib/analytics/simulation';
   import { ZERO_FACTS, zakatImpactOf } from '$lib/analytics';
   export let data;
 
@@ -44,7 +44,7 @@
 
   // Rentang baseline: hari ini / minggu ini / 7 hari / 30 hari / bulan ini / semua / custom. Default bulan ini (dari server) biar load awal ringan.
   // Ganti rentang = reload server (goto) biar agregat dihitung ulang dari transaction.created_at.
-  // Hitungan live di client (responsif tiap geser tuas); rumusnya sama dengan lib/simulation.ts (satu fungsi simulate).
+  // Hitungan live di client (responsif tiap geser tuas); rumusnya sama dengan lib/analytics/simulation.ts (satu fungsi simulate).
   let activeRange: string = data.range ?? 'month';
   let fromInput: string = data.rangeFrom ?? '';
   let toInput: string = data.rangeTo ?? '';
@@ -270,7 +270,7 @@
   $: maxProfit = Math.max(sqProfit, result.simulated.profit, 1);
   $: maxQty = Math.max(histQty, simQty, 1);
   const w = (v: number, max: number) => `${Math.max(2, (v / max) * 100).toFixed(1)}%`;
-  // Jembatan ke /diskon: persen simulasi dijadikan draf diskon produk yang dihitung dari harga jual saat ini, tombol aktif hanya bila tuas harga jual tidak diubah.
+  // Jembatan ke /discounts: persen simulasi dijadikan draf diskon produk yang dihitung dari harga jual saat ini, tombol aktif hanya bila tuas harga jual tidak diubah.
   // Baseline week/month parsial (Senin–sekarang / tgl 1–sekarang), jadi kuota dari simQty hanyalah saran awal.
   function goToDiscount() {
     if (!prod || discountMode !== 'percent' || discountPct <= 0 || priceValue !== sellBase) return;
@@ -283,7 +283,7 @@
     const preset = data.range === 'today' ? 'TODAY' : data.range === 'week' || data.range === '7d' ? 'DAYS_7' : null;
     if (preset) params.set('preset', preset);
     if (data.rangeLabel) params.set('baseline', data.rangeLabel);
-    goto(`/diskon?${params.toString()}`);
+    goto(`/discounts?${params.toString()}`);
   }
   $: discountActive = discountMode === 'percent' && discountPct > 0 && priceValue === sellBase && !!prod;
 

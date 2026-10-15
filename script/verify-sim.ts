@@ -9,9 +9,9 @@ import {
   DEMAND_MAX_FACTOR,
   DEMAND_ELASTICITY,
   type SimInput
-} from '../src/lib/simulation';
+} from '../src/lib/analytics/simulation';
 import { metricsOf, type Facts } from '../src/lib/analytics';
-import { calculateCart, isBelowCost, unitDiscount, type DiscountLike } from '../src/lib/discount';
+import { calculateCart, isBelowCost, unitDiscount, type DiscountLike } from '../src/lib/shared/discount';
 
 let passCount = 0;
 let failCount = 0;

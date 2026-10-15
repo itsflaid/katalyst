@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { DEMAND_ELASTICITY, assessScenario, dropFromElasticity, simulate, type ScenarioCode, type SimFlag } from '../../../../simulation';
+import { DEMAND_ELASTICITY, assessScenario, dropFromElasticity, simulate, type ScenarioCode, type SimFlag } from '../../../../analytics/simulation';
 import { ZERO_FACTS, type Facts } from '../../../../analytics/facts';
 import { fmtDelta, fmtInt, fmtPercent, fmtPoints, fmtRupiah } from '../../../../shared/format';
 import { resolveNamedPeriod, type NamedPeriodKey } from '../../../../shared/period';

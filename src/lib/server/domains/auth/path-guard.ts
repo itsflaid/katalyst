@@ -1,19 +1,29 @@
 export const PROTECTED_PATHS = [
   '/dashboard',
-  '/statistik',
+  '/statistics',
   '/simulator',
   '/settings',
   '/transactions',
   '/products',
-  '/diskon',
-  '/bantuan',
+  '/discounts',
+  '/help',
   '/copilot',
-  '/akun',
+  '/account',
   '/zakat',
-  '/log'
+  '/activity'
 ];
 
-export const OWNER_ONLY_PATHS = ['/dashboard', '/statistik', '/simulator', '/settings', '/copilot', '/diskon', '/products/stok', '/zakat', '/log'];
+export const OWNER_ONLY_PATHS = [
+  '/dashboard',
+  '/statistics',
+  '/simulator',
+  '/settings',
+  '/copilot',
+  '/discounts',
+  '/products/stock',
+  '/zakat',
+  '/activity'
+];
 
 // Guard membaca path yang sama dengan router: decodeURI per potongan %25 lalu rapikan slash ganda.
 export function normalizePath(raw: string): string {

@@ -6,9 +6,9 @@
   import Button from '$lib/components/ui/Button.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
-  import DiscountTabs from '$lib/components/discount/DiscountTabs.svelte';
-  import DiscountTable, { type DiscountRow } from '$lib/components/discount/DiscountTable.svelte';
-  import DiscountFormSlideOver from '$lib/components/discount/DiscountFormSlideOver.svelte';
+  import DiscountTabs from '$lib/components/discounts/DiscountTabs.svelte';
+  import DiscountTable, { type DiscountRow } from '$lib/components/discounts/DiscountTable.svelte';
+  import DiscountFormSlideOver from '$lib/components/discounts/DiscountFormSlideOver.svelte';
   import { DEFAULT_TZ, makeTime } from '$lib/shared/time';
   export let data;
   export let form;
@@ -53,8 +53,8 @@
       await update();
       if (result.type === 'success') {
         closeModals();
-        // Kembali ke /diskon bersih (tanpa query prefill) setelah simpan.
-        if ($page.url.searchParams.has('new')) goto('/diskon');
+        // Kembali ke /discounts bersih (tanpa query prefill) setelah simpan.
+        if ($page.url.searchParams.has('new')) goto('/discounts');
         else await invalidateAll();
       }
     };
