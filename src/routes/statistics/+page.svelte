@@ -60,6 +60,8 @@
   $: avgTicketFlat = data.avgTicketPerDay.data.map((v) => v ?? 0);
   // Sumbu chart berlabel satuan pendek (jt/rb/Rp) biar tak dikira persen.
   $: avgTick = (v: number) => `${v} ${data.avgTicketPerDay.unitLabel.split(' ')[0]}`;
+  // Tooltip tren uang memakai satuan yang sama dengan sumbunya.
+  $: trendTick = (v: number) => `${v} ${data.trend.unitLabel.split(' ')[0]}`;
   const rangeNames: Record<string, string> = {
     today: 'Hari ini',
     week: 'Minggu ini',
@@ -180,6 +182,7 @@
           { label: 'Revenue', data: data.trend.revenue, color: '#172554' },
           { label: 'Profit', data: data.trend.profit, color: '#16A34A' }
         ]}
+        yFormat={trendTick}
       />
     </StatCard>
     <StatCard>
@@ -208,14 +211,14 @@
   <StatCard class="mb-6">
     <h2 class="text-headline-sm text-ink mb-1">Struk per Hari</h2>
     <p class="text-body-sm text-muted mb-3">Jumlah struk · {data.rangeLabel}</p>
-    <BarChart labels={data.trend.labels} data={data.txPerDay} color="#172554" rounded="edge" />
+    <BarChart labels={data.trend.labels} data={data.txPerDay} color="#172554" rounded="edge" yFormat={(v) => `${v} struk`} />
   </StatCard>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
     <StatCard tone="navy">
       <h2 class="text-headline-sm text-white mb-1">Jam Tersibuk</h2>
       <p class="text-body-sm text-white/70 mb-3">Puncak: {data.hourly.peak} · {data.hourly.total} struk di periode ini</p>
-      <BarChart labels={data.hourly.labels} data={data.hourly.data} tone="navy" rounded="edge" />
+      <BarChart labels={data.hourly.labels} data={data.hourly.data} tone="navy" rounded="edge" yFormat={(v) => `${v} struk`} />
     </StatCard>
     <StatCard>
       <h2 class="text-headline-sm text-ink mb-1">Rata-rata Struk</h2>
@@ -233,7 +236,7 @@
     <StatCard>
       <h2 class="text-headline-sm text-ink mb-1">Tren Margin</h2>
       <p class="text-body-sm text-muted mb-3">% per hari · {data.rangeLabel}</p>
-      <LineChart labels={data.trend.labels} datasets={[{ label: 'Margin', data: data.marginTrend, color: '#B45309' }]} />
+      <LineChart labels={data.trend.labels} datasets={[{ label: 'Margin', data: data.marginTrend, color: '#B45309' }]} yFormat={(v) => `${v}%`} />
     </StatCard>
     <StatCard>
       <h2 class="text-headline-sm text-ink mb-1">Hari dalam Seminggu</h2>
@@ -248,7 +251,7 @@
 
   {#if data.pie.labels.length > 0}
     <div class="mb-6">
-      <DonutLegendCard labels={data.pie.labels} data={data.pie.data} />
+      <DonutLegendCard labels={data.pie.labels} data={data.pie.data} valueFormat={fmtShort} />
     </div>
   {/if}
 
@@ -256,7 +259,14 @@
     <StatCard class="mb-6">
       <h2 class="text-headline-sm text-ink mb-1">Matriks Volume vs Margin</h2>
       <p class="text-body-sm text-muted mb-3">Ukuran titik = revenue · garis = median qty & margin periode · klik titik untuk simulasi</p>
-      <ScatterChart points={data.matrix.points} xLabel="Terjual (qty)" yLabel="Margin (%)" xLine={data.matrix.xLine} yLine={data.matrix.yLine} />
+      <ScatterChart
+        points={data.matrix.points}
+        xLabel="Terjual (qty)"
+        yLabel="Margin (%)"
+        xLine={data.matrix.xLine}
+        yLine={data.matrix.yLine}
+        yFormat={(v) => `${v}%`}
+      />
       <div class="grid grid-cols-1 sm:grid-cols-2 sm:grid-flow-col sm:grid-rows-2 gap-2 mt-3 text-body-sm text-muted">
         <p><strong class="text-ink">Bintang</strong> (kanan atas): laku & margin baik, jaga stok.</p>
         <p><strong class="text-ink">Margin bagus, kurang laku</strong> (kiri atas): butuh promosi.</p>
@@ -396,6 +406,7 @@
           { label: 'Koreksi', data: data.movement.adjust, color: '#B45309' }
         ]}
         stacked
+        yFormat={(v) => `${v} unit`}
       />
       <p class="text-body-sm text-muted mt-3">
         Susut (koreksi negatif): {num(data.movement.susut.units)} unit · ≈ {idr(data.movement.susut.value)} pakai harga modal saat ini.
