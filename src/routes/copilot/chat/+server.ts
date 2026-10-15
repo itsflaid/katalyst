@@ -18,6 +18,7 @@ import { copilotPrompt } from '$lib/server/domains/copilot/prompt';
 import { addMessage, createConversation, hasConversation, recentTextContext, renameFromFirstMessage } from '$lib/server/domains/copilot/history';
 import { countedDb } from '$lib/server/domains/copilot/db';
 import type { Db } from '$lib/server/domains/facts/queries';
+import { requireTenant } from '$lib/server/domains/auth/guards';
 import { makeTime, type BizTz } from '$lib/shared/time';
 
 const MAX_MESSAGES = 6;
@@ -75,7 +76,9 @@ async function loadHistory(
 
 export const POST: RequestHandler = async ({ request, url, locals }) => {
   if (!locals.user) return Response.json({ error: 'Belum masuk. Silakan login dulu.' }, { status: 401 });
-  if ((locals.user as { role?: unknown }).role !== 'OWNER') {
+  // Balasan JSON dibaca client dari body.error; alasan guard tetap lokal walau role diambil dari Tenant.
+  const { role } = requireTenant(locals);
+  if (role !== 'OWNER') {
     return Response.json({ error: 'Hanya owner yang boleh memakai Copilot.' }, { status: 403 });
   }
   if (!locals.business) return Response.json({ error: 'Bisnis tidak ditemukan.' }, { status: 403 });

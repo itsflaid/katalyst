@@ -3,14 +3,13 @@ import { db } from '$lib/server/db';
 import { readJsonObject } from '$lib/server/http';
 import { user } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
+import { requireTenant } from '$lib/server/domains/auth/guards';
 import type { RequestHandler } from './$types';
 
 // Self-service: user login (role apa pun) boleh ganti namanya sendiri.
 // Email sengaja tidak bisa diganti di sini (identitas login better-auth, terikat tabel `account`).
 export const PATCH: RequestHandler = async ({ request, locals }) => {
-  if (!locals.user) {
-    throw error(401, 'Harus login dulu.');
-  }
+  const { userId } = requireTenant(locals);
 
   const parsed = await readJsonObject(request);
   if (!parsed.ok) throw error(400, parsed.message);
@@ -22,10 +21,7 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
     throw error(400, 'Nama maksimal 100 karakter.');
   }
 
-  await db
-    .update(user)
-    .set({ name })
-    .where(eq(user.id, locals.user.id as string));
+  await db.update(user).set({ name }).where(eq(user.id, userId));
 
   // Catatan audit: struk lama tetap menampilkan nama lama (snapshot
   // cashier_name), struk baru pakai nama baru. Tidak ada backfill massal.

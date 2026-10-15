@@ -89,6 +89,21 @@ function r4Scope(file: string): boolean {
 // sah di shared/period.ts untuk tgl 1 dan previousWindow).
 const R4_RES = [/\bnew\s+Date\s*\(\s*\)/, /\bDate\s*\.\s*now\s*\(/];
 
+// R6: role dan identitas hanya lewat Tenant di route; allowlist = pendaratan
+// berbasis peran (pengunjung anonim tak boleh kena 401).
+const R6_ALLOW = ['src/routes/+page.server.ts', 'src/routes/login/+page.server.ts'];
+const R6_RES = [
+  /\blocals\.user\s*\.\s*role\b/,
+  /\blocals\.user\s+as\b/,
+  /\blocals\.user\s*!/,
+  /\bbusinessId\s+as\s+string\b/,
+  /\buser\.id\s+as\s+string\b/
+];
+
+function r6Scope(file: string): boolean {
+  return file.startsWith('src/routes/') && (file.endsWith('+page.server.ts') || file.endsWith('+server.ts'));
+}
+
 const R5_BANNER_RE = /^[-=─━*#~_+]{4,}\s*$|^[-=─━*#~_+]{2,}\s*\S.*\S\s*[-=─━*#~_+]{2,}$/;
 const R5_DOC_REF_RE = /§\s*\d|\bSPEC\b|\bFase\s*\d|\bPR\s?-?[A-Z]?\d|\bTahap\s*\d/;
 const R5_HISTORY_RE = /\b(dulu|dahulu|kini|pengganti|menggantikan|hasil refactor|tidak lagi|sudah tidak|semula|awalnya|versi lama|legacy)\b/;
@@ -203,6 +218,13 @@ function main() {
       if (r4Scope(file)) {
         if (R4_RES.some((re) => re.test(raw))) {
           violations.push({ file, line: lineNo, rule: 'R4:now', snippet: raw.trim().slice(0, 120) });
+        }
+      }
+      // R6
+      if (r6Scope(file) && !R6_ALLOW.includes(file)) {
+        const hit = R6_RES.find((re) => re.test(raw));
+        if (hit) {
+          violations.push({ file, line: lineNo, rule: 'R6:tenant', snippet: raw.trim().slice(0, 120) });
         }
       }
     });

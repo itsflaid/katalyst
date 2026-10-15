@@ -4,24 +4,15 @@ import { readJsonObject } from '$lib/server/http';
 import { staffInvitation, transaction, user } from '$lib/server/db/schema';
 import { generateInviteToken, hashInviteToken, normalizeUsername, isValidUsername, INVITE_TTL_MS } from '$lib/server/domains/invites';
 import { actorOf, netOf, recordActivity } from '$lib/server/domains/activity/log';
+import { requireOwner } from '$lib/server/domains/auth/guards';
 import { and, eq, isNull, ne } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import type { RequestHandler } from './$types';
 
-function requireOwner(locals: App.Locals) {
-  if (!locals.user || locals.user.role !== 'OWNER') {
-    throw error(403, 'Cuma Owner yang bisa mengelola staff.');
-  }
-  if (!locals.user.businessId) {
-    throw error(400, 'Akun ini belum terhubung ke business manapun.');
-  }
-}
-
 // Buat undangan staff (bukan user langsung): owner input username+nama, staff bikin password sendiri via link /invite/[token].
 // Role dikunci STAFF di record invite. Token mentah dikembalikan sekali ke owner; di DB cuma hash-nya yang disimpan.
 export const POST: RequestHandler = async ({ request, locals, getClientAddress }) => {
-  requireOwner(locals);
-  const businessId = locals.user!.businessId as string;
+  const { businessId, userId, user: actor } = requireOwner(locals);
 
   const parsed = await readJsonObject(request);
   if (!parsed.ok) throw error(400, parsed.message);
@@ -68,14 +59,14 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
       name: name || username,
       tokenHash,
       expiresAt,
-      invitedBy: locals.user!.id as string
+      invitedBy: userId
     })
   ];
   await db.batch(stmts as [BatchItem<'pg'>, ...BatchItem<'pg'>[]]);
 
   await recordActivity({
     businessId,
-    actor: actorOf(locals.user!),
+    actor: actorOf(actor),
     ...netOf({ request, getClientAddress }),
     action: 'STAFF_INVITE',
     entityType: 'staff_invitation',
@@ -88,8 +79,7 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
 
 // Atur/ubah username login staff yang sudah ada. OWNER-only. Username unik global.
 export const PATCH: RequestHandler = async ({ request, locals, getClientAddress }) => {
-  requireOwner(locals);
-  const businessId = locals.user!.businessId as string;
+  const { businessId, userId, user: actor } = requireOwner(locals);
 
   const parsedPatch = await readJsonObject(request);
   if (!parsedPatch.ok) throw error(400, parsedPatch.message);
@@ -105,7 +95,7 @@ export const PATCH: RequestHandler = async ({ request, locals, getClientAddress 
     .from(user)
     .where(eq(user.id, id));
   if (!target || target.businessId !== businessId) throw error(404, 'Staff tidak ditemukan.');
-  if (target.role !== 'STAFF' && target.id !== locals.user!.id) {
+  if (target.role !== 'STAFF' && target.id !== userId) {
     throw error(400, 'Username hanya bisa diatur untuk akun STAFF.');
   }
 
@@ -124,7 +114,7 @@ export const PATCH: RequestHandler = async ({ request, locals, getClientAddress 
 
   await recordActivity({
     businessId,
-    actor: actorOf(locals.user!),
+    actor: actorOf(actor),
     ...netOf({ request, getClientAddress }),
     action: 'STAFF_USERNAME_CHANGE',
     entityType: 'user',
@@ -138,14 +128,13 @@ export const PATCH: RequestHandler = async ({ request, locals, getClientAddress 
 // Hapus staff dari bisnis. Baris user dihapus (termasuk sesi+kredensial via cascade);
 // riwayat transaksi tetap tampil nama via snapshot cashier_name + FK ON DELETE SET NULL.
 export const DELETE: RequestHandler = async ({ request, locals, getClientAddress }) => {
-  requireOwner(locals);
-  const businessId = locals.user!.businessId as string;
+  const { businessId, userId, user: actor } = requireOwner(locals);
 
   const parsedDelete = await readJsonObject(request);
   if (!parsedDelete.ok) throw error(400, parsedDelete.message);
   const id = typeof (parsedDelete.body as { id?: unknown }).id === 'string' ? (parsedDelete.body as { id: string }).id : '';
   if (!id) throw error(400, 'Id staff wajib diisi.');
-  if (id === locals.user!.id) throw error(400, 'Tidak bisa menghapus akun sendiri.');
+  if (id === userId) throw error(400, 'Tidak bisa menghapus akun sendiri.');
 
   const [target] = await db
     .select({ id: user.id, name: user.name, username: user.username, role: user.role, businessId: user.businessId })
@@ -166,7 +155,7 @@ export const DELETE: RequestHandler = async ({ request, locals, getClientAddress
   // entityId tanpa FK sehingga aman dicatat setelah baris user terhapus.
   await recordActivity({
     businessId,
-    actor: actorOf(locals.user!),
+    actor: actorOf(actor),
     ...netOf({ request, getClientAddress }),
     action: 'STAFF_DELETE',
     entityType: 'user',

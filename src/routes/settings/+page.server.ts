@@ -6,8 +6,7 @@ import { DEFAULT_TZ, isBizTz } from '$lib/shared/time';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
-  requireOwner(locals);
-  const businessId = locals.user!.businessId as string;
+  const { businessId, userId } = requireOwner(locals);
   const [b] = await db.select().from(business).where(eq(business.id, businessId));
   // Urutan tetap: Owner selalu paling atas, di bawahnya staff dari yang terlama ke terbaru (createdAt naik). CASE eksplisit biar tidak bergantung pada urutan alfabet nilai enum.
   const staffList = await db
@@ -33,6 +32,6 @@ export const load: PageServerLoad = async ({ locals }) => {
     timezone: isBizTz(b?.timezone) ? b.timezone : DEFAULT_TZ,
     staffList,
     pendingInvites: pendingInvites.map((i) => ({ ...i, expiresAt: i.expiresAt.toISOString(), createdAt: i.createdAt.toISOString() })),
-    currentUserId: locals.user!.id as string
+    currentUserId: userId
   };
 };

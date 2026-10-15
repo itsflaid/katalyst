@@ -8,6 +8,7 @@ import { receiptTotals } from '$lib/analytics';
 import { actorOf, netOf } from '$lib/server/domains/activity/log';
 import { getActiveProductDiscounts, getGlobalDiscount } from '$lib/server/domains/discounts';
 import { INT4_MAX } from '$lib/server/domains/products';
+import { requireOwner, requireTenant } from '$lib/server/domains/auth/guards';
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -34,7 +35,7 @@ function checkViolationName(e: unknown): string | null {
 }
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-  const businessId = locals.user!.businessId as string;
+  const { businessId } = requireTenant(locals);
   const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
   const offset = (page - 1) * PAGE_SIZE;
 
@@ -198,9 +199,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 export const actions: Actions = {
   create: async ({ request, locals, getClientAddress }) => {
-    const businessId = locals.user?.businessId as string | undefined;
-    const userId = locals.user?.id as string | undefined;
-    if (!businessId || !userId) return fail(403, { message: 'Sesi tidak valid.' });
+    const { businessId, userId, role, user: actor } = requireTenant(locals);
 
     const form = await request.formData();
     let rawItems: unknown;
@@ -265,8 +264,7 @@ export const actions: Actions = {
     if (tooBig) return fail(400, { message: `Nilai ${tooBig.name} terlalu besar untuk satu struk, kurangi jumlahnya.` });
 
     const byId = new Map(dbProducts.map((p) => [p.id, p]));
-    const cashierName =
-      (locals.user?.name as string | null | undefined) ?? (locals.user as { username?: string | null } | null | undefined)?.username ?? null;
+    const cashierName = (actor.name as string | null | undefined) ?? (actor as { username?: string | null }).username ?? null;
 
     // neon-http tidak punya db.transaction interaktif; db.batch([...]) menjalankan semua statement dalam satu transaksi: struk, item, stok, ledger, dan quota diskon masuk semua atau tidak sama sekali.
     // now dipakai sebagai createdAt struk sekaligus jam cek diskon.
@@ -359,7 +357,7 @@ export const actions: Actions = {
       db.insert(activityLog).values(
         activityRow({
           businessId,
-          actor: { id: userId, name: cashierName ?? '-', role: locals.user!.role as 'OWNER' | 'STAFF' },
+          actor: { id: userId, name: cashierName ?? '-', role },
           ...netOf({ request, getClientAddress }),
           action: 'TX_CREATE',
           entityType: 'transaction',
@@ -397,10 +395,7 @@ export const actions: Actions = {
   // yang salah catat lapor ke owner, owner yang melakukan void lalu buat struk
   // koreksi baru. Tidak ada edit qty in-place biar histori teraudit.
   deleteTx: async ({ request, locals, getClientAddress }) => {
-    if (!locals.user || locals.user.role !== 'OWNER') {
-      return fail(403, { message: 'Cuma Owner yang bisa void struk.' });
-    }
-    const businessId = locals.user.businessId as string;
+    const { businessId, userId, user: actor } = requireOwner(locals);
     const form = await request.formData();
     const txId = String(form.get('txId') ?? '');
     if (!txId) return fail(400, { message: 'Id struk wajib diisi.' });
@@ -422,7 +417,7 @@ export const actions: Actions = {
       .where(eq(transactionItem.transactionId, txId));
     // total = Σ(qty × harga) − Σ(diskon)   (Rupiah)
     const voidTotal = receiptTotals(voidItems).total;
-    const actorName = actorOf(locals.user).name;
+    const actorName = actorOf(actor).name;
     const net = netOf({ request, getClientAddress });
     const metaJson = JSON.stringify({
       total: voidTotal,
@@ -468,13 +463,13 @@ export const actions: Actions = {
       ledger as (
         insert into stock_movement (id, business_id, product_id, qty_change, reason, ref_tx_id, created_by)
         select gen_random_uuid()::text, ${businessId}::text, product_id, qty,
-               'VOID_RESTORE'::stock_reason, ${txId}::text, ${locals.user.id as string}::text
+                'VOID_RESTORE'::stock_reason, ${txId}::text, ${userId}::text
         from restored
       ),
       logged as (
         insert into activity_log
           (id, business_id, actor_id, actor_name, actor_role, action, entity_type, entity_id, ip, user_agent, meta)
-        select gen_random_uuid()::text, ${businessId}::text, ${locals.user.id as string}::text, ${actorName}::text,
+        select gen_random_uuid()::text, ${businessId}::text, ${userId}::text, ${actorName}::text,
                'OWNER'::role, 'TX_VOID', 'transaction', ${txId}::text, ${net.ip}::text, ${net.userAgent}::text, ${metaJson}::jsonb
         where exists (select 1 from removed)
       )

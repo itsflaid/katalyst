@@ -5,10 +5,11 @@ import { metricsOf, ZERO_FACTS } from '$lib/analytics';
 import { queryFactsByProduct } from '$lib/server/domains/facts/queries';
 import { DEFAULT_TZ } from '$lib/shared/time';
 import { error } from '@sveltejs/kit';
+import { requireTenant } from '$lib/server/domains/auth/guards';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
-  const businessId = locals.user!.businessId as string;
+  const { businessId, role } = requireTenant(locals);
 
   const [p] = await db
     .select()
@@ -49,7 +50,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     product: p,
     performance,
     movements,
-    role: locals.user!.role === 'OWNER' ? 'OWNER' : 'STAFF',
+    role,
     timezone: locals.business?.timezone ?? DEFAULT_TZ
   };
 };

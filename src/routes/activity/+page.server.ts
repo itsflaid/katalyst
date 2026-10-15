@@ -10,8 +10,7 @@ import type { PageServerLoad } from './$types';
 const PAGE_SIZE = 30;
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-  requireOwner(locals);
-  const businessId = locals.user!.businessId as string;
+  const { businessId } = requireOwner(locals);
 
   const peranRaw = url.searchParams.get('peran') ?? 'all';
   const peran = peranRaw === 'owner' ? 'owner' : peranRaw === 'staff' ? 'staff' : 'all';

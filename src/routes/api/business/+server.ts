@@ -4,13 +4,12 @@ import { business } from '$lib/server/db/schema';
 import { readJsonObject } from '$lib/server/http';
 import { eq } from 'drizzle-orm';
 import { isBizTz, DEFAULT_TZ, type BizTz } from '$lib/shared/time';
+import { requireOwner } from '$lib/server/domains/auth/guards';
 import type { RequestHandler } from './$types';
 
 // Cuma Owner yang boleh ubah profil bisnis; mendukung update parsial nama dan/atau zona waktu.
 export const PATCH: RequestHandler = async ({ request, locals }) => {
-  if (!locals.user || locals.user.role !== 'OWNER' || !locals.user.businessId) {
-    throw error(403, 'Cuma Owner yang bisa mengubah profil bisnis.');
-  }
+  const { businessId } = requireOwner(locals);
 
   const parsed = await readJsonObject(request);
   if (!parsed.ok) throw error(400, parsed.message);
@@ -34,8 +33,8 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
     patch.timezone = body.timezone;
   }
 
-  await db.update(business).set(patch).where(eq(business.id, locals.user.businessId));
-  const [b] = await db.select({ name: business.name, timezone: business.timezone }).from(business).where(eq(business.id, locals.user.businessId));
+  await db.update(business).set(patch).where(eq(business.id, businessId));
+  const [b] = await db.select({ name: business.name, timezone: business.timezone }).from(business).where(eq(business.id, businessId));
 
   return json({ name: b?.name ?? patch.name ?? '', timezone: b?.timezone ?? patch.timezone ?? DEFAULT_TZ });
 };
