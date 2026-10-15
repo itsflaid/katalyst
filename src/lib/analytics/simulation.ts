@@ -1,9 +1,9 @@
 // Simulator "what-if" satu produk. Murni + isomorfik (server & browser):
 // tanpa drizzle-orm/$env/$app, tanpa jam sistem. Diskon hipotetis memakai
 // unitDiscount (bulat per unit, sama seperti kasir) dan boleh dibatasi kuota unit.
-import { deltaRatio, factsOfItem, metricsOf, sumFacts, type Facts, type Metrics } from './analytics/facts';
-import type { TransactionItemLike } from './analytics/core';
-import { isBelowCost, unitDiscount } from './discount';
+import { deltaRatio, factsOfItem, metricsOf, sumFacts, type Facts, type Metrics } from './facts';
+import type { TransactionItemLike } from './core';
+import { isBelowCost, unitDiscount } from '../shared/discount';
 
 export type DiscountLever = { kind: 'keep' } | { kind: 'percent'; pct: number; units?: number };
 

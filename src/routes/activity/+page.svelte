@@ -30,7 +30,7 @@
   }
   function go(patch: Record<string, string | null>) {
     const qs = paramsWith(patch);
-    goto(`/log${qs ? `?${qs}` : ''}`, { keepFocus: true });
+    goto(`/activity${qs ? `?${qs}` : ''}`, { keepFocus: true });
   }
 
   let fromEl: HTMLInputElement | null = null;
@@ -51,7 +51,7 @@
   }
 
   $: rangeActive = !!(data.rangeFrom || data.rangeTo);
-  $: moreHref = `/log?page=${data.page + 1}${paramsWith({}) ? `&${paramsWith({})}` : ''}`;
+  $: moreHref = `/activity?page=${data.page + 1}${paramsWith({}) ? `&${paramsWith({})}` : ''}`;
 
   const segClass = (active: boolean) =>
     `rounded border px-2.5 py-1.5 text-body-sm ${active ? 'border-ink-navy bg-ink-navy text-white font-semibold' : 'border-border-input bg-white text-ink hover:bg-table-header'}`;

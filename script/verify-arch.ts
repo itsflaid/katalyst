@@ -45,12 +45,11 @@ const R1_ALLOW = [
   'src/lib/server/db/seed-', // prefix (seed-demo.ts, seed-real.ts, dst.)
   'src/lib/server/domains/facts/',
   'src/lib/analytics/',
-  'src/lib/simulation.ts',
   'src/lib/server/sql.ts',
   'src/routes/transactions/',
   // Jalur tulis snapshot (calculateCart, quotaDeltas): satu-satunya tempat
   // diskon dihitung dari persen selain simulasi; tanpanya baris penulis tak bisa dihapus.
-  'src/lib/discount.ts',
+  'src/lib/shared/discount.ts',
   // Pembaca item per baris yang sah, seperti routes/transactions/.
   'src/lib/server/domains/transactions/'
 ];
@@ -74,7 +73,7 @@ function r2Scope(file: string): boolean {
   return file.startsWith('src/routes/') || file.endsWith('domains/stats/loaders.ts');
 }
 
-const R3_SCOPE = ['src/lib/analytics/', 'src/lib/simulation.ts', 'src/lib/shared/', 'src/lib/discount.ts'];
+const R3_SCOPE = ['src/lib/analytics/', 'src/lib/shared/'];
 const R3_IMPORT_RE = /\b(import|from|require\()\b.*?(server|\$env|\$app|drizzle-orm|postgres|@neondatabase)/;
 const R3_LIB_RE = /from\s+['"]\$lib\//;
 
@@ -83,7 +82,7 @@ function r3Scope(file: string): boolean {
 }
 
 function r4Scope(file: string): boolean {
-  return file.startsWith('src/lib/analytics/') || file === 'src/lib/simulation.ts' || file === 'src/lib/shared/period.ts';
+  return file.startsWith('src/lib/analytics/') || file === 'src/lib/shared/period.ts';
 }
 // R4: yang dilarang BACAAAN JAM (konstruksi kosong / Date.now), bukan
 // konstruksi deterministik new Date(x) dari komponen kalender (dipakai

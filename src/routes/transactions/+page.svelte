@@ -2,14 +2,14 @@
   import Card from '$lib/components/ui/Card.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
-  import ProductTile from '$lib/components/transaksi/ProductTile.svelte';
-  import ProductRow from '$lib/components/transaksi/ProductRow.svelte';
+  import ProductTile from '$lib/components/transactions/ProductTile.svelte';
+  import ProductRow from '$lib/components/transactions/ProductRow.svelte';
   import { enhance } from '$app/forms';
   import { goto, invalidateAll } from '$app/navigation';
   import { onMount } from 'svelte';
   import type { SubmitFunction } from '@sveltejs/kit';
   import Badge from '$lib/components/ui/Badge.svelte';
-  import { calculateCart, getDiscountStatus, unitDiscount } from '$lib/discount';
+  import { calculateCart, getDiscountStatus, unitDiscount } from '$lib/shared/discount';
   import { lineNetOf } from '$lib/analytics';
   import { makeTime, DEFAULT_TZ, type BizTime } from '$lib/shared/time';
   import { Search, ChevronDown, Minus, Plus, Trash2, Check, Pencil, X, LayoutGrid, List } from 'lucide-svelte';

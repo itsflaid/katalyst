@@ -81,7 +81,7 @@
 <h2 class="text-headline-sm text-ink mt-8 mb-3">Riwayat Stok (20 terbaru)</h2>
 {#if data.role === 'OWNER'}
   <p class="mb-3">
-    <a href={`/products/stok?product=${data.product.id}`} class="text-body-md font-semibold text-ink-navy hover:underline no-underline"
+    <a href={`/products/stock?product=${data.product.id}`} class="text-body-md font-semibold text-ink-navy hover:underline no-underline"
       >Lihat semua riwayat →</a
     >
   </p>

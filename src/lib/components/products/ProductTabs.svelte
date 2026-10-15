@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   export let isOwner: boolean;
-  $: active = $page.url.pathname.startsWith('/products/stok') ? 'stok' : 'daftar';
+  $: active = $page.url.pathname.startsWith('/products/stock') ? 'stock' : 'list';
 </script>
 
 <!-- Garis bawah dipegang pembungkus luar supaya slot aksi (CTA) bisa duduk
@@ -11,17 +11,17 @@
     <a
       href="/products"
       role="tab"
-      aria-selected={active === 'daftar'}
-      class="px-4 h-10 inline-flex items-center text-body-md no-underline border-b-2 -mb-px {active === 'daftar'
+      aria-selected={active === 'list'}
+      class="px-4 h-10 inline-flex items-center text-body-md no-underline border-b-2 -mb-px {active === 'list'
         ? 'border-ink-navy text-ink font-semibold'
         : 'border-transparent text-muted hover:text-ink'}">Daftar</a
     >
     {#if isOwner}
       <a
-        href="/products/stok"
+        href="/products/stock"
         role="tab"
-        aria-selected={active === 'stok'}
-        class="px-4 h-10 inline-flex items-center text-body-md no-underline border-b-2 -mb-px {active === 'stok'
+        aria-selected={active === 'stock'}
+        class="px-4 h-10 inline-flex items-center text-body-md no-underline border-b-2 -mb-px {active === 'stock'
           ? 'border-ink-navy text-ink font-semibold'
           : 'border-transparent text-muted hover:text-ink'}">Riwayat Stok</a
       >

@@ -5,7 +5,7 @@ import { fail } from '@sveltejs/kit';
 import { requireOwner } from '$lib/server/domains/auth/guards';
 import { denyUnlessOwner } from '$lib/server/domains/products';
 import { canDeleteDiscount, findOverlap, listDiscounts, overlapDbMessage, parseDiscountForm } from '$lib/server/domains/discounts';
-import { getDiscountStatus } from '$lib/discount';
+import { getDiscountStatus } from '$lib/shared/discount';
 import { actorOf, netOf, recordActivity } from '$lib/server/domains/activity/log';
 import { DEFAULT_TZ, makeTime } from '$lib/shared/time';
 import type { Actions, PageServerLoad } from './$types';

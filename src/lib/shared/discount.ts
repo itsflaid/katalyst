@@ -1,4 +1,4 @@
-import { type BizTime, makeTime } from './shared/time';
+import { type BizTime, makeTime } from './time';
 
 export type DiscountScope = 'PRODUCT' | 'GLOBAL';
 export type DiscountStatus = 'INACTIVE' | 'SCHEDULED' | 'EXPIRED' | 'SOLD_OUT' | 'ACTIVE';

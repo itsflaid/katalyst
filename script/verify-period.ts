@@ -214,7 +214,7 @@ console.log('\n== paritas resolvePeriod vs oracle beku ==');
   for (const nowISO of NOWS) {
     for (const tz of TZS) {
       for (const q of CUSTOM_VARIANTS) {
-        const url = new URL(`http://x/statistik${q ? `?${q}` : ''}`);
+        const url = new URL(`http://x/statistics${q ? `?${q}` : ''}`);
         const now = new RealDate(nowISO);
         const oStat = norm(withFrozenNow(nowISO, () => oracleStatistikRange(url, tz)));
         const gStat = norm(resolvePeriod(new URL(url), tz, now, { default: '30d', allow: STAT_ALLOW }));

@@ -56,7 +56,7 @@ export const ACTION_FILTERS = [
   { key: 'transaksi', label: 'Transaksi', actions: ['TX_CREATE', 'TX_VOID'] },
   { key: 'void', label: 'Void', actions: ['TX_VOID'] },
   { key: 'produk', label: 'Produk', actions: ['PRODUCT_CREATE', 'PRODUCT_UPDATE', 'PRODUCT_TOGGLE', 'PRODUCT_DELETE'] },
-  { key: 'diskon', label: 'Diskon', actions: ['DISCOUNT_CREATE', 'DISCOUNT_UPDATE', 'DISCOUNT_TOGGLE', 'DISCOUNT_DELETE'] },
+  { key: 'discounts', label: 'Diskon', actions: ['DISCOUNT_CREATE', 'DISCOUNT_UPDATE', 'DISCOUNT_TOGGLE', 'DISCOUNT_DELETE'] },
   {
     key: 'staff',
     label: 'Kelola staff',

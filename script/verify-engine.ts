@@ -12,7 +12,7 @@ import {
   estimateDaysCover,
   TransactionItemLike
 } from '../src/lib/analytics';
-import { simulateScenario, ProductLike } from '../src/lib/simulation';
+import { simulateScenario, ProductLike } from '../src/lib/analytics/simulation';
 
 let passCount = 0;
 let failCount = 0;

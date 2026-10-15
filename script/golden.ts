@@ -13,9 +13,9 @@ const MODE = process.argv[2] ?? 'check';
 // Rentang custom eksplisit (from DAN to selalu diisi) supaya tak bergantung now.
 const ROUTES = [
   '/dashboard',
-  '/statistik?range=custom&from=2026-08-02&to=2026-08-31',
-  '/statistik?range=custom&from=2026-08-25&to=2026-08-31',
-  '/statistik?range=custom&from=2026-01-01&to=2026-01-31',
+  '/statistics?range=custom&from=2026-08-02&to=2026-08-31',
+  '/statistics?range=custom&from=2026-08-25&to=2026-08-31',
+  '/statistics?range=custom&from=2026-01-01&to=2026-01-31',
   '/simulator?range=all',
   '/simulator?range=custom&from=2026-08-02&to=2026-08-31',
   '/transactions'

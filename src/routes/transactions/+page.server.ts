@@ -3,7 +3,7 @@ import { activityLog, stockMovement, transaction, transactionItem, product, user
 import { activityRow } from '$lib/server/domains/activity/log';
 import { eq, desc, and, asc, inArray, gte, lt, or, sql } from 'drizzle-orm';
 import { DEFAULT_TZ, isBizTz, makeTime } from '$lib/shared/time';
-import { calculateCart, getDiscountStatus, quotaDeltas } from '$lib/discount';
+import { calculateCart, getDiscountStatus, quotaDeltas } from '$lib/shared/discount';
 import { receiptTotals } from '$lib/analytics';
 import { actorOf, netOf } from '$lib/server/domains/activity/log';
 import { getActiveProductDiscounts, getGlobalDiscount } from '$lib/server/domains/discounts';

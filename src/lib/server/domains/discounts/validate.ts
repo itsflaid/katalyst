@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { discount, product } from '$lib/server/db/schema';
 import { and, eq } from 'drizzle-orm';
-import { isBelowCost, resolveWindow, type DiscountScope, type WindowPreset } from '$lib/discount';
+import { isBelowCost, resolveWindow, type DiscountScope, type WindowPreset } from '$lib/shared/discount';
 import type { BizTime } from '$lib/shared/time';
 import { findOverlap } from './queries';
 

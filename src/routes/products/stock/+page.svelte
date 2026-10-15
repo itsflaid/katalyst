@@ -37,7 +37,7 @@
 </div>
 
 <Card class="mb-4">
-  <form method="GET" action="/products/stok" class="flex flex-wrap items-end gap-3">
+  <form method="GET" action="/products/stock" class="flex flex-wrap items-end gap-3">
     <label class="flex flex-col gap-1 text-body-md text-ink">
       Alasan
       <select name="reason" bind:value={reasonInput} class="h-9 rounded border border-border-input bg-white px-3 text-body-md text-ink">
@@ -72,7 +72,8 @@
       />
     </label>
     <button type="submit" class="h-9 rounded bg-ink-navy border border-ink-navy text-white text-label-lg px-4 cursor-pointer">Terapkan</button>
-    <a href="/products/stok" class="h-9 inline-flex items-center rounded border border-border-input px-4 text-body-md text-ink no-underline">Reset</a>
+    <a href="/products/stock" class="h-9 inline-flex items-center rounded border border-border-input px-4 text-body-md text-ink no-underline">Reset</a
+    >
   </form>
 </Card>
 

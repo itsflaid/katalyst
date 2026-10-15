@@ -4,9 +4,9 @@
   import Input from '$lib/components/ui/Input.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import SlideOver from '$lib/components/ui/SlideOver.svelte';
-  import { isBelowCost, resolveWindow, unitDiscount, type WindowPreset } from '$lib/discount';
+  import { isBelowCost, resolveWindow, unitDiscount, type WindowPreset } from '$lib/shared/discount';
   import type { BizTime } from '$lib/shared/time';
-  import type { DiscountRow } from '$lib/components/discount/DiscountTable.svelte';
+  import type { DiscountRow } from '$lib/components/discounts/DiscountTable.svelte';
 
   export let mode: 'create' | 'edit';
   export let discount: DiscountRow | null = null;
