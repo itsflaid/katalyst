@@ -19,8 +19,6 @@ export const load: PageServerLoad = async ({ locals }) => {
   return { products, role };
 };
 
-// neon-http: tidak ada db.transaction interaktif; db.batch([...]) menjalankan semua statement dalam satu transaksi (gagal satu = rollback semua).
-
 export const actions: Actions = {
   create: async ({ request, locals, getClientAddress }) => {
     const { businessId, userId, user: actor } = requireOwner(locals);

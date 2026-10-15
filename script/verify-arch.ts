@@ -104,6 +104,14 @@ function r6Scope(file: string): boolean {
   return file.startsWith('src/routes/') && (file.endsWith('+page.server.ts') || file.endsWith('+server.ts'));
 }
 
+// R7: route hanya adaptasi HTTP; query lewat domain. Allowlist kosong.
+const R7_IMPORT_RE = /from\s+['"]\$lib\/server\/db['"]/;
+const R7_DB_RE = /\bdb\s*\.\s*(select|insert|update|delete|execute|batch|transaction)\s*\(/;
+
+function r7Scope(file: string): boolean {
+  return file === 'src/hooks.server.ts' || r6Scope(file);
+}
+
 const R5_BANNER_RE = /^[-=─━*#~_+]{4,}\s*$|^[-=─━*#~_+]{2,}\s*\S.*\S\s*[-=─━*#~_+]{2,}$/;
 const R5_DOC_REF_RE = /§\s*\d|\bSPEC\b|\bFase\s*\d|\bPR\s?-?[A-Z]?\d|\bTahap\s*\d/;
 const R5_HISTORY_RE = /\b(dulu|dahulu|kini|pengganti|menggantikan|hasil refactor|tidak lagi|sudah tidak|semula|awalnya|versi lama|legacy)\b/;
@@ -225,6 +233,14 @@ function main() {
         const hit = R6_RES.find((re) => re.test(raw));
         if (hit) {
           violations.push({ file, line: lineNo, rule: 'R6:tenant', snippet: raw.trim().slice(0, 120) });
+        }
+      }
+      // R7
+      if (r7Scope(file)) {
+        const t = raw.trim();
+        const isComment = t.startsWith('//') || t.startsWith('*') || t.startsWith('<!--');
+        if (!isComment && (R7_IMPORT_RE.test(raw) || R7_DB_RE.test(raw))) {
+          violations.push({ file, line: lineNo, rule: 'R7:db', snippet: raw.trim().slice(0, 120) });
         }
       }
     });

@@ -158,7 +158,7 @@ export async function parseDiscountForm(form: FormData, ctx: DiscountFormCtx): P
 }
 
 // Dipakai aksi hapus: hanya boleh bila belum pernah dipakai di transaksi.
-export async function canDeleteDiscount(id: string, businessId: string) {
+export async function canDeleteDiscount(id: string, businessId: string): Promise<{ data: { id: string; quotaUsed: number } } | { error: string }> {
   const [row] = await db
     .select({ id: discount.id, quotaUsed: discount.quotaUsed })
     .from(discount)
