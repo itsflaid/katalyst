@@ -1,5 +1,5 @@
 import { db } from '$lib/server/db';
-import { staffInvitation, user } from '$lib/server/db/schema';
+import { business, staffInvitation, user } from '$lib/server/db/schema';
 import { runBatch } from '$lib/server/db/batch';
 import { auth } from '$lib/server/domains/auth';
 import { INVITE_TTL_MS, generateInviteToken, hashInviteToken, placeholderEmail } from '$lib/server/domains/invites';
@@ -84,6 +84,34 @@ export async function revokeInvite(businessId: string, rawInviteId: unknown): Pr
   await db.update(staffInvitation).set({ revokedAt: new Date() }).where(eq(staffInvitation.id, invite.id));
 
   return { ok: true, data: { id: invite.id, username: invite.username, name: invite.name } };
+}
+
+export type InviteStatus = 'valid' | 'expired' | 'invalid';
+
+export type InviteCard =
+  | { status: 'invalid' }
+  | { status: 'expired'; businessName: string; username: string }
+  | { status: 'valid'; businessName: string; username: string; name: string; expiresAt: string };
+
+export async function getInviteCard(rawToken: unknown): Promise<InviteCard> {
+  if (typeof rawToken !== 'string' || !rawToken) return { status: 'invalid' };
+  const tokenHash = await hashInviteToken(rawToken);
+  const [invite] = await db.select().from(staffInvitation).where(eq(staffInvitation.tokenHash, tokenHash));
+  if (!invite || invite.acceptedAt || invite.revokedAt) {
+    return { status: 'invalid' };
+  }
+  const [b] = await db.select({ name: business.name }).from(business).where(eq(business.id, invite.businessId));
+  const businessName = b?.name ?? 'Bisnis';
+  if (invite.expiresAt.getTime() < Date.now()) {
+    return { status: 'expired', businessName, username: invite.username };
+  }
+  return {
+    status: 'valid',
+    businessName,
+    username: invite.username,
+    name: invite.name ?? '',
+    expiresAt: invite.expiresAt.toISOString()
+  };
 }
 
 export interface AcceptedInvite {
