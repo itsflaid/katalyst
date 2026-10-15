@@ -198,17 +198,29 @@ async function main() {
         ok('hapus produk → diskon cascade hilang', false, String(e).slice(0, 160));
       }
 
-      // 12. Paritas: selama semua discount_amount = 0, sum(lineNet) harus
-      // sama dengan sum(qty×price): di seluruh data (termasuk fixture
-      // di atas yang semuanya berdikon-nol).
+      // 12. Paritas: sum(lineNet) = sum(qty×price) − sum(diskon); subset tanpa
+      // diskon tetap net == gross. Data salinan asli boleh punya baris terdiskon.
       {
         const [par] = await tx
           .select({
             net: sql<string>`coalesce(sum(${lineNet}), 0)::text`,
-            gross: sql<string>`coalesce(sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale}), 0)::text`
+            gross: sql<string>`coalesce(sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale}), 0)::text`,
+            disc: sql<string>`coalesce(sum(${transactionItem.discountAmount}), 0)::text`
           })
           .from(transactionItem);
-        ok('paritas sum(net) == sum(gross) saat diskon 0', par.net === par.gross, `net=${par.net} gross=${par.gross}`);
+        ok(
+          'paritas sum(net) == sum(gross) - sum(diskon)',
+          BigInt(par.net) === BigInt(par.gross) - BigInt(par.disc),
+          `net=${par.net} gross=${par.gross} disc=${par.disc}`
+        );
+        const [sub] = await tx
+          .select({
+            net: sql<string>`coalesce(sum(${lineNet}), 0)::text`,
+            gross: sql<string>`coalesce(sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale}), 0)::text`
+          })
+          .from(transactionItem)
+          .where(eq(transactionItem.discountAmount, 0));
+        ok('subset tanpa diskon: net == gross', sub.net === sub.gross, `net=${sub.net} gross=${sub.gross}`);
       }
 
       // 13. Kesesuaian SQL vs JS: 1 struk fixture (2 item, salah satunya
