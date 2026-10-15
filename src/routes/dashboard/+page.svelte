@@ -23,6 +23,9 @@
   $: kpiDeltas = data.deltas;
   const deltaTone = (d: number | null) => (d === null || d >= 0 ? 'positive' : 'negative');
   const fmtDeltaShort = (d: number | null) => (d === null ? 'baru' : `${d >= 0 ? '+' : ''}${d.toFixed(1)}%`);
+  // Tooltip + sumbu chart memakai satuan pendek yang sama (jt/rb), bukan angka mentah.
+  const fmtShort = (v: number) => (v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)} jt` : v >= 1_000 ? `${Math.round(v / 1_000)} rb` : `${v}`);
+  $: trendTick = (v: number) => `${v} ${data.trend.unitLabel.split(' ')[0]}`;
 
   $: topProductLabels = data.topByRevenue.map((p) => p.name);
   $: topProductRevenue = data.topByRevenue.map((p) => p.revenue);
@@ -81,12 +84,13 @@
           { label: 'Revenue', data: revenueTrend, color: '#172554' },
           { label: 'Profit', data: profitTrend, color: '#16A34A' }
         ]}
+        yFormat={trendTick}
       />
     </Card>
     <Card>
       <h2 class="text-headline-sm text-ink mb-1">Revenue per Produk (Top 5)</h2>
       <p class="text-body-sm text-muted mb-3">30 hari terakhir</p>
-      <BarChart labels={topProductLabels} data={topProductRevenue} />
+      <BarChart labels={topProductLabels} data={topProductRevenue} yFormat={fmtShort} />
     </Card>
   </div>
 {/key}

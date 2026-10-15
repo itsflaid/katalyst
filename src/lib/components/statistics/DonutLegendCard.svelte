@@ -2,6 +2,7 @@
   import PieChart, { PIE_COLORS } from '$lib/components/ui/PieChart.svelte';
   export let labels: string[];
   export let data: number[];
+  export let valueFormat: ((v: number) => string) | undefined = undefined;
 </script>
 
 <div class="relative mx-auto flex w-full max-w-[962px] flex-col items-stretch lg:flex-row lg:items-start">
@@ -11,7 +12,7 @@
     <h2 class="text-headline-lg text-ink mb-1">Komposisi Profit</h2>
     <p class="text-body-sm text-muted mb-3">Makin besar potongan = makin besar keuntungan produknya</p>
     <div class="mx-auto w-[320px]" style="filter: drop-shadow(0 4px 2px rgba(0, 0, 0, 0.25));">
-      <PieChart {labels} {data} showLegend={false} cutout="59%" borderWidth={3} heightClass="h-80" />
+      <PieChart {labels} {data} {valueFormat} showLegend={false} cutout="59%" borderWidth={3} heightClass="h-80" />
     </div>
   </div>
   <aside

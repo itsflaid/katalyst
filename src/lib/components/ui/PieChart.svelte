@@ -13,6 +13,7 @@
   export let cutout = '62%';
   export let borderWidth = 2;
   export let heightClass = 'h-64';
+  export let valueFormat: ((v: number) => string) | undefined = undefined;
 
   let canvasEl: HTMLCanvasElement;
   let chart: Chart;
@@ -52,6 +53,14 @@
               boxWidth: 10,
               usePointStyle: true,
               font: { family: 'Plus Jakarta Sans' }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: (item) => {
+                const v = Number(item.raw);
+                return ` ${item.label}: ${valueFormat ? valueFormat(v) : v}`;
+              }
             }
           }
         }
