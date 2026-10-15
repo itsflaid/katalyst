@@ -9,6 +9,9 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { placeholderEmail } from '../domains/invites';
 import { makeTime } from '../../shared/time';
+import { assertScratchDb } from './scratch-guard';
+
+assertScratchDb();
 
 // Script ini dijalankan standalone via tsx (bukan SvelteKit/Vite), jadi db
 // client dan betterAuth dibuat sendiri dari process.env.

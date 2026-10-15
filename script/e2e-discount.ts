@@ -5,6 +5,9 @@ import postgres from 'postgres';
 import { randomUUID } from 'crypto';
 import { calculateCart, type DiscountLike } from '../src/lib/shared/discount';
 import { makeTime, DEFAULT_TZ } from '../src/lib/shared/time';
+import { assertScratchDb } from '../src/lib/server/db/scratch-guard';
+
+assertScratchDb();
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:5173';
 let pass = 0;
