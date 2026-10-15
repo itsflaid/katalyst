@@ -109,7 +109,7 @@ async function main() {
 
   try {
     // E1: D1 15% kuota 5 TODAY di P; P×8 total 72500.
-    let r = await postForm(owner, '/diskon', 'create', {
+    let r = await postForm(owner, '/discounts', 'create', {
       name: 'E2E-D1', scope: 'PRODUCT', productId: P.id, percent: '15', preset: 'TODAY', quota: '5'
     });
     raw('E1 create D1', r.status, r.text);
@@ -186,7 +186,7 @@ async function main() {
     createdTx.push(txWin);
 
     // D1 dimatikan agar E5/E6 menguji slits murni (tanpa sisa kuota D1).
-    r = await postForm(owner, '/diskon', 'toggle', { id: (await discByName('E2E-D1'))!.id });
+    r = await postForm(owner, '/discounts', 'toggle', { id: (await discByName('E2E-D1'))!.id });
     ok('D1 off sebelum E5', isOk(r));
 
     // E5: expired + terjadwal (insert langsung) → 409; normal → sukses.
@@ -212,7 +212,7 @@ async function main() {
     await q(`delete from discount where business_id = $1 and name in ('E2E-EXP','E2E-SCH')`, BIZ);
 
     // E6: global G 10% TODAY; P×2+Q×1 = 36000.
-    r = await postForm(owner, '/diskon', 'create', {
+    r = await postForm(owner, '/discounts', 'create', {
       name: 'E2E-G', scope: 'GLOBAL', percent: '10', preset: 'TODAY'
     });
     raw('E6 create G', r.status, r.text);
@@ -233,18 +233,18 @@ async function main() {
     ok('E6 G.used=3', (await discByName('E2E-G'))!.quota_used === 3);
 
     // E6b: nonaktifkan G → kirim ulang → 409 DISCOUNT_UNAVAILABLE → nyalakan lagi.
-    r = await postForm(owner, '/diskon', 'toggle', { id: G.id });
+    r = await postForm(owner, '/discounts', 'toggle', { id: G.id });
     ok('E6b toggle off sukses', isOk(r));
     r = await postForm(owner, '/transactions', 'create', {
       items: items6, globalDiscountId: G.id, expectedTotal: '36000'
     });
     raw('E6b kirim ulang', r.status, r.text);
     ok('E6b → 409 DISCOUNT_UNAVAILABLE', isFail(r, 409, /DISCOUNT_UNAVAILABLE/));
-    r = await postForm(owner, '/diskon', 'toggle', { id: G.id });
+    r = await postForm(owner, '/discounts', 'toggle', { id: G.id });
     ok('E6b toggle on lagi sukses', isOk(r));
 
     // E7: D1 sudah off sejak E5 → buat D2 (P 15% kuota 10 TODAY); P×2+Q×1+G = 35000.
-    r = await postForm(owner, '/diskon', 'create', {
+    r = await postForm(owner, '/discounts', 'create', {
       name: 'E2E-D2', scope: 'PRODUCT', productId: P.id, percent: '15', preset: 'TODAY', quota: '10'
     });
     raw('E7 create D2', r.status, r.text);
@@ -263,7 +263,7 @@ async function main() {
 
     // E8: staff dilarang diskon; staff boleh kasir (P×1 → D2: 8500).
     const dcBefore = (await q(`select count(*)::text as c from discount where business_id = $1`, BIZ) as { c: string }[])[0];
-    r = await postForm(staff, '/diskon', 'create', { name: 'E2E-HACK', scope: 'GLOBAL', percent: '99', preset: 'TODAY' });
+    r = await postForm(staff, '/discounts', 'create', { name: 'E2E-HACK', scope: 'GLOBAL', percent: '99', preset: 'TODAY' });
     raw('E8 staff diskon', r.status, r.text);
     const dcAfter = (await q(`select count(*)::text as c from discount where business_id = $1`, BIZ) as { c: string }[])[0];
     ok('E8 staff tak ada baris baru', dcBefore.c === dcAfter.c, `status=${r.status}`);
@@ -275,30 +275,30 @@ async function main() {
     createdTx.push((await latestTx()).id);
 
     // E9: D3 TODAY saat D2 aktif → 400; mulai besok → sukses.
-    r = await postForm(owner, '/diskon', 'create', {
+    r = await postForm(owner, '/discounts', 'create', {
       name: 'E2E-D3', scope: 'PRODUCT', productId: P.id, percent: '5', preset: 'TODAY'
     });
     raw('E9 overlap', r.status, r.text);
     ok('E9 overlap → 400 bertabrakan', isFail(r, 400, /bertabrakan/));
-    r = await postForm(owner, '/diskon', 'create', {
+    r = await postForm(owner, '/discounts', 'create', {
       name: 'E2E-D3', scope: 'PRODUCT', productId: P.id, percent: '5', preset: 'CUSTOM', startDay: tomorrowKey, endDay: dayAfterKey
     });
     raw('E9 besok', r.status, r.text);
     ok('E9 mulai besok sukses', isOk(r));
 
     // E10: global tanpa akhir / dengan kuota → 400.
-    r = await postForm(owner, '/diskon', 'create', { name: 'E2E-GX1', scope: 'GLOBAL', percent: '5', preset: 'OPEN' });
+    r = await postForm(owner, '/discounts', 'create', { name: 'E2E-GX1', scope: 'GLOBAL', percent: '5', preset: 'OPEN' });
     ok('E10 global OPEN → 400', isFail(r, 400), `status=${r.status}`);
-    r = await postForm(owner, '/diskon', 'create', { name: 'E2E-GX2', scope: 'GLOBAL', percent: '5', preset: 'TODAY', quota: '5' });
+    r = await postForm(owner, '/discounts', 'create', { name: 'E2E-GX2', scope: 'GLOBAL', percent: '5', preset: 'TODAY', quota: '5' });
     ok('E10 global kuota → 400', isFail(r, 400), `status=${r.status}`);
 
     // E11: 50% di Q (modal 12000) tanpa confirm → 400 BELOW_COST; dengan → sukses.
-    r = await postForm(owner, '/diskon', 'create', {
+    r = await postForm(owner, '/discounts', 'create', {
       name: 'E2E-DQ', scope: 'PRODUCT', productId: Q.id, percent: '50', preset: 'TODAY'
     });
     raw('E11 tanpa confirm', r.status, r.text);
     ok('E11 → 400 BELOW_COST', isFail(r, 400, /BELOW_COST/));
-    r = await postForm(owner, '/diskon', 'create', {
+    r = await postForm(owner, '/discounts', 'create', {
       name: 'E2E-DQ', scope: 'PRODUCT', productId: Q.id, percent: '50', preset: 'TODAY', confirmLoss: 'on'
     });
     raw('E11 confirm', r.status, r.text);
@@ -306,7 +306,7 @@ async function main() {
 
     // E12: edit kuota D2 di bawah terpakai (2) → 400.
     const D2 = (await discByName('E2E-D2'))!;
-    r = await postForm(owner, '/diskon', 'update', {
+    r = await postForm(owner, '/discounts', 'update', {
       id: D2.id, name: 'E2E-D2', scope: 'PRODUCT', productId: P.id, percent: '15', preset: 'TODAY', quota: '1'
     });
     raw('E12 quota 1', r.status, r.text);

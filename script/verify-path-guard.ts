@@ -29,21 +29,21 @@ function norm(raw: string): string | null {
 }
 
 const cases: { raw: string; want: string | null; prot: boolean; owner: boolean; blocked: boolean }[] = [
-	{ raw: '/statistik', want: '/statistik', prot: true, owner: true, blocked: false },
-	{ raw: '/%73tatistik', want: '/statistik', prot: true, owner: true, blocked: false },
-	{ raw: '/statistik/', want: '/statistik/', prot: true, owner: true, blocked: false },
-	{ raw: '//statistik', want: '/statistik', prot: true, owner: true, blocked: false },
-	{ raw: '/products/stok', want: '/products/stok', prot: true, owner: true, blocked: false },
-	{ raw: '/products/%73tok', want: '/products/stok', prot: true, owner: true, blocked: false },
+	{ raw: '/stats', want: '/stats', prot: true, owner: true, blocked: false },
+	{ raw: '/%73tats', want: '/stats', prot: true, owner: true, blocked: false },
+	{ raw: '/stats/', want: '/stats/', prot: true, owner: true, blocked: false },
+	{ raw: '//stats', want: '/stats', prot: true, owner: true, blocked: false },
+	{ raw: '/products/stock', want: '/products/stock', prot: true, owner: true, blocked: false },
+	{ raw: '/products/%73tock', want: '/products/stock', prot: true, owner: true, blocked: false },
 	{ raw: '/%63opilot/chat', want: '/copilot/chat', prot: true, owner: true, blocked: false },
 	{ raw: '/api/auth/sign-up/email', want: '/api/auth/sign-up/email', prot: false, owner: false, blocked: true },
 	{ raw: '/api/auth/sign-%75p/email', want: '/api/auth/sign-up/email', prot: false, owner: false, blocked: true },
 	{ raw: '/api/auth/admin/list-users', want: '/api/auth/admin/list-users', prot: false, owner: false, blocked: true },
-	{ raw: '/log', want: '/log', prot: true, owner: true, blocked: false },
-	{ raw: '/%6Cog', want: '/log', prot: true, owner: true, blocked: false },
-	{ raw: '/log/x', want: '/log/x', prot: true, owner: true, blocked: false },
-	{ raw: '/login', want: '/login', prot: false, owner: false, blocked: false },
-	{ raw: '/logx', want: '/logx', prot: false, owner: false, blocked: false },
+	{ raw: '/logs', want: '/logs', prot: true, owner: true, blocked: false },
+  { raw: '/%6Cogs', want: '/logs', prot: true, owner: true, blocked: false },
+  { raw: '/logs/x', want: '/logs/x', prot: true, owner: true, blocked: false },
+  { raw: '/login', want: '/login', prot: false, owner: false, blocked: false },
+  { raw: '/logsx', want: '/logsx', prot: false, owner: false, blocked: false },
 	{ raw: '/dashboardx', want: '/dashboardx', prot: false, owner: false, blocked: false },
 	{ raw: '/api/auth/sign-in/username', want: '/api/auth/sign-in/username', prot: false, owner: false, blocked: false }
 ];
@@ -59,7 +59,7 @@ for (const c of cases) {
 
 ok('path rusak melempar', norm('/%E0%A4%A') === null);
 ok('%2F bukan pemisah', norm('/dashboard%2Fx') === '/dashboard%2Fx' && !isProtected('/dashboard%2Fx'));
-ok('%2F akhir bukan slash', !isProtected(norm('/%73tatistik%2F') ?? ''));
+ok('%2F akhir bukan slash', !isProtected(norm('/%73tats%2F') ?? ''));
 ok('batas awalan ketat', !matchesPrefix('/dashboardx', '/dashboard') && matchesPrefix('/dashboard/x', '/dashboard'));
 
 function thrownOf(fn: () => void): { status?: number; location?: string } {
@@ -95,11 +95,11 @@ const accessCases: { path: string; user: AccessUser; want: string }[] = [
 	{ path: '/dashboard', user: { role: 'OWNER', businessId: '' }, want: 'forbidden' },
 	{ path: '/transactions', user: { role: 'STAFF', businessId: null }, want: 'forbidden' },
 	{ path: '/dashboard', user: { role: 'STAFF', businessId: 'b1' }, want: 'redirect:/transactions' },
-	{ path: '/products/stok', user: { role: 'STAFF', businessId: 'b1' }, want: 'redirect:/transactions' },
+	{ path: '/products/stock', user: { role: 'STAFF', businessId: 'b1' }, want: 'redirect:/transactions' },
 	{ path: '/transactions', user: { role: 'STAFF', businessId: 'b1' }, want: 'allow' },
 	{ path: '/dashboard', user: { role: 'OWNER', businessId: 'b1' }, want: 'allow' },
 	{ path: '/copilot', user: { role: 'OWNER', businessId: 'b1' }, want: 'allow' },
-	{ path: '/diskon', user: { role: 'OWNER', businessId: 'b1' }, want: 'allow' },
+  { path: '/discounts', user: { role: 'OWNER', businessId: 'b1' }, want: 'allow' },
 	{ path: '/login', user: { role: 'OWNER', businessId: null }, want: 'allow' },
 	{ path: '/invite/abc', user: { role: 'OWNER', businessId: null }, want: 'allow' },
 	{ path: '/dashboardx', user: null, want: 'allow' }
