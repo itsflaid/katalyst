@@ -392,11 +392,24 @@ async function main() {
     raw('E9 besok', r.status, r.text);
     ok('E9 mulai besok sukses', isOk(r));
 
-    // E10: global tanpa akhir / dengan kuota → 400.
+    // E10: global tanpa akhir / dengan kuota → sukses (mode kuota global).
     r = await postForm(owner, '/discounts', 'create', { name: 'E2E-GX1', scope: 'GLOBAL', percent: '5', preset: 'OPEN' });
-    ok('E10 global OPEN → 400', isFail(r, 400), `status=${r.status}`);
+    ok('E10 global OPEN → sukses', isOk(r), `status=${r.status}`);
     r = await postForm(owner, '/discounts', 'create', { name: 'E2E-GX2', scope: 'GLOBAL', percent: '5', preset: 'TODAY', quota: '5' });
-    ok('E10 global kuota → 400', isFail(r, 400), `status=${r.status}`);
+    ok('E10 global kuota → sukses', isOk(r), `status=${r.status}`);
+
+    // E10b: habiskan kuota GX2 (5% di Q @20000): 3 penuh + 3 parsial (2) lalu SOLD_OUT.
+    const GX2 = (await discByName('E2E-GX2'))!;
+    r = await postForm(owner, '/transactions', 'create', { items: mkItems(Q.id, 3), globalDiscountId: GX2.id, expectedTotal: '57000' });
+    ok('E10b global 3/3 sukses', isOk(r), `status=${r.status}`);
+    ok('E10b used=3', (await discByName('E2E-GX2'))!.quota_used === 3);
+    r = await postForm(owner, '/transactions', 'create', { items: mkItems(Q.id, 3), globalDiscountId: GX2.id, expectedTotal: '58000' });
+    ok('E10b global parsial 2/3 sukses', isOk(r), `status=${r.status}`);
+    ok('E10b used=5', (await discByName('E2E-GX2'))!.quota_used === 5);
+    r = await postForm(owner, '/transactions', 'create', { items: mkItems(Q.id, 1), globalDiscountId: GX2.id, expectedTotal: '19000' });
+    ok('E10b global habis → 409 DISCOUNT_UNAVAILABLE', isFail(r, 409, /DISCOUNT_UNAVAILABLE/), `status=${r.status}`);
+    r = await postForm(owner, '/transactions', 'create', { items: mkItems(Q.id, 1), globalDiscountId: '', expectedTotal: '20000' });
+    ok('E10b tanpa global sukses penuh', isOk(r), `status=${r.status}`);
 
     // E11: 50% di Q (modal 12000) tanpa confirm → 400 BELOW_COST; dengan → sukses.
     r = await postForm(owner, '/discounts', 'create', {

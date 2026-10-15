@@ -117,15 +117,25 @@ async function main() {
       await expectFail('quota_used=-1 ditolak', 'discount_quota_used_nonneg', (s) =>
         s.update(discount).set({ quotaUsed: -1 }).where(eq(discount.id, q5))
       );
-      // 7. Aturan khusus GLOBAL.
-      await expectFail('GLOBAL tanpa endsAt ditolak', 'discount_global_time_only', (s) =>
-        s.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'G', scope: 'GLOBAL', percent: 10 })
-      );
-      await expectFail('GLOBAL dengan quota ditolak', 'discount_global_time_only', (s) =>
-        s
+      // 7. Kuota dan waktu berlaku untuk GLOBAL juga: kuota saja, waktu saja, keduanya.
+      try {
+        await tx.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'GQ', scope: 'GLOBAL', percent: 10, quota: 5 });
+        await tx
           .insert(discount)
-          .values({ id: randomUUID(), businessId: biz, name: 'G', scope: 'GLOBAL', percent: 10, quota: 5, endsAt: new Date(Date.now() + 3600_000) })
-      );
+          .values({ id: randomUUID(), businessId: biz, name: 'GT', scope: 'GLOBAL', percent: 10, endsAt: new Date(Date.now() + 3600_000) });
+        await tx.insert(discount).values({
+          id: randomUUID(),
+          businessId: biz,
+          name: 'GB',
+          scope: 'GLOBAL',
+          percent: 10,
+          quota: 5,
+          endsAt: new Date(Date.now() + 3600_000)
+        });
+        ok('GLOBAL kuota saja / waktu saja / keduanya valid', true);
+      } catch (e) {
+        ok('GLOBAL kuota saja / waktu saja / keduanya valid', false, String(e).slice(0, 160));
+      }
       // 8. Baris item tak valid.
       const badItem = (over: Record<string, number>) =>
         tx.transaction(async (s) =>
@@ -155,8 +165,12 @@ async function main() {
         }
       }
       // 9. Insert valid: PRODUCT (quota null, endsAt null) & GLOBAL (endsAt terisi).
+      // P-OK pakai produk lain: Q5 masih aktif-open di produk fixture sehingga
+      // exclusion overlap menolak produk yang sama.
       try {
-        await tx.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'P-OK', scope: 'PRODUCT', percent: 15, productId: prod });
+        const prodB = randomUUID();
+        await tx.insert(product).values({ id: prodB, businessId: biz, name: 'Fixture Produk B', costPrice: 6000, sellingPrice: 10000, stock: 100 });
+        await tx.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'P-OK', scope: 'PRODUCT', percent: 15, productId: prodB });
         await tx
           .insert(discount)
           .values({ id: randomUUID(), businessId: biz, name: 'G-OK', scope: 'GLOBAL', percent: 10, endsAt: new Date(Date.now() + 3600_000) });
