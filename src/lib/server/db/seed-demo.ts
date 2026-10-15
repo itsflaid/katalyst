@@ -7,7 +7,7 @@ import * as schema from './schema';
 import { business, user, product, transaction, transactionItem, stockMovement } from './schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { placeholderEmail } from '../domains/invites';
+import { placeholderEmail } from '../domains/invites/queries';
 import { makeTime } from '../../shared/time';
 import { assertScratchDb } from './scratch-guard';
 
