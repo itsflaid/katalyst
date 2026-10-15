@@ -7,7 +7,7 @@ import * as schema from './schema';
 import { business, user } from './schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { placeholderEmail, normalizeUsername, isValidUsername } from '../domains/invites';
+import { placeholderEmail, normalizeUsername, isValidUsername } from '../domains/invites/queries';
 
 // Bootstrap deployment (bukan demo): 1 business + 1 owner dari environment variable.
 // Jalan sekali saat deploy; ganti kredensial lewat .env tanpa ubah file ini.
