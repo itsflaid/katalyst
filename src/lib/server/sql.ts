@@ -19,15 +19,11 @@ const tzLit = (tz: BizTz) => {
 
 // createdAt bertipe timestamp (tanpa tz) yang menyimpan waktu UTC.
 // Konversi: ((col AT TIME ZONE 'UTC') AT TIME ZONE '<zona bisnis>').
-export const localTs = (col: SQLWrapper, tz: BizTz) =>
-  sql`((${col} AT TIME ZONE 'UTC') AT TIME ZONE ${tzLit(tz)})`;
+export const localTs = (col: SQLWrapper, tz: BizTz) => sql`((${col} AT TIME ZONE 'UTC') AT TIME ZONE ${tzLit(tz)})`;
 export const localDate = (col: SQLWrapper, tz: BizTz) => sql`(${localTs(col, tz)})::date`;
-export const localHour = (col: SQLWrapper, tz: BizTz) =>
-  sql`extract(hour from ${localTs(col, tz)})::int`;
-export const localIsoDow = (col: SQLWrapper, tz: BizTz) =>
-  sql`extract(isodow from ${localTs(col, tz)})::int`;
-export const localWeekStart = (col: SQLWrapper, tz: BizTz) =>
-  sql`(date_trunc('week', ${localTs(col, tz)}))::date`;
+export const localHour = (col: SQLWrapper, tz: BizTz) => sql`extract(hour from ${localTs(col, tz)})::int`;
+export const localIsoDow = (col: SQLWrapper, tz: BizTz) => sql`extract(isodow from ${localTs(col, tz)})::int`;
+export const localWeekStart = (col: SQLWrapper, tz: BizTz) => sql`(date_trunc('week', ${localTs(col, tz)}))::date`;
 
 // lineNet = quantity * priceAtSale - discountAmount
 // quantity dan discountAmount di-cast bigint agar tidak overflow int4.

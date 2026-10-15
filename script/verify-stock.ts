@@ -15,9 +15,7 @@ if (!process.env.DATABASE_URL) {
 const client = postgres(process.env.DATABASE_URL);
 const db = drizzle(client, { schema });
 
-const products = await db
-  .select({ id: product.id, name: product.name, stock: product.stock, businessId: product.businessId })
-  .from(product);
+const products = await db.select({ id: product.id, name: product.name, stock: product.stock, businessId: product.businessId }).from(product);
 
 let failCount = 0;
 let noLedgerCount = 0;
@@ -29,11 +27,7 @@ for (const p of products) {
     .where(eq(stockMovement.productId, p.id));
   const total = Number(rows[0]?.total ?? 0);
   // Cek apakah produk punya ledger sama sekali.
-  const has = await db
-    .select({ id: stockMovement.id })
-    .from(stockMovement)
-    .where(eq(stockMovement.productId, p.id))
-    .limit(1);
+  const has = await db.select({ id: stockMovement.id }).from(stockMovement).where(eq(stockMovement.productId, p.id)).limit(1);
   if (has.length === 0) {
     console.log(`  SKIP  ${p.name}: tanpa ledger (produk lama)`);
     noLedgerCount++;

@@ -56,11 +56,7 @@
     <div class="relative z-10 mx-auto flex w-full max-w-[400px] flex-col gap-6">
       <!-- Brand -->
       <div class="flex items-center gap-3">
-        <img
-          src="/logo/logo-login.png"
-          alt="Logo Katalyst"
-          class="h-9 w-9 rounded object-cover"
-        />
+        <img src="/logo/logo-login.png" alt="Logo Katalyst" class="h-9 w-9 rounded object-cover" />
         <div class="flex flex-col">
           <span class="text-headline-sm text-ink">Katalyst</span>
           <span class="text-body-sm text-muted">Catalyze Better Decisions</span>
@@ -75,26 +71,12 @@
         <form on:submit|preventDefault={handleSubmit} class="mt-5 flex flex-col gap-4">
           <label for="login-identity" class="flex flex-col gap-1.5">
             <span class="text-label-md text-ink">Username</span>
-            <Input
-              id="login-identity"
-              type="text"
-              bind:value={identity}
-              placeholder="username"
-              autocomplete="username"
-              required
-            />
+            <Input id="login-identity" type="text" bind:value={identity} placeholder="username" autocomplete="username" required />
           </label>
 
           <label for="login-password" class="flex flex-col gap-1.5">
             <span class="text-label-md text-ink">Password</span>
-            <Input
-              id="login-password"
-              type="password"
-              bind:value={password}
-              placeholder="••••••••"
-              autocomplete="current-password"
-              required
-            />
+            <Input id="login-password" type="password" bind:value={password} placeholder="••••••••" autocomplete="current-password" required />
           </label>
 
           {#if error}
@@ -113,31 +95,20 @@
         </form>
       </Card>
 
-      <p class="text-center text-body-sm text-muted">
-        Lupa password? Hubungi admin bisnis kamu.
-      </p>
+      <p class="text-center text-body-sm text-muted">Lupa password? Hubungi admin bisnis kamu.</p>
     </div>
   </section>
 
   <!-- KANAN: hero branding centered di atas navy.
        Duplikat brand kiri, jadi aria-hidden (dekoratif). -->
-  <aside
-    class="relative hidden items-center justify-center overflow-hidden bg-ink-navy px-8 md:flex md:w-1/2"
-    aria-hidden="true"
-  >
+  <aside class="relative hidden items-center justify-center overflow-hidden bg-ink-navy px-8 md:flex md:w-1/2" aria-hidden="true">
     <!-- Kilau diagonal menyapu, reuse keyframes copilot-sheen di app.css -->
     <span aria-hidden="true" class="pointer-events-none absolute inset-0">
-      <span
-        class="copilot-sheen absolute inset-y-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/10 to-transparent"
-      ></span>
+      <span class="copilot-sheen absolute inset-y-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/10 to-transparent"></span>
     </span>
 
     <div class="relative z-10 flex flex-col items-center gap-4 text-center">
-      <img
-        src="/logo/logo-copilot.png"
-        alt=""
-        class="h-28 w-28 rounded-panel object-cover shadow-level2"
-      />
+      <img src="/logo/logo-copilot.png" alt="" class="h-28 w-28 rounded-panel object-cover shadow-level2" />
       <p class="text-headline-xl text-white">Katalyst</p>
       <p class="max-w-[280px] text-body-lg text-white/80">Catalyze Better Decisions</p>
       <p class="text-body-sm tracking-wide text-white/50">see, decide, grow.</p>

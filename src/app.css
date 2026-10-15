@@ -8,9 +8,13 @@
    @import CSS harus di baris paling atas file, spec dan Vite nolak @import setelah statement lain. */
 
 body {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  background-color: #F7F3EA; /* canvas krem hangat, bukan putih polos */
-  color: #0F172A;
+  font-family:
+    'Plus Jakarta Sans',
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background-color: #f7f3ea; /* canvas krem hangat, bukan putih polos */
+  color: #0f172a;
 }
 
 /* Angka finansial/tabel pakai tabular-nums biar kolom rata saat dibaca vertikal (ledger, KPI, harga). */
@@ -62,12 +66,20 @@ body {
 /* Kilau CTA Copilot: strip putih miring menyapu kiri → kanan, infinite.
    0%→55% gerak menyapu, 55%→100% jeda di luar card. */
 @keyframes copilot-sheen-move {
-  0% { left: -45%; }
-  55%, 100% { left: 135%; }
+  0% {
+    left: -45%;
+  }
+  55%,
+  100% {
+    left: 135%;
+  }
 }
 .copilot-sheen {
   animation: copilot-sheen-move 3.2s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .copilot-sheen { animation: none; display: none; }
+  .copilot-sheen {
+    animation: none;
+    display: none;
+  }
 }

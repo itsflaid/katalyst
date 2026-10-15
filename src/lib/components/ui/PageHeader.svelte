@@ -1,6 +1,6 @@
 <script lang="ts">
-// Heading standar tiap halaman: h1 headline-lg + subteks opsional.
-// Ritme vertikal konsisten (mb-6); slot "badge" untuk aksen di samping judul.
+  // Heading standar tiap halaman: h1 headline-lg + subteks opsional.
+  // Ritme vertikal konsisten (mb-6); slot "badge" untuk aksen di samping judul.
   export let title = '';
   export let subtitle = '';
   let className = '';

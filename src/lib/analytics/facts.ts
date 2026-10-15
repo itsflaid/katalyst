@@ -81,20 +81,18 @@ export function avgTicketOf(revenue: number, txCount: number): number {
 }
 
 // lineNet = qty × price − discount   (discount null/undefined dianggap 0)
-export function lineNetOf(i: {
-  quantity: number;
-  priceAtSale: number;
-  discountAmount?: number | null;
-}): number {
+export function lineNetOf(i: { quantity: number; priceAtSale: number; discountAmount?: number | null }): number {
   return i.quantity * i.priceAtSale - (i.discountAmount ?? 0);
 }
 
 // subtotal      = Σ qty × price
 // discountTotal = Σ discountAmount
 // total         = subtotal − discountTotal
-export function receiptTotals(
-  items: { quantity: number; priceAtSale: number; discountAmount: number }[]
-): { subtotal: number; discountTotal: number; total: number } {
+export function receiptTotals(items: { quantity: number; priceAtSale: number; discountAmount: number }[]): {
+  subtotal: number;
+  discountTotal: number;
+  total: number;
+} {
   const subtotal = items.reduce((s, i) => s + i.quantity * i.priceAtSale, 0);
   const discountTotal = items.reduce((s, i) => s + i.discountAmount, 0);
   return { subtotal, discountTotal, total: subtotal - discountTotal };

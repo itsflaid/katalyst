@@ -1,10 +1,11 @@
 <script lang="ts">
-  import type { SubmitFunction } from "@sveltejs/kit";
-  import Badge from "$lib/components/ui/Badge.svelte";
-  import Table from "$lib/components/ui/Table.svelte";
-  import StockBadge from "$lib/components/products/StockBadge.svelte";
-  import ActiveToggle from "$lib/components/products/ActiveToggle.svelte";
-  import RowActions from "$lib/components/products/RowActions.svelte";
+  import type { SubmitFunction } from '@sveltejs/kit';
+  import Badge from '$lib/components/ui/Badge.svelte';
+  import Table from '$lib/components/ui/Table.svelte';
+  import StockBadge from '$lib/components/products/StockBadge.svelte';
+  import ActiveToggle from '$lib/components/products/ActiveToggle.svelte';
+  import RowActions from '$lib/components/products/RowActions.svelte';
+  import { fmtRupiah } from '$lib/shared/format';
 
   type Product = {
     id: string;
@@ -23,39 +24,31 @@
   export let onEdit: (p: { id: string; name: string; costPrice: number; sellingPrice: number; isActive: boolean; minStock?: number | null }) => void;
   export let onDelete: (p: { id: string; name: string }) => void;
 
-  const idr = (n: number) =>
-    new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0,
-    }).format(n);
-
   const marginOf = (p: { costPrice: number; sellingPrice: number }) =>
-    p.sellingPrice > 0
-      ? Math.round(((p.sellingPrice - p.costPrice) / p.sellingPrice) * 100)
-      : null;
-  const marginTone = (m: number | null) =>
-    m === null ? "neutral" : m >= 30 ? "positive" : "warning";
+    p.sellingPrice > 0 ? Math.round(((p.sellingPrice - p.costPrice) / p.sellingPrice) * 100) : null;
+  const marginTone = (m: number | null) => (m === null ? 'neutral' : m >= 30 ? 'positive' : 'warning');
 </script>
 
-<Table headers={["Produk", "Modal", "Jual", "Margin", "Stok", "Status", "Aksi"]} headCellClass="py-3 font-bold">
+<Table headers={['Produk', 'Modal', 'Jual', 'Margin', 'Stok', 'Status', 'Aksi']} headCellClass="py-3 font-bold">
   {#each products as p (p.id)}
     {@const m = marginOf(p)}
-    <tr class={!p.isActive ? "opacity-60" : ""}>
-      <td class="px-3 py-2 text-ink font-semibold whitespace-nowrap"><a href={`/products/${p.id}`} class="text-ink-navy hover:underline">{p.name}</a></td>
-      <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{idr(p.costPrice)}</td>
-      <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(p.sellingPrice)}</td>
+    <tr class={!p.isActive ? 'opacity-60' : ''}>
+      <td class="px-3 py-2 text-ink font-semibold whitespace-nowrap"
+        ><a href={`/products/${p.id}`} class="text-ink-navy hover:underline">{p.name}</a></td
+      >
+      <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{fmtRupiah(p.costPrice)}</td>
+      <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{fmtRupiah(p.sellingPrice)}</td>
       <td class="px-3 py-2">
-        <Badge size="sm" tone={marginTone(m)}>{m === null ? "-" : `${m}%`}</Badge>
+        <Badge size="sm" tone={marginTone(m)}>{m === null ? '-' : `${m}%`}</Badge>
       </td>
       <td class="px-3 py-2 whitespace-nowrap">
         <StockBadge stock={p.stock} minStock={p.minStock ?? 5} />
       </td>
       <td class="px-3 py-2">
         {#if isOwner}
-          <ActiveToggle product={p} onSubmit={onSubmit} />
+          <ActiveToggle product={p} {onSubmit} />
         {:else}
-          <Badge size="sm" tone={p.isActive ? "positive" : "negative"}>{p.isActive ? "Aktif" : "Nonaktif"}</Badge>
+          <Badge size="sm" tone={p.isActive ? 'positive' : 'negative'}>{p.isActive ? 'Aktif' : 'Nonaktif'}</Badge>
         {/if}
       </td>
       <td class="px-3 py-2 whitespace-nowrap">

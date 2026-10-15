@@ -23,7 +23,9 @@ export function renderChatMarkdown(text: string): string {
         items.push(inline(lines[i].replace(/^\s*([-•*]|\d+[.)])\s+/, '')));
         i++;
       }
-      out.push(ordered ? `<ol>${items.map((item) => `<li>${item}</li>`).join('')}</ol>` : `<ul>${items.map((item) => `<li>${item}</li>`).join('')}</ul>`);
+      out.push(
+        ordered ? `<ol>${items.map((item) => `<li>${item}</li>`).join('')}</ol>` : `<ul>${items.map((item) => `<li>${item}</li>`).join('')}</ul>`
+      );
       continue;
     }
     const heading = line.match(/^\s*(#{1,3})\s+(.+)$/);
@@ -38,7 +40,13 @@ export function renderChatMarkdown(text: string): string {
       continue;
     }
     const para: string[] = [];
-    while (i < lines.length && lines[i].trim() !== '' && !isTableHead(lines[i], lines[i + 1]) && !/^\s*([-•*]|\d+[.)])\s+\S/.test(lines[i]) && !/^\s*#{1,3}\s+/.test(lines[i])) {
+    while (
+      i < lines.length &&
+      lines[i].trim() !== '' &&
+      !isTableHead(lines[i], lines[i + 1]) &&
+      !/^\s*([-•*]|\d+[.)])\s+\S/.test(lines[i]) &&
+      !/^\s*#{1,3}\s+/.test(lines[i])
+    ) {
       para.push(inline(lines[i].trim()));
       i++;
     }
@@ -59,7 +67,10 @@ function inline(value: string): string {
 }
 
 function splitRow(line: string): string[] {
-  return line.replace(/^\||\|$/g, '').split('|').map((cell) => inline(cell.trim()));
+  return line
+    .replace(/^\||\|$/g, '')
+    .split('|')
+    .map((cell) => inline(cell.trim()));
 }
 
 function isTableHead(line: string | undefined, next: string | undefined): boolean {

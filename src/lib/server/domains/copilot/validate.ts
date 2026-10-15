@@ -24,10 +24,7 @@ export function validateArgs(input: unknown, schema: ArgSchema): ValidationResul
       if (rule.required) return { ok: false, message: `Argumen ${key} wajib diisi.` };
       continue;
     }
-    const validType =
-      rule.type === 'integer'
-        ? typeof item === 'number' && Number.isInteger(item)
-        : typeof item === rule.type;
+    const validType = rule.type === 'integer' ? typeof item === 'number' && Number.isInteger(item) : typeof item === rule.type;
     if (!validType) return { ok: false, message: `Argumen ${key} tidak valid.` };
     if (rule.enum && !rule.enum.includes(item as string | number | boolean)) return { ok: false, message: `Nilai ${key} tidak didukung.` };
     if (typeof item === 'number' && ((rule.min !== undefined && item < rule.min) || (rule.max !== undefined && item > rule.max))) {

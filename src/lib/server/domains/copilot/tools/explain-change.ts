@@ -60,7 +60,11 @@ export function buildExplainChangeData(input: {
 }
 
 export async function explainChange(ctx: ToolContext, input: unknown): Promise<ToolResult<ExplainChangeData>> {
-  const checked = validateArgs(input, { period: { type: 'string', required: true, enum: periods }, from: { type: 'string' }, to: { type: 'string' } });
+  const checked = validateArgs(input, {
+    period: { type: 'string', required: true, enum: periods },
+    from: { type: 'string' },
+    to: { type: 'string' }
+  });
   if (!checked.ok) return failure(TOOL, 'INVALID_ARGS', checked.message);
   const period = checked.value.period as NamedPeriodKey;
   const from = checked.value.from as string | undefined;

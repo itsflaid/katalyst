@@ -6,9 +6,7 @@ export interface ToolError {
   candidates?: { id: string; name: string }[];
 }
 
-export type ToolResult<T> =
-  | { ok: true; tool: string; data: T; notes: string[] }
-  | { ok: false; tool: string; error: ToolError };
+export type ToolResult<T> = { ok: true; tool: string; data: T; notes: string[] } | { ok: false; tool: string; error: ToolError };
 
 export function success<T>(tool: string, data: T, notes: string[] = []): ToolResult<T> {
   return { ok: true, tool, data, notes };

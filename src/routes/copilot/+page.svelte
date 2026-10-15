@@ -41,6 +41,7 @@
   let historyOpen = false;
   let historyButton: HTMLButtonElement;
   let historyClose: HTMLButtonElement;
+  let composer: HTMLInputElement;
 
   function openHistory() {
     historyOpen = true;
@@ -76,7 +77,14 @@
 
   function toChat(row: { id: string; role: string; content: string; toolName: string | null; toolResult: unknown }): ChatMessage | null {
     if (row.role === 'tool') {
-      return { id: row.id, role: 'assistant', content: '', toolName: row.toolName ?? undefined, result: (row.toolResult as ToolResult) ?? {}, loading: false };
+      return {
+        id: row.id,
+        role: 'assistant',
+        content: '',
+        toolName: row.toolName ?? undefined,
+        result: (row.toolResult as ToolResult) ?? {},
+        loading: false
+      };
     }
     if (row.role === 'user' || row.role === 'assistant' || row.role === 'notice') {
       return { id: row.id, role: row.role === 'notice' ? 'assistant' : row.role, content: row.content };
@@ -92,7 +100,7 @@
   async function openConversation(conversationId: string) {
     const body = await api(`/copilot/conversations/${conversationId}`);
     activeId = body.conversation.id as string;
-    messages = ((body.messages as Parameters<typeof toChat>[0][]).map(toChat).filter(Boolean)) as ChatMessage[];
+    messages = (body.messages as Parameters<typeof toChat>[0][]).map(toChat).filter(Boolean) as ChatMessage[];
     await scrollToBottom();
   }
 
@@ -166,7 +174,7 @@
   }
 
   function updateToolMessage(messageId: string, result: ToolResult) {
-    messages = messages.map((message) => message.id === messageId ? { ...message, result, loading: false } : message);
+    messages = messages.map((message) => (message.id === messageId ? { ...message, result, loading: false } : message));
   }
 
   function resultText(result: ToolResult | undefined) {
@@ -175,7 +183,19 @@
   }
 
   function toolLabel(name: string) {
-    return ({ get_summary: 'Membaca ringkasan bisnis', rank_products: 'Menyusun ranking produk', compare_periods: 'Membandingkan periode', get_inventory: 'Memeriksa inventori', explain_change: 'Mengurai perubahan profit', simulate_price: 'Menjalankan simulasi harga', query_metrics: 'Menjawab pola waktu dan ukuran' } as Record<string, string>)[name] ?? name;
+    return (
+      (
+        {
+          get_summary: 'Membaca ringkasan bisnis',
+          rank_products: 'Menyusun ranking produk',
+          compare_periods: 'Membandingkan periode',
+          get_inventory: 'Memeriksa inventori',
+          explain_change: 'Mengurai perubahan profit',
+          simulate_price: 'Menjalankan simulasi harga',
+          query_metrics: 'Menjawab pola waktu dan ukuran'
+        } as Record<string, string>
+      )[name] ?? name
+    );
   }
 
   async function ask(question = draft.trim()) {
@@ -199,10 +219,18 @@
       }
       await readStream(response.body);
     } catch (error) {
-      addLocal({ id: newId(), role: 'assistant', content: error instanceof Error ? error.message : 'Copilot sedang bermasalah. Coba lagi sebentar.' });
+      addLocal({
+        id: newId(),
+        role: 'assistant',
+        content: error instanceof Error ? error.message : 'Copilot sedang bermasalah. Coba lagi sebentar.'
+      });
     } finally {
       sending = false;
       await refreshAfterStream();
+      // Input sempat disabled selama kirim sehingga fokus browser lepas;
+      // kembalikan hanya bila pengguna tidak memindah fokus ke kontrol lain.
+      await tick();
+      if (!document.activeElement || document.activeElement === document.body) composer?.focus();
     }
   }
 
@@ -211,7 +239,7 @@
       await refreshList();
       if (activeId) {
         const body = await api(`/copilot/conversations/${activeId}`);
-        messages = ((body.messages as Parameters<typeof toChat>[0][]).map(toChat).filter(Boolean)) as ChatMessage[];
+        messages = (body.messages as Parameters<typeof toChat>[0][]).map(toChat).filter(Boolean) as ChatMessage[];
         await scrollToBottom();
       }
     } catch {
@@ -301,34 +329,101 @@
     <header class="flex max-h-12 items-center justify-between gap-2 border-b border-white/10 px-4 py-2 sm:px-6 lg:hidden">
       <h1 class="text-body-md font-medium text-white">Copilot</h1>
       <div class="flex items-center gap-1">
-        <button bind:this={historyButton} type="button" on:click={openHistory} disabled={sending} class="flex min-h-[44px] min-w-[44px] items-center gap-1.5 px-2 text-body-sm text-white/70 disabled:opacity-50" aria-label="Buka riwayat percakapan"><History size={16} aria-hidden="true" />Riwayat{#if conversations.length > 0}<span class="rounded-full bg-white/15 px-1.5 text-body-sm text-white">{conversations.length}</span>{/if}</button>
-        <button type="button" on:click={createConversation} disabled={sending} class="grid min-h-[44px] min-w-[44px] place-items-center rounded-panel text-white/70 disabled:opacity-50" aria-label="Percakapan baru"><Plus size={16} aria-hidden="true" /></button>
+        <button
+          bind:this={historyButton}
+          type="button"
+          on:click={openHistory}
+          disabled={sending}
+          class="flex min-h-[44px] min-w-[44px] items-center gap-1.5 px-2 text-body-sm text-white/70 disabled:opacity-50"
+          aria-label="Buka riwayat percakapan"
+          ><History size={16} aria-hidden="true" />Riwayat{#if conversations.length > 0}<span
+              class="rounded-full bg-white/15 px-1.5 text-body-sm text-white">{conversations.length}</span
+            >{/if}</button
+        >
+        <button
+          type="button"
+          on:click={createConversation}
+          disabled={sending}
+          class="grid min-h-[44px] min-w-[44px] place-items-center rounded-panel text-white/70 disabled:opacity-50"
+          aria-label="Percakapan baru"><Plus size={16} aria-hidden="true" /></button
+        >
       </div>
     </header>
     <div class="min-h-0 flex-1 overflow-y-auto scroll-navy" bind:this={scrollTarget} aria-live="polite">
       <div class="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-5 sm:px-6">
         {#if messages.length === 0}
           <div class="border border-white/10 bg-white/[0.06] px-5 py-4">
-            <div class="flex items-start gap-3"><img src="/logo/logo-copilot.png" alt="Katalyst Copilot" class="h-8 w-8 shrink-0 rounded object-cover" /><div><p class="text-body-md font-medium text-white">Mau menganalisis apa hari ini?</p><p class="mt-1 text-body-sm leading-relaxed text-white/50">Katalyst membantu membaca penjualan, profit, margin, stok, dan simulasi harga dari data bisnis Anda.</p></div></div>
-            <div class="mt-4 grid gap-2 sm:grid-cols-2">{#each suggestions as suggestion}<button type="button" on:click={() => ask(suggestion)} class="border border-white/10 px-3 py-2.5 text-left text-body-sm text-white/70 hover:bg-white/[0.06]">{suggestion}</button>{/each}</div>
+            <div class="flex items-start gap-3">
+              <img src="/logo/logo-copilot.png" alt="Katalyst Copilot" class="h-8 w-8 shrink-0 rounded object-cover" />
+              <div>
+                <p class="text-body-md font-medium text-white">Mau menganalisis apa hari ini?</p>
+                <p class="mt-1 text-body-sm leading-relaxed text-white/50">
+                  Katalyst membantu membaca penjualan, profit, margin, stok, dan simulasi harga dari data bisnis Anda.
+                </p>
+              </div>
+            </div>
+            <div class="mt-4 grid gap-2 sm:grid-cols-2">
+              {#each suggestions as suggestion}<button
+                  type="button"
+                  on:click={() => ask(suggestion)}
+                  class="border border-white/10 px-3 py-2.5 text-left text-body-sm text-white/70 hover:bg-white/[0.06]">{suggestion}</button
+                >{/each}
+            </div>
             {#if conversations.length > 0}
-              <button type="button" on:click={openHistory} class="mt-3 text-left text-body-sm text-white/70 underline underline-offset-2 lg:hidden">Lihat riwayat ({conversations.length})</button>
+              <button type="button" on:click={openHistory} class="mt-3 text-left text-body-sm text-white/70 underline underline-offset-2 lg:hidden"
+                >Lihat riwayat ({conversations.length})</button
+              >
             {/if}
           </div>
         {/if}
         {#each messages as message}
           {#if message.toolName}
-            <div class="border border-white/10 bg-white/[0.06] px-4 py-3 text-body-sm text-white/80"><p class="font-medium text-white">{toolLabel(message.toolName)}</p>{#if message.loading}<p class="mt-1 text-white/55">Mengambil data…</p>{:else}<details class="mt-2 min-w-0"><summary class="cursor-pointer text-white/65">Lihat data</summary><pre class="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all text-xs text-white/70">{resultText(message.result)}</pre></details>{/if}</div>
+            <div class="border border-white/10 bg-white/[0.06] px-4 py-3 text-body-sm text-white/80">
+              <p class="font-medium text-white">{toolLabel(message.toolName)}</p>
+              {#if message.loading}<p class="mt-1 text-white/55">Mengambil data…</p>{:else}<details class="mt-2 min-w-0">
+                  <summary class="cursor-pointer text-white/65">Lihat data</summary>
+                  <pre class="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all text-xs text-white/70">{resultText(message.result)}</pre>
+                </details>{/if}
+            </div>
           {:else if message.role === 'user'}
-            <div class="flex justify-end"><p class="wrap-anywhere max-w-[84%] break-words rounded-panel rounded-br-sm bg-status-positive px-4 py-3 text-body-md leading-relaxed text-white">{message.content}</p></div>
+            <div class="flex justify-end">
+              <p
+                class="wrap-anywhere max-w-[84%] break-words rounded-panel rounded-br-sm bg-status-positive px-4 py-3 text-body-md leading-relaxed text-white"
+              >
+                {message.content}
+              </p>
+            </div>
           {:else}
-            <div class="flex min-w-0 gap-3"><img src="/logo/logo-copilot.png" alt="" class="mt-1 hidden h-7 w-7 shrink-0 rounded object-cover sm:block" /><div class="md wrap-anywhere min-w-0 max-w-[94%] break-words rounded-panel rounded-tl-sm bg-[#F7F1E6] px-4 py-3 text-body-md leading-relaxed text-[#30343B] sm:max-w-[88%]">{@html renderChatMarkdown(message.content)}</div></div>
+            <div class="flex min-w-0 gap-3">
+              <img src="/logo/logo-copilot.png" alt="" class="mt-1 hidden h-7 w-7 shrink-0 rounded object-cover sm:block" />
+              <div
+                class="md wrap-anywhere min-w-0 max-w-[94%] break-words rounded-panel rounded-tl-sm bg-[#F7F1E6] px-4 py-3 text-body-md leading-relaxed text-[#30343B] sm:max-w-[88%]"
+              >
+                {@html renderChatMarkdown(message.content)}
+              </div>
+            </div>
           {/if}
         {/each}
       </div>
     </div>
     <form class="copilot-form shrink-0 border-t border-white/10 px-4 py-4 sm:px-6" on:submit|preventDefault={() => ask()}>
-      <div class="mx-auto flex max-w-4xl items-center gap-2 border border-white/15 bg-white/[0.06] p-1.5"><input bind:value={draft} disabled={sending} maxlength="800" placeholder="Tanyakan sesuatu tentang bisnis Anda..." class="min-w-0 flex-1 bg-transparent px-3 py-2 text-base text-white outline-none placeholder:text-white/35 disabled:opacity-60 sm:text-body-md" aria-label="Pertanyaan untuk Copilot" /><button type="submit" disabled={sending || !draft.trim() || cooldownSec > 0} aria-label="Kirim" title={cooldownSec > 0 ? `Tunggu ${cooldownSec} detik` : undefined} class="grid h-9 w-9 place-items-center rounded-panel bg-status-positive text-white disabled:opacity-50"><Send size={16} /></button></div>
+      <div class="mx-auto flex max-w-4xl items-center gap-2 border border-white/15 bg-white/[0.06] p-1.5">
+        <input
+          bind:this={composer}
+          bind:value={draft}
+          disabled={sending}
+          maxlength="800"
+          placeholder="Tanyakan sesuatu tentang bisnis Anda..."
+          class="min-w-0 flex-1 bg-transparent px-3 py-2 text-base text-white outline-none placeholder:text-white/35 disabled:opacity-60 sm:text-body-md"
+          aria-label="Pertanyaan untuk Copilot"
+        /><button
+          type="submit"
+          disabled={sending || !draft.trim() || cooldownSec > 0}
+          aria-label="Kirim"
+          title={cooldownSec > 0 ? `Tunggu ${cooldownSec} detik` : undefined}
+          class="grid h-9 w-9 place-items-center rounded-panel bg-status-positive text-white disabled:opacity-50"><Send size={16} /></button
+        >
+      </div>
       <p class="mx-auto mt-2 max-w-4xl px-1 text-center text-xs text-white/60">
         Pertanyaanmu dikirim ke AI (Groq) dan dapat tersimpan hingga 30 hari. Jangan tulis data pribadi.
       </p>
@@ -337,10 +432,22 @@
 
   {#if historyOpen}
     <div class="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Riwayat percakapan">
-      <button type="button" class="absolute inset-0 cursor-default border-0 bg-slate-950/50 p-0" transition:fade={{ duration: 150 }} aria-label="Tutup riwayat" on:click={closeHistory}></button>
+      <button
+        type="button"
+        class="absolute inset-0 cursor-default border-0 bg-slate-950/50 p-0"
+        transition:fade={{ duration: 150 }}
+        aria-label="Tutup riwayat"
+        on:click={closeHistory}
+      ></button>
       <div class="absolute bottom-0 left-0 top-0 flex w-72 flex-col bg-[#F7F1E6] shadow-level3" transition:fly={{ x: -48, duration: 200 }}>
         <div class="flex justify-end px-3 pt-3">
-          <button bind:this={historyClose} type="button" on:click={closeHistory} class="grid min-h-[44px] min-w-[44px] place-items-center rounded-panel text-ink" aria-label="Tutup riwayat"><X size={18} aria-hidden="true" /></button>
+          <button
+            bind:this={historyClose}
+            type="button"
+            on:click={closeHistory}
+            class="grid min-h-[44px] min-w-[44px] place-items-center rounded-panel text-ink"
+            aria-label="Tutup riwayat"><X size={18} aria-hidden="true" /></button
+          >
         </div>
         <HistoryPanel
           {conversations}
@@ -353,7 +460,10 @@
           on:select={(event) => chooseConversation(event.detail)}
           on:remove={(event) => deleteConversation(event.detail)}
           on:removeAll={deleteAll}
-          on:create={() => { createConversation(); closeHistory(); }}
+          on:create={() => {
+            createConversation();
+            closeHistory();
+          }}
         />
       </div>
     </div>
@@ -379,20 +489,74 @@
   .wrap-anywhere {
     overflow-wrap: anywhere;
   }
-  .md :global(p) { margin: 0 0 0.5rem; }
-  .md :global(p:last-child) { margin-bottom: 0; }
-  .md :global(h3) { margin: 0.75rem 0 0.375rem; font-size: 1rem; font-weight: 600; }
-  .md :global(h4) { margin: 0.625rem 0 0.25rem; font-size: 0.9375rem; font-weight: 600; }
-  .md :global(ul), .md :global(ol) { margin: 0 0 0.5rem; padding-left: 1.25rem; }
-  .md :global(ul) { list-style: disc; }
-  .md :global(ol) { list-style: decimal; }
-  .md :global(li) { margin: 0.125rem 0; }
-  .md :global(code) { padding: 0.05rem 0.3rem; border-radius: 0.25rem; background: rgba(23, 32, 51, 0.08); font-size: 0.875em; }
-  .md :global(.md-table) { margin: 0 0 0.5rem; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .md :global(table) { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 0.875rem; }
-  .md :global(th), .md :global(td) { border: 1px solid rgba(23, 32, 51, 0.18); padding: 0.375rem 0.625rem; text-align: left; vertical-align: top; }
-  .md :global(thead th) { background: rgba(23, 32, 51, 0.07); font-weight: 600; }
-  .scroll-navy { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.25) transparent; }
-  .scroll-navy::-webkit-scrollbar { width: 6px; }
-  .scroll-navy::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.25); border-radius: 9999px; }
+  .md :global(p) {
+    margin: 0 0 0.5rem;
+  }
+  .md :global(p:last-child) {
+    margin-bottom: 0;
+  }
+  .md :global(h3) {
+    margin: 0.75rem 0 0.375rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .md :global(h4) {
+    margin: 0.625rem 0 0.25rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+  .md :global(ul),
+  .md :global(ol) {
+    margin: 0 0 0.5rem;
+    padding-left: 1.25rem;
+  }
+  .md :global(ul) {
+    list-style: disc;
+  }
+  .md :global(ol) {
+    list-style: decimal;
+  }
+  .md :global(li) {
+    margin: 0.125rem 0;
+  }
+  .md :global(code) {
+    padding: 0.05rem 0.3rem;
+    border-radius: 0.25rem;
+    background: rgba(23, 32, 51, 0.08);
+    font-size: 0.875em;
+  }
+  .md :global(.md-table) {
+    margin: 0 0 0.5rem;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .md :global(table) {
+    border-collapse: collapse;
+    width: max-content;
+    min-width: 100%;
+    font-size: 0.875rem;
+  }
+  .md :global(th),
+  .md :global(td) {
+    border: 1px solid rgba(23, 32, 51, 0.18);
+    padding: 0.375rem 0.625rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  .md :global(thead th) {
+    background: rgba(23, 32, 51, 0.07);
+    font-weight: 600;
+  }
+  .scroll-navy {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+  }
+  .scroll-navy::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scroll-navy::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 9999px;
+  }
 </style>

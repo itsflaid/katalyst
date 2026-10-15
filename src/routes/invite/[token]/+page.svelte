@@ -15,22 +15,13 @@
      canvas krem + dots + Card putih, hero navy + copilot-sheen. -->
 <div class="flex min-h-screen bg-canvas">
   <!-- KIRI: hero branding (di /login ini di kanan) -->
-  <aside
-    class="relative hidden items-center justify-center overflow-hidden bg-ink-navy px-8 md:flex md:w-1/2"
-    aria-hidden="true"
-  >
+  <aside class="relative hidden items-center justify-center overflow-hidden bg-ink-navy px-8 md:flex md:w-1/2" aria-hidden="true">
     <span aria-hidden="true" class="pointer-events-none absolute inset-0">
-      <span
-        class="copilot-sheen absolute inset-y-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/10 to-transparent"
-      ></span>
+      <span class="copilot-sheen absolute inset-y-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/10 to-transparent"></span>
     </span>
 
     <div class="relative z-10 flex flex-col items-center gap-4 text-center">
-      <img
-        src="/logo/logo-copilot.png"
-        alt=""
-        class="h-28 w-28 rounded-panel object-cover shadow-level2"
-      />
+      <img src="/logo/logo-copilot.png" alt="" class="h-28 w-28 rounded-panel object-cover shadow-level2" />
       <p class="text-headline-xl text-white">Katalyst</p>
       <p class="max-w-[280px] text-body-lg text-white/80">Catalyze Better Decisions</p>
       <p class="text-body-sm tracking-wide text-white/50">see, decide, grow.</p>
@@ -53,10 +44,11 @@
       {#if data.status === 'invalid'}
         <Card class="p-6 shadow-level2">
           <h1 class="text-headline-md text-ink">Undangan tidak berlaku</h1>
-          <p class="mt-1 text-body-md text-muted">
-            Link ini sudah dipakai, dicabut, atau tidak dikenal. Minta link baru ke owner bisnis kamu.
-          </p>
-          <a href="/login" class="mt-5 inline-flex h-9 items-center justify-center rounded bg-ink-navy px-4 text-label-lg text-white no-underline hover:bg-ink">
+          <p class="mt-1 text-body-md text-muted">Link ini sudah dipakai, dicabut, atau tidak dikenal. Minta link baru ke owner bisnis kamu.</p>
+          <a
+            href="/login"
+            class="mt-5 inline-flex h-9 items-center justify-center rounded bg-ink-navy px-4 text-label-lg text-white no-underline hover:bg-ink"
+          >
             Ke halaman masuk
           </a>
         </Card>
@@ -67,7 +59,10 @@
             Undangan untuk <strong class="text-ink">{data.username}</strong> ke
             <strong class="text-ink">{data.businessName}</strong> sudah lewat 48 jam. Minta link baru ke owner.
           </p>
-          <a href="/login" class="mt-5 inline-flex h-9 items-center justify-center rounded bg-ink-navy px-4 text-label-lg text-white no-underline hover:bg-ink">
+          <a
+            href="/login"
+            class="mt-5 inline-flex h-9 items-center justify-center rounded bg-ink-navy px-4 text-label-lg text-white no-underline hover:bg-ink"
+          >
             Ke halaman masuk
           </a>
         </Card>
@@ -126,7 +121,11 @@
             </label>
 
             {#if form?.message}
-              <p role="alert" aria-live="polite" class="rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-md text-status-negative">
+              <p
+                role="alert"
+                aria-live="polite"
+                class="rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-md text-status-negative"
+              >
                 {form.message}
               </p>
             {/if}
@@ -137,7 +136,9 @@
           </form>
         </Card>
 
-        <p class="text-center text-body-sm text-muted">Link berlaku 48 jam dan sekali pakai. Sudah punya akun? <a href="/login" class="text-ink-navy font-semibold">Masuk</a></p>
+        <p class="text-center text-body-sm text-muted">
+          Link berlaku 48 jam dan sekali pakai. Sudah punya akun? <a href="/login" class="text-ink-navy font-semibold">Masuk</a>
+        </p>
       {/if}
     </div>
   </section>
