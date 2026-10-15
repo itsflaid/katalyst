@@ -1,6 +1,10 @@
 // Helper undangan staff: POST /api/staff, /api/invites, halaman /invite/[token].
 // Web Crypto (getRandomValues + subtle.digest) agar jalan di Node lokal dan
 // Cloudflare Workers; jangan pakai node:crypto.
+import { db } from '$lib/server/db';
+import { business, staffInvitation } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
+
 export const INVITE_TTL_MS = 48 * 60 * 60 * 1000; // 48 jam
 
 /** Token mentah 64 hex chars (256 bit), cuma tampil sekali ke owner. */
@@ -48,4 +52,32 @@ export function generateTempPassword(): string {
   crypto.getRandomValues(bytes);
   const chars = Array.from(bytes, (b) => TEMP_ALPHABET[b % TEMP_ALPHABET.length]);
   return `${chars.slice(0, 4).join('')}-${chars.slice(4).join('')}`;
+}
+
+export type InviteStatus = 'valid' | 'expired' | 'invalid';
+
+export type InviteCard =
+  | { status: 'invalid' }
+  | { status: 'expired'; businessName: string; username: string }
+  | { status: 'valid'; businessName: string; username: string; name: string; expiresAt: string };
+
+export async function getInviteCard(rawToken: unknown): Promise<InviteCard> {
+  if (typeof rawToken !== 'string' || !rawToken) return { status: 'invalid' };
+  const tokenHash = await hashInviteToken(rawToken);
+  const [invite] = await db.select().from(staffInvitation).where(eq(staffInvitation.tokenHash, tokenHash));
+  if (!invite || invite.acceptedAt || invite.revokedAt) {
+    return { status: 'invalid' };
+  }
+  const [b] = await db.select({ name: business.name }).from(business).where(eq(business.id, invite.businessId));
+  const businessName = b?.name ?? 'Bisnis';
+  if (invite.expiresAt.getTime() < Date.now()) {
+    return { status: 'expired', businessName, username: invite.username };
+  }
+  return {
+    status: 'valid',
+    businessName,
+    username: invite.username,
+    name: invite.name ?? '',
+    expiresAt: invite.expiresAt.toISOString()
+  };
 }

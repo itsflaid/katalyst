@@ -7,7 +7,9 @@ export const MAX_PRICE = 100_000_000;
 
 // Field form tambah/edit sengaja tanpa `stock`: stok hanya berubah lewat
 // ledger (penjualan, restock, koreksi).
-export function parseProductFields(form: FormData) {
+export function parseProductFields(form: FormData): {
+  data: { name: string; costPrice: number; sellingPrice: number; isActive: boolean; minStock: number };
+} | { error: string } {
   const name = String(form.get('name') ?? '').trim();
   const costRaw = Number(form.get('costPrice'));
   const sellRaw = Number(form.get('sellingPrice'));
@@ -31,7 +33,7 @@ export function parseProductFields(form: FormData) {
   };
 }
 
-export function parseInitialStock(form: FormData) {
+export function parseInitialStock(form: FormData): { data: number } | { error: string } {
   const raw = form.get('stock');
   const stock = raw === null || raw === '' ? 0 : Number(raw);
   if (!Number.isInteger(stock) || stock < 0 || stock > 1000000) {
