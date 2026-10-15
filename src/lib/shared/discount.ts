@@ -88,6 +88,8 @@ export function calculateCart(lines: CartLineIn[], ctx: { productDiscounts: Disc
   const linesOut: CartLineOut[] = [];
   let subtotal = 0;
   let discountTotal = 0;
+  // Sisa kuota global dipakai lintas baris: tiap baris mengurangi sisa untuk baris berikutnya.
+  let globalRemaining = global ? remainingQuota(global) : null;
 
   for (const line of lines) {
     const { productId, qty, price, cost } = line;
@@ -109,8 +111,8 @@ export function calculateCart(lines: CartLineIn[], ctx: { productDiscounts: Disc
       source = 'PRODUCT';
       unitDisc = unitDiscount(price, productDiscount.percent);
     } else if (global && getDiscountStatus(global, now) === 'ACTIVE' && global.scope === 'GLOBAL') {
-      const remaining = remainingQuota(global);
-      applied = remaining === null ? qty : Math.min(qty, remaining);
+      applied = globalRemaining === null ? qty : Math.min(qty, globalRemaining);
+      if (globalRemaining !== null) globalRemaining -= applied;
       discountId = global.id;
       discountName = global.name;
       discountPercent = global.percent;

@@ -211,6 +211,19 @@ ok('global waktu habis + kuota sisa → EXPIRED', getDiscountStatus(globalQuotaE
 const globalQuotaOnly: DiscountLike = { ...globalDisc, id: 'gq4', quota: 3, quotaUsed: 0, endsAt: null };
 ok('global kuota saja (tanpa endsAt) → ACTIVE', getDiscountStatus(globalQuotaOnly, now) === 'ACTIVE');
 
+const cartG3Out = calculateCart(
+  [
+    { productId: 'p9', qty: 3, price: 10000 },
+    { productId: 'p8', qty: 3, price: 20000 }
+  ],
+  { productDiscounts: [], global: globalQuota, now }
+);
+ok(
+  'global kuota 5 lintas 2 baris → 3+2',
+  cartG3Out.lines[0].discountedQty === 3 && cartG3Out.lines[1].discountedQty === 2,
+  JSON.stringify(cartG3Out.lines.map((l) => l.discountedQty))
+);
+
 console.log('\n== discount.ts: resolveWindow ==');
 
 const testNow = new Date('2026-09-29T07:00:00.000Z');
