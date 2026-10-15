@@ -224,6 +224,53 @@ ok(
   JSON.stringify(cartG3Out.lines.map((l) => l.discountedQty))
 );
 
+const globalQuota4: DiscountLike = { ...globalDisc, id: 'gq5', quota: 4, quotaUsed: 0 };
+const cartG4Out = calculateCart(
+  [
+    { productId: 'p9', qty: 3, price: 10000 },
+    { productId: 'p8', qty: 3, price: 20000 },
+    { productId: 'p7', qty: 2, price: 5000 }
+  ],
+  { productDiscounts: [], global: globalQuota4, now }
+);
+ok(
+  'global kuota 4 lintas 3 baris → 3+1+0',
+  cartG4Out.lines[0].discountedQty === 3 && cartG4Out.lines[1].discountedQty === 1 && cartG4Out.lines[2].discountedQty === 0,
+  JSON.stringify(cartG4Out.lines.map((l) => l.discountedQty))
+);
+ok('parsial hanya baris tengah', cartG4Out.lines[0].partial === false && cartG4Out.lines[1].partial === true && cartG4Out.lines[2].partial === false);
+const deltasG4 = quotaDeltas(cartG4Out);
+ok('delta satu entri 4 unit', deltasG4.length === 1 && deltasG4[0].discountId === 'gq5' && deltasG4[0].units === 4);
+
+const cartG5Out = calculateCart(
+  [
+    { productId: 'p9', qty: 3, price: 10000 },
+    { productId: 'p8', qty: 3, price: 20000 }
+  ],
+  { productDiscounts: [], global: globalDisc, now }
+);
+ok(
+  'global tanpa kuota → semua baris penuh',
+  cartG5Out.lines.every((l) => l.discountedQty === l.qty && l.partial === false)
+);
+
+const cartG6Out = calculateCart(
+  [
+    { productId: 'p1', qty: 2, price: 10000 },
+    { productId: 'p9', qty: 4, price: 10000 }
+  ],
+  { productDiscounts: [prodDisc], global: globalQuota, now }
+);
+const deltasG6 = quotaDeltas(cartG6Out);
+ok(
+  'baris diskon produk tak kurangi kuota global',
+  cartG6Out.lines[0].source === 'PRODUCT' &&
+    cartG6Out.lines[1].discountedQty === 4 &&
+    deltasG6.find((d) => d.discountId === 'gq')?.units === 4 &&
+    deltasG6.find((d) => d.discountId === 'd1')?.units === 2,
+  JSON.stringify({ src: cartG6Out.lines.map((l) => l.source), qty: cartG6Out.lines.map((l) => l.discountedQty), deltasG6 })
+);
+
 console.log('\n== discount.ts: resolveWindow ==');
 
 const testNow = new Date('2026-09-29T07:00:00.000Z');
