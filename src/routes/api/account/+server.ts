@@ -1,8 +1,6 @@
 import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
 import { readJsonObject } from '$lib/server/http';
-import { user } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { renameAccount } from '$lib/server/domains/auth/account';
 import { requireTenant } from '$lib/server/domains/auth/guards';
 import type { RequestHandler } from './$types';
 
@@ -13,17 +11,10 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 
   const parsed = await readJsonObject(request);
   if (!parsed.ok) throw error(400, parsed.message);
-  const name = typeof (parsed.body as { name?: unknown }).name === 'string' ? (parsed.body as { name: string }).name.trim() : '';
-  if (!name) {
-    throw error(400, 'Nama tidak boleh kosong.');
-  }
-  if (name.length > 100) {
-    throw error(400, 'Nama maksimal 100 karakter.');
-  }
-
-  await db.update(user).set({ name }).where(eq(user.id, userId));
+  const result = await renameAccount(userId, (parsed.body as { name?: unknown }).name);
+  if (!result.ok) throw error(result.code, result.message);
 
   // Catatan audit: struk lama tetap menampilkan nama lama (snapshot
   // cashier_name), struk baru pakai nama baru. Tidak ada backfill massal.
-  return json({ name });
+  return json({ name: result.name });
 };
