@@ -191,6 +191,26 @@ ok(
   deltas14.find((d) => d.discountId === prodDiscQuota.id)?.units === 5 && deltas14.find((d) => d.discountId === globalDisc.id)?.units === 2
 );
 
+console.log('\n== discount.ts: kuota GLOBAL ==');
+
+const globalQuota: DiscountLike = { ...globalDisc, id: 'gq', quota: 5, quotaUsed: 0 };
+const cartG1Out = calculateCart([{ productId: 'p9', qty: 8, price: 10000 }], { productDiscounts: [], global: globalQuota, now });
+ok(
+  'global kuota 5/8 → parsial 5',
+  cartG1Out.lines[0].source === 'GLOBAL' && cartG1Out.lines[0].discountedQty === 5 && cartG1Out.lines[0].partial === true
+);
+
+const globalQuotaDone: DiscountLike = { ...globalDisc, id: 'gq2', quota: 5, quotaUsed: 5 };
+ok('global kuota habis → SOLD_OUT', getDiscountStatus(globalQuotaDone, now) === 'SOLD_OUT');
+const cartG2Out = calculateCart([{ productId: 'p9', qty: 2, price: 10000 }], { productDiscounts: [], global: globalQuotaDone, now });
+ok('global SOLD_OUT → tanpa diskon', cartG2Out.lines[0].source === null && cartG2Out.lines[0].discountedQty === 0);
+
+const globalQuotaExpired: DiscountLike = { ...globalDisc, id: 'gq3', quota: 5, quotaUsed: 0, endsAt: new Date(now.getTime() - 1000) };
+ok('global waktu habis + kuota sisa → EXPIRED', getDiscountStatus(globalQuotaExpired, now) === 'EXPIRED');
+
+const globalQuotaOnly: DiscountLike = { ...globalDisc, id: 'gq4', quota: 3, quotaUsed: 0, endsAt: null };
+ok('global kuota saja (tanpa endsAt) → ACTIVE', getDiscountStatus(globalQuotaOnly, now) === 'ACTIVE');
+
 console.log('\n== discount.ts: resolveWindow ==');
 
 const testNow = new Date('2026-09-29T07:00:00.000Z');
