@@ -1,8 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { auth } from '$lib/server/domains/auth';
 import { db } from '$lib/server/db';
-import { business, staffInvitation, user } from '$lib/server/db/schema';
-import { hashInviteToken, placeholderEmail } from '$lib/server/domains/invites';
+import { business, staffInvitation } from '$lib/server/db/schema';
+import { acceptInvite, hashInviteToken } from '$lib/server/domains/invites';
 import { netOf, recordActivity } from '$lib/server/domains/activity/log';
 import { eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
@@ -42,66 +41,24 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 export const actions: Actions = {
   accept: async ({ params, request, getClientAddress }) => {
-    const invite = await lookup(params.token);
-    // Pesan generik untuk semua link mati, jangan bocorkan alasan
-    // (expired vs dicabut vs sudah dipakai) ke pemegang link.
-    if (!invite || invite.acceptedAt || invite.revokedAt) {
-      return fail(400, { invalid: true, message: 'Undangan tidak berlaku. Minta link baru ke owner.' });
-    }
-    if (invite.expiresAt.getTime() < Date.now()) {
-      return fail(400, { expired: true, message: 'Undangan kedaluwarsa. Minta link baru ke owner.' });
-    }
-
     const form = await request.formData();
-    const password = String(form.get('password') ?? '');
-    const confirm = String(form.get('confirmPassword') ?? '');
-    const name = String(form.get('name') ?? '').trim() || invite.name || invite.username;
-
-    if (password.length < 6) {
-      return fail(400, { message: 'Password minimal 6 karakter.' });
+    const result = await acceptInvite(params.token, form.get('password'), form.get('confirmPassword'), form.get('name'));
+    if (!result.ok) {
+      if (result.flag === 'invalid') return fail(400, { invalid: true, message: result.message });
+      if (result.flag === 'expired') return fail(400, { expired: true, message: result.message });
+      return fail(result.code, { message: result.message });
     }
-    if (password !== confirm) {
-      return fail(400, { message: 'Konfirmasi password tidak cocok.' });
-    }
-
-    const [existingUser] = await db.select({ id: user.id }).from(user).where(eq(user.username, invite.username));
-    if (existingUser) {
-      return fail(409, { message: 'Username ini sudah dipakai. Silakan masuk.' });
-    }
-
-    try {
-      // Kolom user.email NOT NULL (wajib struktural better-auth) tapi tak ada user yang wajib punya email beneran: pakai email sintetis (domain reserved).
-      // Login selalu via username, email ini tak pernah ditampilkan.
-      // createUser tanpa sesi menulis role STAFF sejak awal: tanpa jendela OWNER tanpa bisnis.
-      await auth.api.createUser({
-        body: {
-          email: placeholderEmail(invite.username),
-          password,
-          name,
-          role: 'STAFF',
-          data: { username: invite.username, businessId: invite.businessId }
-        }
-      });
-    } catch {
-      // Bedakan duplikat beneran (race: username dibuat di sela cek dan signup) dari kegagalan lain; pesan "dipakai" untuk error sembarang menutupi bug beneran.
-      // Kasus nyata: default role plugin "user" bukan anggota enum PG sehingga semua signup gagal.
-      const [raced] = await db.select({ id: user.id }).from(user).where(eq(user.username, invite.username));
-      if (raced) return fail(409, { message: 'Username ini sudah dipakai. Silakan masuk.' });
-      return fail(500, { message: 'Gagal membuat akun, coba lagi.' });
-    }
-
-    await db.update(staffInvitation).set({ acceptedAt: new Date() }).where(eq(staffInvitation.id, invite.id));
+    const { userId, username, name, businessId } = result.data;
 
     // Undangan tidak membuat sesi sehingga tak pernah tercatat LOGIN; JOIN menutup lubang itu.
-    const [joined] = await db.select({ id: user.id }).from(user).where(eq(user.username, invite.username));
     await recordActivity({
-      businessId: invite.businessId,
-      actor: { id: joined?.id ?? null, name, role: 'STAFF' },
+      businessId,
+      actor: { id: userId, name, role: 'STAFF' },
       ...netOf({ request, getClientAddress }),
       action: 'STAFF_JOIN',
       entityType: 'user',
-      entityId: joined?.id,
-      meta: { username: invite.username, name }
+      entityId: userId,
+      meta: { username, name }
     });
 
     // Idempotent: kalau link diklik/submit 2x, submit kedua jatuh ke
