@@ -78,7 +78,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     if (toParsed) params.set('to', T.dayKey(toParsed));
     for (const [k, v] of Object.entries(extra)) params.set(k, String(v));
     const s = params.toString();
-    return `/products/stok${s ? `?${s}` : ''}`;
+    return `/products/stock${s ? `?${s}` : ''}`;
   };
 
   return {

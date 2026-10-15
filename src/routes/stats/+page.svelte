@@ -7,10 +7,9 @@
   import ScatterChart from '$lib/components/ui/ScatterChart.svelte';
   import Badge from '$lib/components/ui/Badge.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
-  import SlideOver from '$lib/components/ui/SlideOver.svelte';
-  import StatFilterBar from '$lib/components/statistik/StatFilterBar.svelte';
-  import StatCard from '$lib/components/statistik/StatCard.svelte';
-  import DonutLegendCard from '$lib/components/statistik/DonutLegendCard.svelte';
+  import StatFilterBar from '$lib/components/stats/StatFilterBar.svelte';
+  import StatCard from '$lib/components/stats/StatCard.svelte';
+  import DonutLegendCard from '$lib/components/stats/DonutLegendCard.svelte';
   import { ShoppingCart } from 'lucide-svelte';
   import type { PeriodKey } from '$lib/shared/period';
   import { goto } from '$app/navigation';
@@ -31,7 +30,6 @@
 
   function goWithRange(key: PeriodKey, from = '', to = '') {
     activeRange = key;
-    showPeriodSheet = false;
     const u = new URL(window.location.href);
     u.searchParams.set('range', key);
     if (from) u.searchParams.set('from', from);
@@ -46,24 +44,11 @@
     if (!fromInput && !toInput) return;
     goWithRange('custom', fromInput, toInput);
   }
-  function syncFrom(e: Event) {
-    fromInput = (e.currentTarget as HTMLInputElement).value;
-    applyCustom();
-  }
-  function syncTo(e: Event) {
-    toInput = (e.currentTarget as HTMLInputElement).value;
-    applyCustom();
-  }
 
-  const btn = (current: string, key: string) =>
-    `rounded border px-2.5 py-1.5 text-body-sm ${current === key ? 'border-ink-navy bg-ink-navy text-white font-semibold' : 'border-border-input bg-white text-ink hover:bg-table-header'}`;
   // Hari tanpa struk digambar 0 (datar di bawah), bukan bolong.
   $: avgTicketFlat = data.avgTicketPerDay.data.map((v) => v ?? 0);
   // Sumbu chart berlabel satuan pendek (jt/rb/Rp) biar tak dikira persen.
   $: avgTick = (v: number) => `${v} ${data.avgTicketPerDay.unitLabel.split(' ')[0]}`;
-  const rangeNames: Record<string, string> = { today: 'Hari ini', week: 'Minggu ini', '7d': '7 hari', '30d': '30 hari', month: 'Bulan ini', custom: 'Custom' };
-
-  let showPeriodSheet = false;
 
   // Kartu "Performa per Produk": satu kartu + toggle metrik (client-side).
   let perfMetric: 'revenue' | 'profit' | 'margin' = 'revenue';
@@ -93,38 +78,7 @@
     onSelect={(k) => goWithRange(k)}
     onApply={applyCustom}
   />
-  <div class="sm:hidden flex flex-col gap-2 p-5">
-    <button type="button" on:click={() => (showPeriodSheet = true)} class="inline-flex h-9 items-center justify-between rounded border border-border-input bg-white px-3 text-body-md text-ink">
-      <span>Periode: <strong>{rangeNames[activeRange] ?? '30 hari'}</strong></span>
-      <span aria-hidden="true" class="text-muted">▾</span>
-    </button>
-    {#if data.rangeLabel}
-      <span class="text-body-sm text-muted">Dipakai: <strong class="text-ink">{data.rangeLabel}</strong></span>
-    {/if}
-  </div>
 </StatCard>
-
-{#if showPeriodSheet}
-  <SlideOver title="Pilih Periode" onClose={() => (showPeriodSheet = false)}>
-    <div class="flex flex-col gap-2">
-      <button type="button" on:click={() => goWithRange('today')} class={`${btn(activeRange, 'today')} w-full text-left`}>Hari ini</button>
-      <button type="button" on:click={() => goWithRange('week')} class={`${btn(activeRange, 'week')} w-full text-left`}>Minggu ini</button>
-      <button type="button" on:click={() => goWithRange('7d')} class={`${btn(activeRange, '7d')} w-full text-left`}>7 hari</button>
-      <button type="button" on:click={() => goWithRange('30d')} class={`${btn(activeRange, '30d')} w-full text-left`}>30 hari</button>
-      <button type="button" on:click={() => goWithRange('month')} class={`${btn(activeRange, 'month')} w-full text-left`}>Bulan ini</button>
-      <div class="flex flex-col gap-2 rounded border border-border-cool p-3">
-        <label class="flex flex-col gap-1 text-body-md text-ink">
-          Dari
-          <input type="date" bind:value={fromInput} on:change={syncFrom} class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink" />
-        </label>
-        <label class="flex flex-col gap-1 text-body-md text-ink">
-          Sampai
-          <input type="date" bind:value={toInput} on:change={syncTo} min={fromInput || undefined} class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink" />
-        </label>
-      </div>
-    </div>
-  </SlideOver>
-{/if}
 
 {#key [data.range, data.rangeFrom, data.rangeTo, data.trend.labels.join(',')].join('|')}
   <div class="grid grid-cols-2 gap-4 lg:grid-cols-4 mb-6">

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   export let isOwner: boolean;
-  $: active = $page.url.pathname.startsWith('/products/stok') ? 'stok' : 'daftar';
+  $: active = $page.url.pathname.startsWith('/products/stock') ? 'stok' : 'daftar';
 </script>
 
 <!-- Garis bawah dipegang pembungkus luar supaya slot aksi (CTA) bisa duduk
@@ -18,7 +18,7 @@
   >Daftar</a>
   {#if isOwner}
     <a
-      href="/products/stok"
+      href="/products/stock"
       role="tab"
       aria-selected={active === 'stok'}
       class="px-4 h-10 inline-flex items-center text-body-md no-underline border-b-2 -mb-px {active === 'stok'

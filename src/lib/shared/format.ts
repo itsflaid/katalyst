@@ -34,6 +34,15 @@ export function fmtPoints(value: number): string {
   return `${value > 0 ? '+' : ''}${fmtPercent(value)} poin`;
 }
 
+// Varian badge simulator: titik desimal dan akhiran "pp", sama dengan tampilan lama.
+export function fmtDeltaPct(value: number | null): string {
+  return value === null ? 'dari nol' : `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`;
+}
+
+export function fmtPoin(value: number): string {
+  return `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)} pp`;
+}
+
 export function fmtDays(value: number): string {
   const rounded = value < 10 ? Math.round(value * 10) / 10 : Math.round(value);
   return String(rounded).replace('.', ',');
