@@ -1,13 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { requireOwner } from '$lib/server/domains/auth/guards';
-import {
-  createDiscount,
-  deleteDiscount,
-  listDiscountProducts,
-  listDiscounts,
-  toggleDiscount,
-  updateDiscount
-} from '$lib/server/domains/discounts';
+import { createDiscount, deleteDiscount, listDiscountProducts, listDiscounts, toggleDiscount, updateDiscount } from '$lib/server/domains/discounts';
 import { getDiscountStatus } from '$lib/shared/discount';
 import { actorOf, netOf, recordActivity } from '$lib/server/domains/activity/log';
 import { DEFAULT_TZ, makeTime } from '$lib/shared/time';

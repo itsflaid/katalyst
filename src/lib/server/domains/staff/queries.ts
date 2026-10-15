@@ -20,7 +20,7 @@ export async function listStaff(businessId: string): Promise<StaffRow[]> {
 export interface PendingInviteRow {
   id: string;
   username: string;
-  name: string;
+  name: string | null;
   expiresAt: Date;
   createdAt: Date;
 }

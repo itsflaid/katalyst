@@ -10,7 +10,7 @@ export type InviteResult<T> = { ok: true; data: T } | { ok: false; code: number;
 interface PendingInvite {
   id: string;
   username: string;
-  name: string;
+  name: string | null;
 }
 
 async function findPendingInvite(inviteId: string, businessId: string): Promise<PendingInvite | null> {
@@ -31,7 +31,7 @@ async function findPendingInvite(inviteId: string, businessId: string): Promise<
 export interface ResentInvite {
   id: string;
   username: string;
-  name: string;
+  name: string | null;
   token: string;
   expiresAt: Date;
 }
@@ -73,7 +73,7 @@ export async function resendInvite(businessId: string, invitedBy: string, rawInv
 export interface RevokedInvite {
   id: string;
   username: string;
-  name: string;
+  name: string | null;
 }
 
 export async function revokeInvite(businessId: string, rawInviteId: unknown): Promise<InviteResult<RevokedInvite>> {
@@ -87,7 +87,7 @@ export async function revokeInvite(businessId: string, rawInviteId: unknown): Pr
 }
 
 export interface AcceptedInvite {
-  userId: string | null;
+  userId: string | undefined;
   username: string;
   name: string;
   businessId: string;
@@ -152,5 +152,5 @@ export async function acceptInvite(
   await db.update(staffInvitation).set({ acceptedAt: new Date() }).where(eq(staffInvitation.id, invite.id));
 
   const [joined] = await db.select({ id: user.id }).from(user).where(eq(user.username, invite.username));
-  return { ok: true, data: { userId: joined?.id ?? null, username: invite.username, name, businessId: invite.businessId } };
+  return { ok: true, data: { userId: joined?.id, username: invite.username, name, businessId: invite.businessId } };
 }

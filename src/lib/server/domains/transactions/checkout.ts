@@ -27,8 +27,7 @@ export interface CheckoutInput {
 }
 
 export type CheckoutResult =
-  | { ok: true; data: { txId: string } }
-  | { ok: false; code: number; message: string; errorCode?: string; newTotal?: number };
+  { ok: true; data: { txId: string } } | { ok: false; code: number; message: string; errorCode?: string; newTotal?: number };
 
 export async function checkoutCart(input: CheckoutInput): Promise<CheckoutResult> {
   const { businessId, userId, role, cashierName, now, net } = input;
@@ -108,9 +107,15 @@ export async function checkoutCart(input: CheckoutInput): Promise<CheckoutResult
   if (globalDiscountId) {
     global = await getGlobalDiscount(businessId, globalDiscountId);
     if (!global || global.scope !== 'GLOBAL' || getDiscountStatus({ ...global, scope: 'GLOBAL' }, now) !== 'ACTIVE') {
-      return fail(409, global ? `Diskon "${global.name}" sudah tidak berlaku. Muat ulang lalu coba lagi.` : 'Diskon global tidak ditemukan. Muat ulang lalu coba lagi.', {
-        errorCode: 'DISCOUNT_UNAVAILABLE'
-      });
+      return fail(
+        409,
+        global
+          ? `Diskon "${global.name}" sudah tidak berlaku. Muat ulang lalu coba lagi.`
+          : 'Diskon global tidak ditemukan. Muat ulang lalu coba lagi.',
+        {
+          errorCode: 'DISCOUNT_UNAVAILABLE'
+        }
+      );
     }
   }
 

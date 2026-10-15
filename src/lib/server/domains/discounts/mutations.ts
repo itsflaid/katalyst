@@ -3,12 +3,17 @@ import { discount } from '$lib/server/db/schema';
 import { and, eq } from 'drizzle-orm';
 import type { BizTime } from '$lib/shared/time';
 import { overlapDbMessage } from './errors';
-import { canDeleteDiscount, findOverlap } from './queries';
-import { parseDiscountForm } from './validate';
+import { findOverlap } from './queries';
+import { canDeleteDiscount, parseDiscountForm } from './validate';
 
-export type DiscountMutationResult<T> = { ok: true; data: T } | { ok: false; code: number; message: string; errorCode?: string; lossProducts?: { id: string; name: string }[] };
+export type DiscountMutationResult<T> =
+  { ok: true; data: T } | { ok: false; code: number; message: string; errorCode?: string; lossProducts?: { id: string; name: string }[] };
 
-function parseFailure(parsed: { error: string; code?: string; lossProducts?: { id: string; name: string }[] }): Extract<DiscountMutationResult<never>, { ok: false }> {
+function parseFailure(parsed: {
+  error: string;
+  code?: string;
+  lossProducts?: { id: string; name: string }[];
+}): Extract<DiscountMutationResult<never>, { ok: false }> {
   return { ok: false, code: 400, message: parsed.error, errorCode: parsed.code, lossProducts: parsed.lossProducts };
 }
 
