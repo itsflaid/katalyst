@@ -2,7 +2,14 @@ import { db } from '$lib/server/db';
 import { staffInvitation, transaction, user } from '$lib/server/db/schema';
 import { runBatch } from '$lib/server/db/batch';
 import { auth } from '$lib/server/domains/auth';
-import { INVITE_TTL_MS, generateInviteToken, generateTempPassword, hashInviteToken, isValidUsername, normalizeUsername } from '$lib/server/domains/invites';
+import {
+  INVITE_TTL_MS,
+  generateInviteToken,
+  generateTempPassword,
+  hashInviteToken,
+  isValidUsername,
+  normalizeUsername
+} from '$lib/server/domains/invites';
 import { and, eq, isNull, ne } from 'drizzle-orm';
 
 export type StaffResult<T> = { ok: true; data: T } | { ok: false; code: number; message: string };

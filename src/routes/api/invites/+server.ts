@@ -5,17 +5,6 @@ import { actorOf, netOf, recordActivity } from '$lib/server/domains/activity/log
 import { requireOwner } from '$lib/server/domains/auth/guards';
 import type { RequestHandler } from './$types';
 
-async function findPendingInvite(inviteId: string, businessId: string) {
-  const [invite] = await db
-    .select()
-    .from(staffInvitation)
-    .where(and(eq(staffInvitation.id, inviteId), eq(staffInvitation.businessId, businessId)));
-  if (!invite || invite.acceptedAt || invite.revokedAt) {
-    throw error(404, 'Undangan tidak ditemukan atau sudah tidak berlaku.');
-  }
-  return invite;
-}
-
 // Kirim ulang me-revoke token lama dan menerbitkan token baru (link lama mati seketika).
 // Dipakai untuk invite kedaluwarsa maupun link yang hilang.
 export const POST: RequestHandler = async ({ request, locals, getClientAddress }) => {

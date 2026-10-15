@@ -32,5 +32,6 @@ export async function updateBusinessProfile(businessId: string, body: unknown): 
 
   await db.update(business).set(patch).where(eq(business.id, businessId));
   const [b] = await db.select({ name: business.name, timezone: business.timezone }).from(business).where(eq(business.id, businessId));
-  return { ok: true, profile: { name: b?.name ?? patch.name ?? '', timezone: b?.timezone ?? patch.timezone ?? DEFAULT_TZ } };
+  const timezone = b && isBizTz(b.timezone) ? b.timezone : (patch.timezone ?? DEFAULT_TZ);
+  return { ok: true, profile: { name: b?.name ?? patch.name ?? '', timezone } };
 }
