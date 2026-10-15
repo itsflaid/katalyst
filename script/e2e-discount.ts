@@ -411,6 +411,33 @@ async function main() {
     r = await postForm(owner, '/transactions', 'create', { items: mkItems(Q.id, 1), globalDiscountId: '', expectedTotal: '20000' });
     ok('E10b tanpa global sukses penuh', isOk(r), `status=${r.status}`);
 
+    // E10c: kuota global kumulatif lintas baris (D2 dimatikan sementara biar global yang kepakai).
+    r = await postForm(owner, '/discounts', 'toggle', { id: (await discByName('E2E-D2'))!.id });
+    ok('E10c D2 off', isOk(r));
+    r = await postForm(owner, '/discounts', 'create', { name: 'E2E-GX3', scope: 'GLOBAL', percent: '5', preset: 'TODAY', quota: '5' });
+    ok('E10c global kuota → sukses', isOk(r), `status=${r.status}`);
+    const GX3 = (await discByName('E2E-GX3'))!;
+    const items10c = JSON.stringify([
+      { productId: P.id, qty: 3 },
+      { productId: Q.id, qty: 3 }
+    ]);
+    r = await postForm(owner, '/transactions', 'create', { items: items10c, globalDiscountId: GX3.id, expectedTotal: '86500' });
+    ok('E10c kumulatif 3+2 sukses', isOk(r), `status=${r.status}`);
+    const tx10c = (await latestTx()).id;
+    createdTx.push(tx10c);
+    const rows10c = (await q(`select product_id, discounted_qty from transaction_item where transaction_id = $1`, tx10c)) as {
+      product_id: string;
+      discounted_qty: number;
+    }[];
+    ok(
+      'E10c P 3 + Q 2',
+      rows10c.find((x) => x.product_id === P.id)?.discounted_qty === 3 && rows10c.find((x) => x.product_id === Q.id)?.discounted_qty === 2,
+      JSON.stringify(rows10c)
+    );
+    ok('E10c used=5', (await discByName('E2E-GX3'))!.quota_used === 5);
+    r = await postForm(owner, '/discounts', 'toggle', { id: (await discByName('E2E-D2'))!.id });
+    ok('E10c D2 on lagi', isOk(r));
+
     // E11: 50% di Q (modal 12000) tanpa confirm → 400 BELOW_COST; dengan → sukses.
     r = await postForm(owner, '/discounts', 'create', {
       name: 'E2E-DQ',

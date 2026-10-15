@@ -10,6 +10,7 @@ export interface StaffRow {
 }
 
 export async function listStaff(businessId: string): Promise<StaffRow[]> {
+  // Urutan tetap: Owner selalu paling atas, di bawahnya staff dari yang terlama ke terbaru (createdAt naik). CASE eksplisit biar tidak bergantung pada urutan alfabet nilai enum.
   return db
     .select({ id: user.id, name: user.name, username: user.username, role: user.role })
     .from(user)
