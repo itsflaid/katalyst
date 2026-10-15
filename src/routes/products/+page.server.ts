@@ -1,6 +1,7 @@
 import { db } from '$lib/server/db';
 import { product, stockMovement, transactionItem } from '$lib/server/db/schema';
-import { denyUnlessOwner, getOwnedProduct, parseProductFields, parseInitialStock } from '$lib/server/domains/products';
+import { getOwnedProduct, parseProductFields, parseInitialStock } from '$lib/server/domains/products';
+import { requireOwner, requireTenant } from '$lib/server/domains/auth/guards';
 import { actorOf, netOf, recordActivity } from '$lib/server/domains/activity/log';
 import { eq, and, inArray, sql, asc } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
@@ -9,11 +10,10 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
-  const businessId = locals.user!.businessId as string;
+  const { businessId, role } = requireTenant(locals);
   // Urutan tetap: tanpa ORDER BY, baris yang di-UPDATE pindah posisi dan daftar tampak tertukar.
   const products = await db.select().from(product).where(eq(product.businessId, businessId)).orderBy(asc(product.createdAt), asc(product.id));
   // role ikut dikirim biar UI bisa menyembunyikan aksi yang memang ditolak server.
-  const role: 'OWNER' | 'STAFF' = locals.user!.role === 'OWNER' ? 'OWNER' : 'STAFF';
   return { products, role };
 };
 
@@ -21,10 +21,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
   create: async ({ request, locals, getClientAddress }) => {
-    const denied = denyUnlessOwner(locals, 'create', 'Cuma Owner yang bisa menambah produk.');
-    if (denied) return denied;
-    const businessId = locals.user!.businessId as string;
-    const userId = locals.user!.id as string;
+    const { businessId, userId, user } = requireOwner(locals);
 
     const form = await request.formData();
     const parsed = parseProductFields(form);
@@ -55,7 +52,7 @@ export const actions: Actions = {
     }
     await recordActivity({
       businessId,
-      actor: actorOf(locals.user!),
+      actor: actorOf(user),
       ...netOf({ request, getClientAddress }),
       action: 'PRODUCT_CREATE',
       entityType: 'product',
@@ -66,9 +63,7 @@ export const actions: Actions = {
   },
 
   update: async ({ request, locals, getClientAddress }) => {
-    const denied = denyUnlessOwner(locals, 'update', 'Cuma Owner yang bisa mengubah produk.');
-    if (denied) return denied;
-    const businessId = locals.user!.businessId as string;
+    const { businessId, user } = requireOwner(locals);
 
     const form = await request.formData();
     const id = String(form.get('id') ?? '');
@@ -92,7 +87,7 @@ export const actions: Actions = {
     if (parsed.data.isActive !== old.isActive) fields.push('aktif');
     await recordActivity({
       businessId,
-      actor: actorOf(locals.user!),
+      actor: actorOf(user),
       ...netOf({ request, getClientAddress }),
       action: 'PRODUCT_UPDATE',
       entityType: 'product',
@@ -106,9 +101,7 @@ export const actions: Actions = {
   // dengan stok: produk stok 0 tetap "aktif" tapi otomatis tersembunyi di
   // kasir dan berlabel Habis.
   toggle: async ({ request, locals, getClientAddress }) => {
-    const denied = denyUnlessOwner(locals, 'toggle', 'Cuma Owner yang bisa mengubah status produk.');
-    if (denied) return denied;
-    const businessId = locals.user!.businessId as string;
+    const { businessId, user } = requireOwner(locals);
 
     const form = await request.formData();
     const id = String(form.get('id') ?? '');
@@ -123,7 +116,7 @@ export const actions: Actions = {
       .where(and(eq(product.id, id), eq(product.businessId, businessId)));
     await recordActivity({
       businessId,
-      actor: actorOf(locals.user!),
+      actor: actorOf(user),
       ...netOf({ request, getClientAddress }),
       action: 'PRODUCT_TOGGLE',
       entityType: 'product',
@@ -134,9 +127,7 @@ export const actions: Actions = {
   },
 
   delete: async ({ request, locals, getClientAddress }) => {
-    const denied = denyUnlessOwner(locals, 'delete', 'Cuma Owner yang bisa menghapus produk.');
-    if (denied) return denied;
-    const businessId = locals.user!.businessId as string;
+    const { businessId, user } = requireOwner(locals);
 
     const form = await request.formData();
     const id = String(form.get('id') ?? '');
@@ -172,7 +163,7 @@ export const actions: Actions = {
     }
     await recordActivity({
       businessId,
-      actor: actorOf(locals.user!),
+      actor: actorOf(user),
       ...netOf({ request, getClientAddress }),
       action: 'PRODUCT_DELETE',
       entityType: 'product',
@@ -184,10 +175,7 @@ export const actions: Actions = {
 
   // Tambah stok (restock). OWNER-only. Tidak mengubah isActive.
   restock: async ({ request, locals }) => {
-    const denied = denyUnlessOwner(locals, 'restock', 'Cuma Owner yang bisa restock.');
-    if (denied) return denied;
-    const businessId = locals.user!.businessId as string;
-    const userId = locals.user!.id as string;
+    const { businessId, userId } = requireOwner(locals);
 
     const form = await request.formData();
     const id = String(form.get('id') ?? '');
@@ -222,10 +210,7 @@ export const actions: Actions = {
 
   // Koreksi stok hasil opname. OWNER-only, alasan wajib biar teraudit.
   adjust: async ({ request, locals }) => {
-    const denied = denyUnlessOwner(locals, 'adjust', 'Cuma Owner yang bisa koreksi stok.');
-    if (denied) return denied;
-    const businessId = locals.user!.businessId as string;
-    const userId = locals.user!.id as string;
+    const { businessId, userId } = requireOwner(locals);
 
     const form = await request.formData();
     const id = String(form.get('id') ?? '');

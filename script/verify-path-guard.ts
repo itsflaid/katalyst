@@ -65,9 +65,9 @@ function thrownOf(fn: () => void): { status?: number; location?: string } {
 }
 
 const anon = thrownOf(() => requireOwner({ user: null, session: null, business: null } as never));
-ok('anonim ke login', anon.status === 303 && anon.location === '/login', JSON.stringify(anon));
+ok('anonim 401', anon.status === 401, JSON.stringify(anon));
 const staff = thrownOf(() => requireOwner({ user: { role: 'STAFF', businessId: 'b1' } } as never));
-ok('staff ke transaksi', staff.status === 303 && staff.location === '/transactions', JSON.stringify(staff));
+ok('staff 403', staff.status === 403, JSON.stringify(staff));
 const noBiz = thrownOf(() => requireOwner({ user: { role: 'OWNER', businessId: null } } as never));
 ok('owner tanpa bisnis 403', noBiz.status === 403, JSON.stringify(noBiz));
 const emptyBiz = thrownOf(() => requireOwner({ user: { role: 'OWNER', businessId: '' } } as never));

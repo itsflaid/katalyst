@@ -4,8 +4,8 @@ import { DEFAULT_TZ } from '$lib/shared/time';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-  requireOwner(locals);
+  const { businessId } = requireOwner(locals);
   const tz = locals.business?.timezone ?? DEFAULT_TZ;
-  const data = await getStatistikPageData(locals.user!.businessId as string, url, tz);
+  const data = await getStatistikPageData(businessId, url, tz);
   return { ...data, timezone: tz };
 };

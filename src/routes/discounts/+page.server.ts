@@ -3,7 +3,6 @@ import { discount, product } from '$lib/server/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { fail } from '@sveltejs/kit';
 import { requireOwner } from '$lib/server/domains/auth/guards';
-import { denyUnlessOwner } from '$lib/server/domains/products';
 import { canDeleteDiscount, findOverlap, listDiscounts, overlapDbMessage, parseDiscountForm } from '$lib/server/domains/discounts';
 import { getDiscountStatus } from '$lib/shared/discount';
 import { actorOf, netOf, recordActivity } from '$lib/server/domains/activity/log';
@@ -15,8 +14,7 @@ const TABS = ['aktif', 'terjadwal', 'selesai'] as const;
 type Tab = (typeof TABS)[number];
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-  requireOwner(locals);
-  const businessId = locals.user!.businessId as string;
+  const { businessId } = requireOwner(locals);
   const tz = locals.business?.timezone ?? DEFAULT_TZ;
   const now = new Date();
 
@@ -68,9 +66,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 export const actions: Actions = {
   create: async ({ request, locals, getClientAddress }) => {
-    const denied = denyUnlessOwner(locals, 'create', 'Cuma Owner yang bisa menambah diskon.');
-    if (denied) return denied;
-    const businessId = locals.user!.businessId as string;
+    const { businessId, user } = requireOwner(locals);
     const T = makeTime(locals.business?.timezone ?? DEFAULT_TZ);
     const form = await request.formData();
     const parsed = await parseDiscountForm(form, { businessId, now: new Date(), T });
@@ -98,7 +94,7 @@ export const actions: Actions = {
     }
     await recordActivity({
       businessId,
-      actor: actorOf(locals.user!),
+      actor: actorOf(user),
       ...netOf({ request, getClientAddress }),
       action: 'DISCOUNT_CREATE',
       entityType: 'discount',
@@ -109,9 +105,7 @@ export const actions: Actions = {
   },
 
   update: async ({ request, locals, getClientAddress }) => {
-    const denied = denyUnlessOwner(locals, 'update', 'Cuma Owner yang bisa mengubah diskon.');
-    if (denied) return denied;
-    const businessId = locals.user!.businessId as string;
+    const { businessId, user } = requireOwner(locals);
     const T = makeTime(locals.business?.timezone ?? DEFAULT_TZ);
     const form = await request.formData();
     const id = String(form.get('id') ?? '');
@@ -144,7 +138,7 @@ export const actions: Actions = {
     }
     await recordActivity({
       businessId,
-      actor: actorOf(locals.user!),
+      actor: actorOf(user),
       ...netOf({ request, getClientAddress }),
       action: 'DISCOUNT_UPDATE',
       entityType: 'discount',
@@ -155,9 +149,7 @@ export const actions: Actions = {
   },
 
   toggle: async ({ request, locals, getClientAddress }) => {
-    const denied = denyUnlessOwner(locals, 'toggle', 'Cuma Owner yang bisa mengubah status diskon.');
-    if (denied) return denied;
-    const businessId = locals.user!.businessId as string;
+    const { businessId, user } = requireOwner(locals);
     const form = await request.formData();
     const id = String(form.get('id') ?? '');
     const [existing] = await db
@@ -187,7 +179,7 @@ export const actions: Actions = {
     }
     await recordActivity({
       businessId,
-      actor: actorOf(locals.user!),
+      actor: actorOf(user),
       ...netOf({ request, getClientAddress }),
       action: 'DISCOUNT_TOGGLE',
       entityType: 'discount',
@@ -198,9 +190,7 @@ export const actions: Actions = {
   },
 
   delete: async ({ request, locals, getClientAddress }) => {
-    const denied = denyUnlessOwner(locals, 'delete', 'Cuma Owner yang bisa menghapus diskon.');
-    if (denied) return denied;
-    const businessId = locals.user!.businessId as string;
+    const { businessId, user } = requireOwner(locals);
     const form = await request.formData();
     const id = String(form.get('id') ?? '');
     const checked = await canDeleteDiscount(id, businessId);
@@ -219,7 +209,7 @@ export const actions: Actions = {
     }
     await recordActivity({
       businessId,
-      actor: actorOf(locals.user!),
+      actor: actorOf(user),
       ...netOf({ request, getClientAddress }),
       action: 'DISCOUNT_DELETE',
       entityType: 'discount',
