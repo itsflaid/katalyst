@@ -41,6 +41,7 @@
   let historyOpen = false;
   let historyButton: HTMLButtonElement;
   let historyClose: HTMLButtonElement;
+  let composer: HTMLInputElement;
 
   function openHistory() {
     historyOpen = true;
@@ -226,6 +227,10 @@
     } finally {
       sending = false;
       await refreshAfterStream();
+      // Input sempat disabled selama kirim sehingga fokus browser lepas;
+      // kembalikan hanya bila pengguna tidak memindah fokus ke kontrol lain.
+      await tick();
+      if (!document.activeElement || document.activeElement === document.body) composer?.focus();
     }
   }
 
@@ -404,6 +409,7 @@
     <form class="copilot-form shrink-0 border-t border-white/10 px-4 py-4 sm:px-6" on:submit|preventDefault={() => ask()}>
       <div class="mx-auto flex max-w-4xl items-center gap-2 border border-white/15 bg-white/[0.06] p-1.5">
         <input
+          bind:this={composer}
           bind:value={draft}
           disabled={sending}
           maxlength="800"
