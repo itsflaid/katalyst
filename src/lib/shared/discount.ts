@@ -78,7 +78,7 @@ function selectProductDiscount(discounts: DiscountLike[], productId: string, now
 }
 
 // line.gross          = qty × price
-// line.discountedQty  = qty bila kuota tak terbatas atau diskon GLOBAL; selain itu min(qty, sisa kuota); 0 bila tanpa diskon
+// line.discountedQty  = qty bila kuota tak terbatas; selain itu min(qty, sisa kuota); 0 bila tanpa diskon
 // line.discountAmount = discountedQty × unitDiscount(price, percent)
 // line.net            = gross − discountAmount
 // subtotal = Σ line.gross;  discountTotal = Σ line.discountAmount
@@ -109,7 +109,8 @@ export function calculateCart(lines: CartLineIn[], ctx: { productDiscounts: Disc
       source = 'PRODUCT';
       unitDisc = unitDiscount(price, productDiscount.percent);
     } else if (global && getDiscountStatus(global, now) === 'ACTIVE' && global.scope === 'GLOBAL') {
-      applied = qty;
+      const remaining = remainingQuota(global);
+      applied = remaining === null ? qty : Math.min(qty, remaining);
       discountId = global.id;
       discountName = global.name;
       discountPercent = global.percent;

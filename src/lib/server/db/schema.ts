@@ -159,8 +159,7 @@ export const discount = pgTable(
     check('discount_window_valid', sql`${t.endsAt} is null or ${t.endsAt} > ${t.startsAt}`),
     check('discount_quota_valid', sql`${t.quota} is null or ${t.quota} > 0`),
     check('discount_quota_used_nonneg', sql`${t.quotaUsed} >= 0`),
-    check('discount_quota_not_exceeded', sql`${t.quota} is null or ${t.quotaUsed} <= ${t.quota}`),
-    check('discount_global_time_only', sql`${t.scope} = 'PRODUCT' or (${t.endsAt} is not null and ${t.quota} is null)`)
+    check('discount_quota_not_exceeded', sql`${t.quota} is null or ${t.quotaUsed} <= ${t.quota}`)
   ]
 );
 

@@ -62,8 +62,6 @@
   $: percentRaw = isCreate ? cPercent : ePercent;
   $: productId = isCreate ? cProductId : (e?.productId ?? '');
 
-  // Global wajib berbatas waktu: jangan biarkan preset OPEN terpilih.
-  $: if (isCreate && cScope === 'GLOBAL' && cPreset === 'OPEN') cPreset = 'TODAY';
   $: selectedProduct = products.find((p) => p.id === productId) ?? null;
 
   // Preview langsung: akhir jendela dihitung dengan aturan server yang sama.
@@ -94,8 +92,8 @@
   })(selectedProduct);
 
   // Peringatan non-blokir: tanpa batas waktu DAN tanpa kuota ≈ ganti harga.
-  $: permanent = scope === 'PRODUCT' && preset === 'OPEN' && quotaRaw.trim() === '';
-  $: quotaHint = scope === 'PRODUCT' ? 'Kosongkan = tanpa batas. Dihitung dalam unit.' : 'Diskon global tidak memakai kuota.';
+  $: permanent = preset === 'OPEN' && quotaRaw.trim() === '';
+  $: quotaHint = 'Kosongkan = tanpa batas. Dihitung dalam unit. Bila waktu dan kuota dua-duanya diisi, diskon mati saat salah satunya terpenuhi.';
 </script>
 
 <SlideOver title={isCreate ? 'Tambah Diskon' : 'Edit Diskon'} {onClose}>
@@ -182,25 +180,11 @@
     <fieldset class="flex flex-col gap-1 text-body-md text-ink">
       <legend class="text-body-md">Berlaku</legend>
       {#each PRESETS as pr}
-        <label class="flex items-center gap-2 {scope === 'GLOBAL' && pr.value === 'OPEN' ? 'text-muted' : ''}">
+        <label class="flex items-center gap-2">
           {#if isCreate}
-            <input
-              type="radio"
-              name="preset"
-              value={pr.value}
-              bind:group={cPreset}
-              disabled={scope === 'GLOBAL' && pr.value === 'OPEN'}
-              class="h-4 w-4 accent-ink-navy"
-            />
+            <input type="radio" name="preset" value={pr.value} bind:group={cPreset} class="h-4 w-4 accent-ink-navy" />
           {:else}
-            <input
-              type="radio"
-              name="preset"
-              value={pr.value}
-              bind:group={ePreset}
-              disabled={scope === 'GLOBAL' && pr.value === 'OPEN'}
-              class="h-4 w-4 accent-ink-navy"
-            />
+            <input type="radio" name="preset" value={pr.value} bind:group={ePreset} class="h-4 w-4 accent-ink-navy" />
           {/if}
           {pr.label}
         </label>
@@ -252,19 +236,15 @@
       <p class="text-body-sm {preview.ok ? 'text-muted' : 'text-status-negative'}">{preview.text}</p>
     </fieldset>
 
-    {#if scope === 'PRODUCT'}
-      <label for="d-quota" class="flex flex-col gap-1 text-body-md text-ink">
-        Kuota (unit)
-        {#if isCreate}
-          <Input id="d-quota" name="quota" type="number" min="1" max="1000000" step="1" bind:value={cQuota} placeholder="Kosongkan = tanpa batas" />
-        {:else}
-          <Input id="d-quota" name="quota" type="number" min="1" max="1000000" step="1" bind:value={eQuota} placeholder="Kosongkan = tanpa batas" />
-        {/if}
-        <span class="text-body-sm text-muted">{quotaHint}</span>
-      </label>
-    {:else}
-      <p class="text-body-sm text-muted">{quotaHint}</p>
-    {/if}
+    <label for="d-quota" class="flex flex-col gap-1 text-body-md text-ink">
+      Kuota (unit)
+      {#if isCreate}
+        <Input id="d-quota" name="quota" type="number" min="1" max="1000000" step="1" bind:value={cQuota} placeholder="Kosongkan = tanpa batas" />
+      {:else}
+        <Input id="d-quota" name="quota" type="number" min="1" max="1000000" step="1" bind:value={eQuota} placeholder="Kosongkan = tanpa batas" />
+      {/if}
+      <span class="text-body-sm text-muted">{quotaHint}</span>
+    </label>
 
     {#if permanent}
       <p class="rounded border border-status-warning-border bg-status-warning-bg px-3 py-2 text-body-sm text-status-warning">

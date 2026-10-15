@@ -92,15 +92,10 @@ export async function parseDiscountForm(form: FormData, ctx: DiscountFormCtx): P
     return { error: 'Waktu berakhir harus setelah waktu mulai.' };
   }
 
-  // GLOBAL wajib berbatas waktu dan tanpa kuota unit (aturan DB juga).
-  if (scope === 'GLOBAL') {
-    if (endsAt === null) return { error: 'Diskon global wajib ada batas waktu.' };
-    const quotaRaw = String(form.get('quota') ?? '').trim();
-    if (quotaRaw !== '') return { error: 'Diskon global tidak memakai kuota.' };
-  }
-
+  // Kuota unit opsional untuk PRODUCT maupun GLOBAL; kosong berarti tanpa batas.
+  // Bila waktu dan kuota dua-duanya diisi, diskon mati saat salah satunya terpenuhi.
   let quota: number | null = null;
-  if (scope === 'PRODUCT') {
+  {
     const quotaRaw = String(form.get('quota') ?? '').trim();
     if (quotaRaw !== '') {
       const q = Number(quotaRaw);
