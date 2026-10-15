@@ -1,11 +1,8 @@
 import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
 import { readJsonObject } from '$lib/server/http';
-import { staffInvitation, user } from '$lib/server/db/schema';
-import { generateInviteToken, hashInviteToken, INVITE_TTL_MS } from '$lib/server/domains/invites';
+import { resendInvite, revokeInvite } from '$lib/server/domains/invites';
 import { actorOf, netOf, recordActivity } from '$lib/server/domains/activity/log';
 import { requireOwner } from '$lib/server/domains/auth/guards';
-import { and, eq, isNull } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
 async function findPendingInvite(inviteId: string, businessId: string) {
@@ -26,36 +23,9 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
 
   const parsed = await readJsonObject(request);
   if (!parsed.ok) throw error(400, parsed.message);
-  const inviteId = typeof (parsed.body as { inviteId?: unknown }).inviteId === 'string' ? (parsed.body as { inviteId: string }).inviteId : '';
-  if (!inviteId) throw error(400, 'inviteId wajib diisi.');
-
-  const invite = await findPendingInvite(inviteId, businessId);
-
-  const [existingUser] = await db.select({ id: user.id }).from(user).where(eq(user.username, invite.username));
-  if (existingUser) {
-    // Bersih-bersih: username keburu dipakai, cabut invite.
-    await db.update(staffInvitation).set({ revokedAt: new Date() }).where(eq(staffInvitation.id, invite.id));
-    throw error(409, 'Username sudah dipakai.');
-  }
-
-  const rawToken = generateInviteToken();
-  const tokenHash = await hashInviteToken(rawToken);
-  const id = crypto.randomUUID();
-  const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
-
-  // Revoke lama + terbit baru dalam satu transaksi: gagal satu = batal semua.
-  await db.batch([
-    db.update(staffInvitation).set({ revokedAt: new Date() }).where(eq(staffInvitation.id, invite.id)),
-    db.insert(staffInvitation).values({
-      id,
-      businessId,
-      username: invite.username,
-      name: invite.name,
-      tokenHash,
-      expiresAt,
-      invitedBy: userId
-    })
-  ]);
+  const result = await resendInvite(businessId, userId, (parsed.body as { inviteId?: unknown }).inviteId);
+  if (!result.ok) throw error(result.code, result.message);
+  const { id, username, name, token, expiresAt } = result.data;
 
   await recordActivity({
     businessId,
@@ -64,10 +34,10 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
     action: 'INVITE_RESEND',
     entityType: 'staff_invitation',
     entityId: id,
-    meta: { username: invite.username, name: invite.name }
+    meta: { username, name }
   });
 
-  return json({ id, username: invite.username, token: rawToken, expiresAt: expiresAt.toISOString() }, { status: 201 });
+  return json({ id, username, token, expiresAt: expiresAt.toISOString() }, { status: 201 });
 };
 
 // Cabut undangan: link langsung mati dengan error generik (jangan bocorkan alasan ke pemegang link).
@@ -76,12 +46,9 @@ export const DELETE: RequestHandler = async ({ request, locals, getClientAddress
 
   const parsedDelete = await readJsonObject(request);
   if (!parsedDelete.ok) throw error(400, parsedDelete.message);
-  const inviteId =
-    typeof (parsedDelete.body as { inviteId?: unknown }).inviteId === 'string' ? (parsedDelete.body as { inviteId: string }).inviteId : '';
-  if (!inviteId) throw error(400, 'inviteId wajib diisi.');
-
-  const invite = await findPendingInvite(inviteId, businessId);
-  await db.update(staffInvitation).set({ revokedAt: new Date() }).where(eq(staffInvitation.id, invite.id));
+  const result = await revokeInvite(businessId, (parsedDelete.body as { inviteId?: unknown }).inviteId);
+  if (!result.ok) throw error(result.code, result.message);
+  const { id, username, name } = result.data;
 
   await recordActivity({
     businessId,
@@ -89,9 +56,9 @@ export const DELETE: RequestHandler = async ({ request, locals, getClientAddress
     ...netOf({ request, getClientAddress }),
     action: 'INVITE_REVOKE',
     entityType: 'staff_invitation',
-    entityId: invite.id,
-    meta: { username: invite.username, name: invite.name }
+    entityId: id,
+    meta: { username, name }
   });
 
-  return json({ id: invite.id });
+  return json({ id });
 };
