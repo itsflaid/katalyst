@@ -10,13 +10,12 @@
   import type { SubmitFunction } from '@sveltejs/kit';
   import Badge from '$lib/components/ui/Badge.svelte';
   import { calculateCart, getDiscountStatus, unitDiscount } from '$lib/shared/discount';
+  import { fmtRupiah } from '$lib/shared/format';
   import { lineNetOf } from '$lib/analytics';
   import { makeTime, DEFAULT_TZ, type BizTime } from '$lib/shared/time';
   import { Search, ChevronDown, Minus, Plus, Trash2, Check, Pencil, X, LayoutGrid, List } from 'lucide-svelte';
   export let data;
   export let form;
-
-  const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
   // Zona bisnis (bukan zona perangkat). T diteruskan eksplisit ke fungsi
   // pembantu karena Svelte 4 tidak melacak variabel yang hanya dirujuk
   // di dalam badan fungsi.
@@ -396,10 +395,10 @@
                 <div class="flex items-start justify-between gap-2">
                   <div class="min-w-0">
                     <p class="truncate text-body-md font-semibold text-ink">{c.name}</p>
-                    <p class="text-body-sm text-muted">{idr(c.price)}/unit</p>
+                    <p class="text-body-sm text-muted">{fmtRupiah(c.price)}/unit</p>
                   </div>
                   <div class="flex shrink-0 items-center gap-1.5">
-                    <span class="whitespace-nowrap text-body-md font-semibold tabular text-ink">{idr(c.net)}</span>
+                    <span class="whitespace-nowrap text-body-md font-semibold tabular text-ink">{fmtRupiah(c.net)}</span>
                     <button
                       type="button"
                       aria-label="Hapus {c.name}"
@@ -412,7 +411,7 @@
                 </div>
                 {#if c.discountAmount > 0}
                   <div class="mt-0.5 flex items-center gap-2">
-                    <s class="text-body-sm tabular text-muted">{idr(c.gross)}</s>
+                    <s class="text-body-sm tabular text-muted">{fmtRupiah(c.gross)}</s>
                     <Badge size="sm" tone="positive">Diskon {c.discountPercent}%</Badge>
                   </div>
                   {#if c.partial}
@@ -483,25 +482,25 @@
       <div class="mt-3 flex flex-col gap-1 border-t border-dashed border-border-cool py-2 text-body-md">
         <div class="flex items-center justify-between">
           <span class="text-body-sm text-muted">Subtotal {cartItemCount} item</span>
-          <span class="font-semibold tabular text-ink">{idr(cart.subtotal)}</span>
+          <span class="font-semibold tabular text-ink">{fmtRupiah(cart.subtotal)}</span>
         </div>
         {#if discountRows.length > 0}
           {#each discountRows as dr}
             <div class="flex items-center justify-between">
               <span class="text-body-sm text-muted">Diskon {dr.name}</span>
-              <span class="tabular text-status-positive">−{idr(dr.amount)}</span>
+              <span class="tabular text-status-positive">−{fmtRupiah(dr.amount)}</span>
             </div>
           {/each}
         {:else}
           <div class="flex items-center justify-between">
             <span class="text-body-sm text-muted">Diskon</span>
-            <span class="tabular text-muted">{idr(0)}</span>
+            <span class="tabular text-muted">{fmtRupiah(0)}</span>
           </div>
         {/if}
       </div>
       <div class="flex items-center justify-between rounded-panel bg-ink-navy px-4 py-3 shadow-level2">
         <span class="text-label-md uppercase text-white/70">Total</span>
-        <span class="text-headline-lg tabular text-white">{idr(cart.total)}</span>
+        <span class="text-headline-lg tabular text-white">{fmtRupiah(cart.total)}</span>
       </div>
       <form method="POST" action="?/create" use:enhance={afterCreate} class="mt-3">
         <input type="hidden" name="items" value={cartPayload} />
@@ -637,7 +636,7 @@
                         >{r.items.reduce((s, i) => s + i.quantity, 0)} item · {r.items.length} jenis produk</span
                       >
                     </div>
-                    <span class="whitespace-nowrap font-semibold tabular text-ink">{idr(r.total)}</span>
+                    <span class="whitespace-nowrap font-semibold tabular text-ink">{fmtRupiah(r.total)}</span>
                   </div>
                   <ul class="ml-1 mt-1.5 flex flex-col gap-0.5">
                     {#each r.items as it}
@@ -645,10 +644,10 @@
                         <span class="truncate text-muted">
                           {it.quantity}× {it.productName}
                           {#if it.discountAmount > 0}<span class="text-status-positive">
-                              · Diskon {it.discountName} −{idr(it.discountAmount)}</span
+                              · Diskon {it.discountName} −{fmtRupiah(it.discountAmount)}</span
                             >{/if}
                         </span>
-                        <span class="whitespace-nowrap tabular text-muted">{idr(lineNetOf(it))}</span>
+                        <span class="whitespace-nowrap tabular text-muted">{fmtRupiah(lineNetOf(it))}</span>
                       </li>
                     {/each}
                   </ul>
@@ -673,7 +672,7 @@
             </ul>
             <div class="flex justify-between border-t border-border-cool bg-table-header px-5 py-2.5 text-label-md font-semibold text-ink">
               <span>Subtotal</span>
-              <span class="tabular">{idr(group.subtotal)}</span>
+              <span class="tabular">{fmtRupiah(group.subtotal)}</span>
             </div>
           </div>
         {/each}
@@ -701,7 +700,7 @@
     <div class="relative w-full max-w-sm rounded-panel border border-border-cool bg-surface p-5 shadow-level3">
       <h2 class="text-headline-sm text-ink mb-2">Void struk ini?</h2>
       <p class="text-body-md text-muted">
-        Struk {idr(pendingVoid.total)} ({pendingVoid.cashier}) dihapus permanen. Buat struk koreksi baru kalau transaksinya tetap ada tapi salah
+        Struk {fmtRupiah(pendingVoid.total)} ({pendingVoid.cashier}) dihapus permanen. Buat struk koreksi baru kalau transaksinya tetap ada tapi salah
         catat.
       </p>
       <div class="flex gap-2 mt-4">

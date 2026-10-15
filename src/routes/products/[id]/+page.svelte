@@ -4,9 +4,8 @@
   import Table from '$lib/components/ui/Table.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import { makeTime, DEFAULT_TZ } from '$lib/shared/time';
+  import { fmtInt, fmtPercent, fmtRupiah } from '$lib/shared/format';
   export let data;
-  const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
-  const num = (n: number) => new Intl.NumberFormat('id-ID').format(n);
   $: T = makeTime(data.timezone ?? DEFAULT_TZ);
   $: fmtDate = (d: string | Date) => T.fmt(d, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const reasonLabel: Record<string, string> = { SALE: 'Penjualan', VOID_RESTORE: 'Void', RESTOCK: 'Restock', ADJUST: 'Koreksi' };
@@ -15,7 +14,7 @@
 <a href="/products" class="text-body-sm text-muted hover:text-ink no-underline hover:underline">← Kembali ke Produk</a>
 <PageHeader
   title={data.product.name}
-  subtitle={`Harga modal ${idr(data.product.costPrice)} · Harga jual ${idr(data.product.sellingPrice)}`}
+  subtitle={`Harga modal ${fmtRupiah(data.product.costPrice)} · Harga jual ${fmtRupiah(data.product.sellingPrice)}`}
   class="!mt-2"
 >
   <span slot="badge"
@@ -26,7 +25,7 @@
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
   <Card>
     <p class="text-label-sm uppercase text-muted">Stok sekarang</p>
-    <p class="text-num-display text-ink tabular">{num(data.product.stock)}</p>
+    <p class="text-num-display text-ink tabular">{fmtInt(data.product.stock)}</p>
     {#if data.product.stock <= 0}
       <p class="text-body-sm text-status-negative mt-1">Habis, tidak muncul di kasir sampai direstock.</p>
     {:else if data.product.stock <= (data.product.minStock ?? 5)}
@@ -48,19 +47,19 @@
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
     <Card
       ><p class="text-label-sm uppercase text-muted">Terjual</p>
-      <p class="text-num-display text-ink tabular">{num(data.performance.quantitySold)}</p></Card
+      <p class="text-num-display text-ink tabular">{fmtInt(data.performance.quantitySold)}</p></Card
     >
     <Card
       ><p class="text-label-sm uppercase text-muted">Revenue</p>
-      <p class="text-num-display text-ink tabular break-words [overflow-wrap:anywhere]">{idr(data.performance.revenue)}</p></Card
+      <p class="text-num-display text-ink tabular break-words [overflow-wrap:anywhere]">{fmtRupiah(data.performance.revenue)}</p></Card
     >
     <Card
       ><p class="text-label-sm uppercase text-muted">Profit</p>
-      <p class="text-num-display text-ink tabular break-words [overflow-wrap:anywhere]">{idr(data.performance.profit)}</p></Card
+      <p class="text-num-display text-ink tabular break-words [overflow-wrap:anywhere]">{fmtRupiah(data.performance.profit)}</p></Card
     >
     <Card
       ><p class="text-label-sm uppercase text-muted">Margin</p>
-      <p class="text-num-display text-ink tabular">{(data.performance.margin * 100).toFixed(1)}%</p></Card
+      <p class="text-num-display text-ink tabular">{fmtPercent(data.performance.margin)}</p></Card
     >
   </div>
 {/if}
