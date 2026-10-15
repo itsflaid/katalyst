@@ -82,11 +82,7 @@ export function actorOf(user: NonNullable<App.Locals['user']>): ActivityInput['a
 }
 
 // IP seluler sering berganti sehingga bukan sinyal perangkat; hanya UA yang dibandingkan, IP cuma info tambahan.
-export async function recordLogin(s: {
-  userId: string;
-  ip?: string | null;
-  userAgent?: string | null;
-}): Promise<void> {
+export async function recordLogin(s: { userId: string; ip?: string | null; userAgent?: string | null }): Promise<void> {
   try {
     const [u] = await db
       .select({ id: user.id, name: user.name, username: user.username, role: user.role, businessId: user.businessId })
@@ -97,13 +93,7 @@ export async function recordLogin(s: {
     const prev = await db
       .select({ id: activityLog.id, userAgent: activityLog.userAgent })
       .from(activityLog)
-      .where(
-        and(
-          eq(activityLog.businessId, u.businessId),
-          eq(activityLog.actorId, u.id),
-          eq(activityLog.action, 'LOGIN')
-        )
-      );
+      .where(and(eq(activityLog.businessId, u.businessId), eq(activityLog.actorId, u.id), eq(activityLog.action, 'LOGIN')));
     // Login pertama user sengaja tidak ditandai perangkat baru.
     const newDevice = prev.length > 0 && !!ua && !prev.some((p) => p.userAgent === ua);
     await db.insert(activityLog).values(

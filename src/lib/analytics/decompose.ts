@@ -35,7 +35,12 @@ export function decomposeProfitMaps(current: ReadonlyMap<string, Facts>, previou
   let out: ProfitFactor = { volume: 0, price: 0, discount: 0, cost: 0 };
   for (const key of keys) {
     const factor = decomposeProfit(current.get(key) ?? ZERO_FACTS, previous.get(key) ?? ZERO_FACTS);
-    out = { volume: out.volume + factor.volume, price: out.price + factor.price, discount: out.discount + factor.discount, cost: out.cost + factor.cost };
+    out = {
+      volume: out.volume + factor.volume,
+      price: out.price + factor.price,
+      discount: out.discount + factor.discount,
+      cost: out.cost + factor.cost
+    };
   }
   return out;
 }

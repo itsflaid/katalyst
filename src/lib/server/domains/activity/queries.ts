@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
-import { activityLog } from '$lib/server/db/schema';
+import { activityLog, user } from '$lib/server/db/schema';
 import type { ActivityAction, RoleFilter } from '$lib/shared/activity';
-import { and, desc, eq, gte, inArray, lt, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lt, sql, type SQL } from 'drizzle-orm';
 
 export interface ActivityRow {
   id: string;
@@ -28,10 +28,7 @@ export interface ActivityFilter {
 }
 
 // Filter peran memakai kolom snapshot di baris log agar staff terhapus tetap ikut.
-export async function listActivity(
-  businessId: string,
-  f: ActivityFilter
-): Promise<{ rows: ActivityRow[]; hasMore: boolean }> {
+export async function listActivity(businessId: string, f: ActivityFilter): Promise<{ rows: ActivityRow[]; hasMore: boolean }> {
   const conds: SQL[] = [eq(activityLog.businessId, businessId)];
   if (f.role === 'owner') conds.push(eq(activityLog.actorRole, 'OWNER'));
   else if (f.role === 'staff') conds.push(eq(activityLog.actorRole, 'STAFF'));
@@ -64,4 +61,13 @@ export async function listActivity(
     rows: rows.slice(0, size) as ActivityRow[],
     hasMore: rows.length > size
   };
+}
+
+// Opsi orang mengikuti peran yang dipilih; validasi memakai daftar penuh.
+export async function listActivityUsers(businessId: string) {
+  return db
+    .select({ id: user.id, name: user.name, username: user.username, role: user.role })
+    .from(user)
+    .where(eq(user.businessId, businessId))
+    .orderBy(sql`CASE WHEN ${user.role} = 'OWNER' THEN 0 ELSE 1 END`, asc(user.createdAt));
 }

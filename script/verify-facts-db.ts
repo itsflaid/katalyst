@@ -53,7 +53,10 @@ async function main() {
     await db.transaction(async (tx) => {
       const biz = randomUUID();
       const biz2 = randomUUID();
-      await tx.insert(business).values([{ id: biz, name: 'Fixture Facts' }, { id: biz2, name: 'Pengganggu' }]);
+      await tx.insert(business).values([
+        { id: biz, name: 'Fixture Facts' },
+        { id: biz2, name: 'Pengganggu' }
+      ]);
       const [A, B, C, X] = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
       await tx.insert(product).values([
         { id: A, businessId: biz, name: 'A', costPrice: 6000, sellingPrice: 10000, stock: 1000 },
@@ -67,31 +70,76 @@ async function main() {
       const t1 = randomUUID();
       await tx.insert(transaction).values({ id: t1, businessId: biz, createdAt: new Date('2026-09-29T16:30:00Z') });
       await tx.insert(transactionItem).values([
-        { id: randomUUID(), transactionId: t1, productId: A, quantity: 8, priceAtSale: 10000, costAtSale: 6000, discountedQty: 5, discountAmount: 7500 },
+        {
+          id: randomUUID(),
+          transactionId: t1,
+          productId: A,
+          quantity: 8,
+          priceAtSale: 10000,
+          costAtSale: 6000,
+          discountedQty: 5,
+          discountAmount: 7500
+        },
         { id: randomUUID(), transactionId: t1, productId: B, quantity: 2, priceAtSale: 20000, costAtSale: 12000, discountedQty: 0, discountAmount: 0 }
       ]);
       const t2 = randomUUID();
       await tx.insert(transaction).values({ id: t2, businessId: biz, createdAt: new Date('2026-09-10T10:00:00Z') });
       await tx.insert(transactionItem).values([
         { id: randomUUID(), transactionId: t2, productId: A, quantity: 3, priceAtSale: 10000, costAtSale: 6000, discountedQty: 0, discountAmount: 0 },
-        { id: randomUUID(), transactionId: t2, productId: C, quantity: 4, priceAtSale: 5000, costAtSale: 3000, discountedQty: 4, discountAmount: 4000 }
+        {
+          id: randomUUID(),
+          transactionId: t2,
+          productId: C,
+          quantity: 4,
+          priceAtSale: 5000,
+          costAtSale: 3000,
+          discountedQty: 4,
+          discountAmount: 4000
+        }
       ]);
       // T3/T4: mengapit tengah malam WITA (23:59 14 Sep / 00:01 15 Sep).
       const t3 = randomUUID();
       await tx.insert(transaction).values({ id: t3, businessId: biz, createdAt: new Date('2026-09-14T15:59:00Z') });
       await tx.insert(transactionItem).values([
-        { id: randomUUID(), transactionId: t3, productId: B, quantity: 1, priceAtSale: 20000, costAtSale: 12000, discountedQty: 1, discountAmount: 2000 }
+        {
+          id: randomUUID(),
+          transactionId: t3,
+          productId: B,
+          quantity: 1,
+          priceAtSale: 20000,
+          costAtSale: 12000,
+          discountedQty: 1,
+          discountAmount: 2000
+        }
       ]);
       const t4 = randomUUID();
       await tx.insert(transaction).values({ id: t4, businessId: biz, createdAt: new Date('2026-09-14T16:01:00Z') });
       await tx.insert(transactionItem).values([
-        { id: randomUUID(), transactionId: t4, productId: A, quantity: 1, priceAtSale: 10000, costAtSale: 6000, discountedQty: 0, discountAmount: 0 }
+        {
+          id: randomUUID(),
+          transactionId: t4,
+          productId: A,
+          quantity: 1,
+          priceAtSale: 10000,
+          costAtSale: 6000,
+          discountedQty: 0,
+          discountAmount: 0
+        }
       ]);
       // Bisnis pengganggu.
       const tg = randomUUID();
       await tx.insert(transaction).values({ id: tg, businessId: biz2, createdAt: new Date('2026-09-10T10:00:00Z') });
       await tx.insert(transactionItem).values([
-        { id: randomUUID(), transactionId: tg, productId: X, quantity: 100, priceAtSale: 2000, costAtSale: 1000, discountedQty: 0, discountAmount: 0 }
+        {
+          id: randomUUID(),
+          transactionId: tg,
+          productId: X,
+          quantity: 100,
+          priceAtSale: 2000,
+          costAtSale: 1000,
+          discountedQty: 0,
+          discountAmount: 0
+        }
       ]);
 
       const raw: RawRow[] = (
@@ -171,8 +219,11 @@ async function main() {
       {
         const byProduct = await queryFactsByProduct(tx, biz, { from: null, to: null });
         const jsCount = (pid: string) => new Set(raw.filter((r) => r.productId === pid).map((r) => r.txId)).size;
-        ok('txCount A=3 B=2 C=1', byProduct.get(A)!.txCount === 3 && byProduct.get(B)!.txCount === 2 && byProduct.get(C)!.txCount === 1,
-          `A=${byProduct.get(A)!.txCount} B=${byProduct.get(B)!.txCount} C=${byProduct.get(C)!.txCount} js=${jsCount(A)},${jsCount(B)},${jsCount(C)}`);
+        ok(
+          'txCount A=3 B=2 C=1',
+          byProduct.get(A)!.txCount === 3 && byProduct.get(B)!.txCount === 2 && byProduct.get(C)!.txCount === 1,
+          `A=${byProduct.get(A)!.txCount} B=${byProduct.get(B)!.txCount} C=${byProduct.get(C)!.txCount} js=${jsCount(A)},${jsCount(B)},${jsCount(C)}`
+        );
         const byDay = await queryFactsByDay(tx, biz, { from: null, to: null }, 'Asia/Makassar');
         const sumTx = [...byDay.values()].reduce((s, r) => s + r.txCount, 0);
         const distinct = new Set(raw.map((r) => r.txId)).size;

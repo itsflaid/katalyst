@@ -19,7 +19,14 @@ function ok(label: string, cond: boolean, detail = '') {
 }
 
 async function main() {
-  ok('limit tak valid memakai 40', dailyLimitFrom(undefined) === 40 && dailyLimitFrom('asal') === 40 && dailyLimitFrom('0') === 40 && dailyLimitFrom('-5') === 40 && dailyLimitFrom('25') === 25);
+  ok(
+    'limit tak valid memakai 40',
+    dailyLimitFrom(undefined) === 40 &&
+      dailyLimitFrom('asal') === 40 &&
+      dailyLimitFrom('0') === 40 &&
+      dailyLimitFrom('-5') === 40 &&
+      dailyLimitFrom('25') === 25
+  );
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL belum di-set.');
   const client = postgres(process.env.DATABASE_URL);
   const db = drizzle(client, { schema });
@@ -29,7 +36,10 @@ async function main() {
       const now = new Date('2026-10-07T00:00:00Z');
       const biz = randomUUID();
       const other = randomUUID();
-      await tx.insert(business).values([{ id: biz, name: 'Batas' }, { id: other, name: 'Lain' }]);
+      await tx.insert(business).values([
+        { id: biz, name: 'Batas' },
+        { id: other, name: 'Lain' }
+      ]);
       const conv = randomUUID();
       await tx.insert(copilotConversation).values({ id: conv, businessId: biz, title: 'Uji' });
       const minute = 60_000;
