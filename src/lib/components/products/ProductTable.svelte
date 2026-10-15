@@ -5,6 +5,7 @@
   import StockBadge from '$lib/components/products/StockBadge.svelte';
   import ActiveToggle from '$lib/components/products/ActiveToggle.svelte';
   import RowActions from '$lib/components/products/RowActions.svelte';
+  import { fmtRupiah } from '$lib/shared/format';
 
   type Product = {
     id: string;
@@ -23,13 +24,6 @@
   export let onEdit: (p: { id: string; name: string; costPrice: number; sellingPrice: number; isActive: boolean; minStock?: number | null }) => void;
   export let onDelete: (p: { id: string; name: string }) => void;
 
-  const idr = (n: number) =>
-    new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      maximumFractionDigits: 0
-    }).format(n);
-
   const marginOf = (p: { costPrice: number; sellingPrice: number }) =>
     p.sellingPrice > 0 ? Math.round(((p.sellingPrice - p.costPrice) / p.sellingPrice) * 100) : null;
   const marginTone = (m: number | null) => (m === null ? 'neutral' : m >= 30 ? 'positive' : 'warning');
@@ -42,8 +36,8 @@
       <td class="px-3 py-2 text-ink font-semibold whitespace-nowrap"
         ><a href={`/products/${p.id}`} class="text-ink-navy hover:underline">{p.name}</a></td
       >
-      <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{idr(p.costPrice)}</td>
-      <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(p.sellingPrice)}</td>
+      <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{fmtRupiah(p.costPrice)}</td>
+      <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{fmtRupiah(p.sellingPrice)}</td>
       <td class="px-3 py-2">
         <Badge size="sm" tone={marginTone(m)}>{m === null ? '-' : `${m}%`}</Badge>
       </td>

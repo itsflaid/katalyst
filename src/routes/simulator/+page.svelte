@@ -9,7 +9,7 @@
   import StatCard from '$lib/components/statistics/StatCard.svelte';
   import StatFilterBar from '$lib/components/statistics/StatFilterBar.svelte';
   import { goto } from '$app/navigation';
-  import { fmtQty } from '$lib/shared/format';
+  import { fmtInt, fmtPercent, fmtQty, fmtRupiah } from '$lib/shared/format';
   import { assessScenario, sanitizeLevers, simulate, type ScenarioCode } from '$lib/analytics/simulation';
   import { ZERO_FACTS, zakatImpactOf } from '$lib/analytics';
   export let data;
@@ -21,11 +21,6 @@
     desc: string;
   }
 
-  // Formatter dibuat sekali di level modul: Intl.NumberFormat dipanggil puluhan kali tiap render + tiap geser slider.
-  const idrFmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
-  const numFmt = new Intl.NumberFormat('id-ID');
-  const idr = (n: number) => idrFmt.format(n);
-  const num = (n: number) => numFmt.format(n);
   const fmtDeltaPct = (v: number | null) => (v === null ? 'dari nol' : `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`);
   const fmtPoin = (v: number) => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)} pp`;
   const toneOf = (v: number | null) => (v === null ? 'neutral' : v >= 0 ? 'positive' : 'negative') as BadgeTone;
@@ -146,11 +141,7 @@
           : '';
   $: maxDrop = result.maxVolumeDrop;
   $: maxDropText =
-    maxDrop === null
-      ? '-'
-      : maxDrop >= 0
-        ? `${(maxDrop * 100).toFixed(1).replace('.', ',')}% dari ${num(result.qty.baseline)} unit`
-        : `harus naik ${(-maxDrop * 100).toFixed(1).replace('.', ',')}%`;
+    maxDrop === null ? '-' : maxDrop >= 0 ? `${fmtPercent(maxDrop)} dari ${fmtInt(result.qty.baseline)} unit` : `harus naik ${fmtPercent(-maxDrop)}`;
 
   // Teks verdict per kode; angkaQty/harga persenan hanya untuk tampil.
   function verdictText(
@@ -169,11 +160,14 @@
       case 'NO_VOLUME':
         return { title: 'Belum ada volume', desc: 'Isi override quantity atau pastikan produk punya histori penjualan.' };
       case 'DEMAND_COLLAPSE':
-        return { title: 'Pembeli diperkirakan hilang', desc: `Pada harga ${idr(v.effPrice)}, model memperkirakan hampir tidak ada yang membeli.` };
+        return {
+          title: 'Pembeli diperkirakan hilang',
+          desc: `Pada harga ${fmtRupiah(v.effPrice)}, model memperkirakan hampir tidak ada yang membeli.`
+        };
       case 'UNIT_LOSS':
         return {
           title: 'Tiap unit merugi',
-          desc: `Harga efektif ${idr(v.effPrice)} di bawah modal ${idr(v.costValue)}. Skenario ini rugi di setiap unit.`
+          desc: `Harga efektif ${fmtRupiah(v.effPrice)} di bawah modal ${fmtRupiah(v.costValue)}. Skenario ini rugi di setiap unit.`
         };
       case 'LOSS':
         return {
@@ -183,12 +177,12 @@
       case 'OUT_OF_RANGE':
         return {
           title: 'Di luar jangkauan data',
-          desc: `Harga ${idr(v.priceValue)} berubah ${v.pricePct >= 0 ? '+' : ''}${v.pricePct.toFixed(0)}% dari harga sekarang, jauh di luar yang bisa diprediksi dari histori. Anggap hasilnya spekulatif dan uji dulu dengan kenaikan bertahap.`
+          desc: `Harga ${fmtRupiah(v.priceValue)} berubah ${v.pricePct >= 0 ? '+' : ''}${v.pricePct.toFixed(0)}% dari harga sekarang, jauh di luar yang bisa diprediksi dari histori. Anggap hasilnya spekulatif dan uji dulu dengan kenaikan bertahap.`
         };
       case 'PROFITABLE':
         return {
           title: 'Skenario menguntungkan',
-          desc: `Profit ${fmtDeltaPct(v.profitDelta)} dibanding kondisi sekarang dengan margin terjaga di ${(v.margin * 100).toFixed(1)}%.`
+          desc: `Profit ${fmtDeltaPct(v.profitDelta)} dibanding kondisi sekarang dengan margin terjaga di ${fmtPercent(v.margin)}.`
         };
       case 'NEUTRAL':
         return {
@@ -244,12 +238,12 @@
     ...(result.demand.capped ? ['Kenaikan volume dibatasi 3× dari baseline (batas serap pasar).'] : []),
     ...(result.flags.includes('QUOTA_DEMAND_IGNORED') ? ['Diskon berkuota: respons volume dari diskon tidak dihitung.'] : []),
     ...(result.outOfRange ? ['Harga skenario di luar ±30% dari harga sekarang; hasil spekulatif.'] : []),
-    ...(base.txCount > 0 ? [`Baseline dari ${num(base.txCount)} transaksi tercatat.`] : []),
+    ...(base.txCount > 0 ? [`Baseline dari ${fmtInt(base.txCount)} transaksi tercatat.`] : []),
     'Dampak zakat dihitung dari selisih profit produk ini pada rentang baseline, dengan asumsi selisih tersebut tertahan sebagai kas atau stok sampai haul; kas, piutang, dan utang diambil dari halaman Zakat.'
   ];
   $: driftNote =
     result.flags.includes('DRIFT_PRICE') || result.flags.includes('DRIFT_COST')
-      ? `Catatan netral: harga rata-rata terjual periode ini ${idr(result.actual.avgGrossPrice)} (modal ${idr(result.actual.avgCost)}), harga sekarang ${idr(sellBase)} (modal ${idr(costBase)}). Selisihnya bukan efek tuas.`
+      ? `Catatan netral: harga rata-rata terjual periode ini ${fmtRupiah(result.actual.avgGrossPrice)} (modal ${fmtRupiah(result.actual.avgCost)}), harga sekarang ${fmtRupiah(sellBase)} (modal ${fmtRupiah(costBase)}). Selisihnya bukan efek tuas.`
       : null;
 
   // Lebar bar perbandingan (relatif ke nilai terbesar, min 2% biar kelihatan).
@@ -407,11 +401,11 @@
         <div class="grid grid-cols-2 gap-2 mt-3">
           <div class="rounded border border-border-cool px-2.5 py-2">
             <p class="text-label-sm uppercase text-muted">Jual · Modal</p>
-            <p class="text-num-cell text-ink tabular">{idr(sellBase)} · {idr(costBase)}</p>
+            <p class="text-num-cell text-ink tabular">{fmtRupiah(sellBase)} · {fmtRupiah(costBase)}</p>
           </div>
           <div class="rounded border border-border-cool px-2.5 py-2">
             <p class="text-label-sm uppercase text-muted">Histori</p>
-            <p class="text-num-cell text-ink tabular">{num(histQty)} unit · {num(base.txCount)} trx</p>
+            <p class="text-num-cell text-ink tabular">{fmtInt(histQty)} unit · {fmtInt(base.txCount)} trx</p>
           </div>
         </div>
       </Card>
@@ -518,7 +512,7 @@
               <button type="button" on:click={backToHist} class="text-body-sm font-semibold text-muted hover:text-ink mt-1">Kembali ke histori</button
               >
             {/if}
-            <p class="text-body-sm text-muted mt-1">Harga efektif: <strong class="text-ink tabular">{idr(effPrice)}</strong></p>
+            <p class="text-body-sm text-muted mt-1">Harga efektif: <strong class="text-ink tabular">{fmtRupiah(effPrice)}</strong></p>
           </div>
 
           <!-- Modal -->
@@ -575,7 +569,7 @@
         </div>
 
         <div class="rounded bg-status-neutral-bg border border-status-neutral-border px-3 py-2 mt-4 text-body-sm text-muted">
-          Laba/unit: <strong class="tabular {unitProfit >= 0 ? 'text-status-positive' : 'text-status-negative'}">{idr(unitProfit)}</strong>
+          Laba/unit: <strong class="tabular {unitProfit >= 0 ? 'text-status-positive' : 'text-status-negative'}">{fmtRupiah(unitProfit)}</strong>
           · Qty simulasi: <strong class="text-ink tabular">{fmtQty(simQty)}</strong>
         </div>
       </Card>
@@ -596,17 +590,21 @@
           <div class="min-w-0">
             <p class="text-label-sm uppercase text-white/50">Revenue</p>
             <p class="text-num-display text-white tabular break-words">{fmtDeltaPct(revDelta)}</p>
-            <p class="text-body-sm text-white/60 tabular break-words [overflow-wrap:anywhere]">{idr(sqRev)} → {idr(result.simulated.revenue)}</p>
+            <p class="text-body-sm text-white/60 tabular break-words [overflow-wrap:anywhere]">
+              {fmtRupiah(sqRev)} → {fmtRupiah(result.simulated.revenue)}
+            </p>
           </div>
           <div class="min-w-0">
             <p class="text-label-sm uppercase text-white/50">Profit</p>
             <p class="text-num-display text-white tabular break-words">{fmtDeltaPct(profitDelta)}</p>
-            <p class="text-body-sm text-white/60 tabular break-words [overflow-wrap:anywhere]">{idr(sqProfit)} → {idr(result.simulated.profit)}</p>
+            <p class="text-body-sm text-white/60 tabular break-words [overflow-wrap:anywhere]">
+              {fmtRupiah(sqProfit)} → {fmtRupiah(result.simulated.profit)}
+            </p>
           </div>
           <div class="min-w-0">
             <p class="text-label-sm uppercase text-white/50">Margin simulasi</p>
-            <p class="text-num-display text-white tabular">{(result.simulated.margin * 100).toFixed(1)}%</p>
-            <p class="text-body-sm text-white/60 tabular">{fmtPoin(marginPts)} dari {(sqMargin * 100).toFixed(1)}%</p>
+            <p class="text-num-display text-white tabular">{fmtPercent(result.simulated.margin)}</p>
+            <p class="text-body-sm text-white/60 tabular">{fmtPoin(marginPts)} dari {fmtPercent(sqMargin)}</p>
           </div>
         </div>
       </div>
@@ -617,7 +615,7 @@
             <Button on:click={goToDiscount}>Jadikan diskon {Math.round(discountPct)}%</Button>
             <p class="text-body-sm text-muted mt-2">
               Membuka draf diskon produk {prod.name} sebesar {Math.round(discountPct)}%{simQty > 0
-                ? ` dengan saran kuota ${num(Math.round(simQty))} unit`
+                ? ` dengan saran kuota ${fmtInt(Math.round(simQty))} unit`
                 : ''}.
             </p>
           {:else}
@@ -648,23 +646,23 @@
             <tbody class="tabular">
               <tr class="border-t border-border-cool">
                 <td class="py-1.5 pr-3 text-muted">Aktual (periode)</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{idr(result.actual.revenue)}</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{idr(result.actual.profit)}</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{(result.actual.margin * 100).toFixed(1)}%</td>
-                <td class="py-1.5 text-right text-ink">{num(result.qty.baseline)}</td>
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtRupiah(result.actual.revenue)}</td>
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtRupiah(result.actual.profit)}</td>
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtPercent(result.actual.margin)}</td>
+                <td class="py-1.5 text-right text-ink">{fmtInt(result.qty.baseline)}</td>
               </tr>
               <tr class="border-t border-border-cool">
                 <td class="py-1.5 pr-3 text-muted">Kondisi sekarang</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{idr(sqRev)}</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{idr(sqProfit)}</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{(sqMargin * 100).toFixed(1)}%</td>
-                <td class="py-1.5 text-right text-ink">{num(result.qty.baseline)}</td>
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtRupiah(sqRev)}</td>
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtRupiah(sqProfit)}</td>
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtPercent(sqMargin)}</td>
+                <td class="py-1.5 text-right text-ink">{fmtInt(result.qty.baseline)}</td>
               </tr>
               <tr class="border-t border-border-cool font-semibold">
                 <td class="py-1.5 pr-3 text-ink">Simulasi</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{idr(result.simulated.revenue)}</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{idr(result.simulated.profit)}</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{(result.simulated.margin * 100).toFixed(1)}%</td>
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtRupiah(result.simulated.revenue)}</td>
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtRupiah(result.simulated.profit)}</td>
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtPercent(result.simulated.margin)}</td>
                 <td class="py-1.5 text-right text-ink">{fmtQty(simQty)}</td>
               </tr>
             </tbody>
@@ -679,8 +677,8 @@
               <span class="text-label-sm uppercase text-muted">Revenue</span>
               <Badge size="sm" tone={toneOf(revDelta)}>{fmtDeltaPct(revDelta)}</Badge>
             </div>
-            <p class="text-lg font-bold text-ink tabular break-words [overflow-wrap:anywhere]">{idr(result.simulated.revenue)}</p>
-            <p class="text-body-sm text-muted tabular mb-2 break-words [overflow-wrap:anywhere]">dari {idr(sqRev)}</p>
+            <p class="text-lg font-bold text-ink tabular break-words [overflow-wrap:anywhere]">{fmtRupiah(result.simulated.revenue)}</p>
+            <p class="text-body-sm text-muted tabular mb-2 break-words [overflow-wrap:anywhere]">dari {fmtRupiah(sqRev)}</p>
             <div class="relative h-2 rounded-full bg-border-cool" role="img" aria-label="Revenue simulasi dibanding kondisi sekarang">
               <div
                 class="absolute inset-y-0 left-0 rounded-full bg-ink-navy transition-[width]"
@@ -689,7 +687,7 @@
               <div
                 class="absolute top-1/2 h-3.5 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded bg-white ring-2 ring-slate-400"
                 style="left: {w(sqRev, maxRev)}"
-                title="Sekarang: {idr(sqRev)}"
+                title="Sekarang: {fmtRupiah(sqRev)}"
               ></div>
             </div>
           </div>
@@ -698,8 +696,8 @@
               <span class="text-label-sm uppercase text-muted">Profit</span>
               <Badge size="sm" tone={toneOf(profitDelta)}>{fmtDeltaPct(profitDelta)}</Badge>
             </div>
-            <p class="text-lg font-bold text-ink tabular break-words [overflow-wrap:anywhere]">{idr(result.simulated.profit)}</p>
-            <p class="text-body-sm text-muted tabular mb-2 break-words [overflow-wrap:anywhere]">dari {idr(sqProfit)}</p>
+            <p class="text-lg font-bold text-ink tabular break-words [overflow-wrap:anywhere]">{fmtRupiah(result.simulated.profit)}</p>
+            <p class="text-body-sm text-muted tabular mb-2 break-words [overflow-wrap:anywhere]">dari {fmtRupiah(sqProfit)}</p>
             <div class="relative h-2 rounded-full bg-border-cool" role="img" aria-label="Profit simulasi dibanding kondisi sekarang">
               <div
                 class="absolute inset-y-0 left-0 rounded-full bg-status-positive transition-[width]"
@@ -708,7 +706,7 @@
               <div
                 class="absolute top-1/2 h-3.5 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded bg-white ring-2 ring-slate-400"
                 style="left: {w(Math.max(0, sqProfit), maxProfit)}"
-                title="Sekarang: {idr(sqProfit)}"
+                title="Sekarang: {fmtRupiah(sqProfit)}"
               ></div>
             </div>
           </div>
@@ -717,8 +715,8 @@
               <span class="text-label-sm uppercase text-muted">Margin</span>
               <Badge size="sm" tone={marginPts >= 0 ? 'positive' : 'negative'}>{fmtPoin(marginPts)}</Badge>
             </div>
-            <p class="text-lg font-bold text-ink tabular break-words">{(result.simulated.margin * 100).toFixed(1)}%</p>
-            <p class="text-body-sm text-muted tabular mb-2 break-words">dari {(sqMargin * 100).toFixed(1)}%</p>
+            <p class="text-lg font-bold text-ink tabular break-words">{fmtPercent(result.simulated.margin)}</p>
+            <p class="text-body-sm text-muted tabular mb-2 break-words">dari {fmtPercent(sqMargin)}</p>
             <div class="relative h-2 rounded-full bg-border-cool" role="img" aria-label="Margin simulasi dibanding kondisi sekarang">
               <div
                 class="absolute inset-y-0 left-0 rounded-full bg-ink-navy transition-[width]"
@@ -727,7 +725,7 @@
               <div
                 class="absolute top-1/2 h-3.5 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded bg-white ring-2 ring-slate-400"
                 style="left: {w(sqMargin * 100, Math.max(sqMargin, result.simulated.margin, 0.01) * 100)}"
-                title="Sekarang: {(sqMargin * 100).toFixed(1)}%"
+                title="Sekarang: {fmtPercent(sqMargin)}"
               ></div>
             </div>
           </div>
@@ -737,13 +735,13 @@
               <Badge size="sm" tone={toneOf(volDelta)}>{fmtDeltaPct(volDelta)}</Badge>
             </div>
             <p class="text-lg font-bold text-ink tabular break-words">{fmtQty(simQty)} unit</p>
-            <p class="text-body-sm text-muted tabular mb-2 break-words">dari {num(histQty)} unit</p>
+            <p class="text-body-sm text-muted tabular mb-2 break-words">dari {fmtInt(histQty)} unit</p>
             <div class="relative h-2 rounded-full bg-border-cool" role="img" aria-label="Unit simulasi dibanding kondisi sekarang">
               <div class="absolute inset-y-0 left-0 rounded-full bg-ink-navy transition-[width]" style="width: {w(simQty, maxQty)}"></div>
               <div
                 class="absolute top-1/2 h-3.5 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded bg-white ring-2 ring-slate-400"
                 style="left: {w(histQty, maxQty)}"
-                title="Sekarang: {num(histQty)} unit"
+                title="Sekarang: {fmtInt(histQty)} unit"
               ></div>
             </div>
           </div>
@@ -762,7 +760,7 @@
           <dl class="flex flex-col gap-2 text-body-md">
             <div class="flex justify-between">
               <dt class="text-muted">Laba / unit simulasi</dt>
-              <dd class="tabular font-semibold {unitProfit >= 0 ? 'text-status-positive' : 'text-status-negative'}">{idr(unitProfit)}</dd>
+              <dd class="tabular font-semibold {unitProfit >= 0 ? 'text-status-positive' : 'text-status-negative'}">{fmtRupiah(unitProfit)}</dd>
             </div>
             <div class="flex justify-between">
               <dt class="text-muted">Qty simulasi</dt>
@@ -771,7 +769,7 @@
             <div class="flex justify-between">
               <dt class="text-muted">Qty impas (profit = kondisi sekarang)</dt>
               <dd class="tabular text-ink font-semibold">
-                {breakEvenQty === null ? 'Tidak impas' : breakEvenQty === 0 ? '-' : `${num(breakEvenQty)} unit`}
+                {breakEvenQty === null ? 'Tidak impas' : breakEvenQty === 0 ? '-' : `${fmtInt(breakEvenQty)} unit`}
               </dd>
             </div>
             <div class="flex justify-between">
@@ -786,8 +784,8 @@
               <dt class="text-muted">Harga paling untung dalam rentang</dt>
               <dd class="tabular text-right text-ink">
                 {#if result.peak}
-                  <span class="font-semibold">{idr(result.peak.price)}</span>
-                  <span class="block text-body-sm text-muted">profit {idr(result.peak.profit)}</span>
+                  <span class="font-semibold">{fmtRupiah(result.peak.price)}</span>
+                  <span class="block text-body-sm text-muted">profit {fmtRupiah(result.peak.profit)}</span>
                 {:else}
                   <span class="font-semibold">-</span>
                   {#if peakEmptyReason}<span class="block text-body-sm text-muted">{peakEmptyReason}</span>{/if}
@@ -823,16 +821,16 @@
           <dl class="flex flex-col gap-2 text-body-md">
             <div class="flex justify-between">
               <dt class="text-muted">Zakat sekarang</dt>
-              <dd class="tabular text-ink">{zakatBeforeUncertain ? '~' : ''}{idr(zakatImpact.before.amount)}</dd>
+              <dd class="tabular text-ink">{zakatBeforeUncertain ? '~' : ''}{fmtRupiah(zakatImpact.before.amount)}</dd>
             </div>
             <div class="flex justify-between">
               <dt class="text-muted">Zakat simulasi</dt>
-              <dd class="tabular text-ink">{zakatAfterUncertain ? '~' : ''}{idr(zakatImpact.after.amount)}</dd>
+              <dd class="tabular text-ink">{zakatAfterUncertain ? '~' : ''}{fmtRupiah(zakatImpact.after.amount)}</dd>
             </div>
             <div class="flex justify-between">
               <dt class="text-muted">Selisih</dt>
               <dd class="tabular font-semibold {zakatImpact.deltaAmount >= 0 ? 'text-status-positive' : 'text-status-negative'}">
-                {zakatImpact.deltaAmount >= 0 ? '+' : ''}{idr(zakatImpact.deltaAmount)}
+                {zakatImpact.deltaAmount >= 0 ? '+' : ''}{fmtRupiah(zakatImpact.deltaAmount)}
               </dd>
             </div>
           </dl>

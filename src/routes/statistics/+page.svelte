@@ -14,12 +14,8 @@
   import { ShoppingCart } from 'lucide-svelte';
   import type { PeriodKey } from '$lib/shared/period';
   import { goto } from '$app/navigation';
+  import { fmtInt, fmtPercent, fmtRupiah } from '$lib/shared/format';
   export let data;
-
-  const idrFmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
-  const numFmt = new Intl.NumberFormat('id-ID');
-  const idr = (n: number) => idrFmt.format(n);
-  const num = (n: number) => numFmt.format(n);
   const deltaTone = (d: number | null) => (d === null || d >= 0 ? 'positive' : 'negative');
   const fmtDelta = (d: number | null) => (d === null ? 'baru' : `${d >= 0 ? '+' : ''}${d.toFixed(1)}%`);
   const fmtShort = (v: number) => (v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)} jt` : v >= 1_000 ? `${Math.round(v / 1_000)} rb` : `${v}`);
@@ -143,14 +139,14 @@
     <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
       <p class="text-label-md uppercase text-white mb-1 truncate">Rata-rata struk</p>
       <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words [overflow-wrap:anywhere]">
-        {idr(Math.round(data.highlights.avgTicket))}
+        {fmtRupiah(Math.round(data.highlights.avgTicket))}
       </p>
       <Badge tone={deltaTone(data.highlights.avgTicketDelta)}>{fmtDelta(data.highlights.avgTicketDelta)}</Badge>
     </StatCard>
     <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
       <p class="text-label-md uppercase text-white mb-1 truncate">Hari tersibuk</p>
       <p class="text-[15px] leading-5 font-bold sm:text-num-display text-white tabular mb-1.5 break-words">{data.highlights.bestDayLabel}</p>
-      <p class="text-body-sm text-white/70 tabular break-words [overflow-wrap:anywhere]">{idr(data.highlights.bestDayRevenue)}</p>
+      <p class="text-body-sm text-white/70 tabular break-words [overflow-wrap:anywhere]">{fmtRupiah(data.highlights.bestDayRevenue)}</p>
     </StatCard>
     <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
       <p class="text-label-md uppercase text-white mb-1 truncate">Margin tertinggi</p>
@@ -158,7 +154,7 @@
         {data.highlights.topMargin ? data.highlights.topMargin.name : '-'}
       </p>
       {#if data.highlights.topMargin}
-        <p class="text-body-sm tabular break-words"><Badge tone="positive">{`${(data.highlights.topMargin.margin * 100).toFixed(1)}%`}</Badge></p>
+        <p class="text-body-sm tabular break-words"><Badge tone="positive">{fmtPercent(data.highlights.topMargin.margin)}</Badge></p>
       {/if}
     </StatCard>
     <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
@@ -167,7 +163,7 @@
         {data.highlights.lowMargin ? data.highlights.lowMargin.name : '-'}
       </p>
       {#if data.highlights.lowMargin}
-        <p class="text-body-sm tabular break-words"><Badge tone="warning">{`${(data.highlights.lowMargin.margin * 100).toFixed(1)}%`}</Badge></p>
+        <p class="text-body-sm tabular break-words"><Badge tone="warning">{fmtPercent(data.highlights.lowMargin.margin)}</Badge></p>
       {/if}
     </StatCard>
   </div>
@@ -306,9 +302,9 @@
                     {c.label}
                   {/if}
                 </td>
-                <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{num(c.tx)}×</td>
-                <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(c.revenue)}</td>
-                <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{idr(Math.round(c.avg))}</td>
+                <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{fmtInt(c.tx)}×</td>
+                <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{fmtRupiah(c.revenue)}</td>
+                <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{fmtRupiah(Math.round(c.avg))}</td>
               </tr>
             {/each}
           </Table>
@@ -322,28 +318,28 @@
     <StatCard class="min-w-0 overflow-hidden text-center">
       <p class="text-label-md uppercase text-ink-navy mb-1">Nilai stok</p>
       <p class="text-num-display lg:text-[60px] font-bold leading-none text-ink-navy tabular break-words [overflow-wrap:anywhere]">
-        {idr(data.inventory.stockValue)}
+        {fmtRupiah(data.inventory.stockValue)}
       </p>
     </StatCard>
     <StatCard tone="navy" class="min-w-0 overflow-hidden text-center">
       <p class="text-label-md uppercase text-white mb-1">Habis</p>
-      <p class="text-num-display lg:text-[72px] font-bold leading-none text-white tabular">{num(data.inventory.outCount)}</p>
+      <p class="text-num-display lg:text-[72px] font-bold leading-none text-white tabular">{fmtInt(data.inventory.outCount)}</p>
       <p class="text-body-sm text-white/70 mt-1">Produk dengan Stok 0</p>
     </StatCard>
     <StatCard tone="navy" class="min-w-0 overflow-hidden text-center">
       <p class="text-label-md uppercase text-white mb-1">Perlu restock</p>
-      <p class="text-num-display lg:text-[72px] font-bold leading-none text-white tabular">{num(data.inventory.restockCount)}</p>
+      <p class="text-num-display lg:text-[72px] font-bold leading-none text-white tabular">{fmtInt(data.inventory.restockCount)}</p>
       <p class="text-body-sm text-white/70 mt-1">Stok di bawah Batas Minimum</p>
     </StatCard>
     <StatCard tone="navy" class="min-w-0 overflow-hidden text-center">
       <p class="text-label-md uppercase text-white mb-1">Stok mati</p>
-      <p class="text-num-display lg:text-[72px] font-bold leading-none text-white tabular">{num(data.inventory.deadCount)}</p>
-      <p class="text-body-sm text-white/70 tabular break-words [overflow-wrap:anywhere] mt-1">Modal Tertahan {idr(data.inventory.deadValue)}</p>
+      <p class="text-num-display lg:text-[72px] font-bold leading-none text-white tabular">{fmtInt(data.inventory.deadCount)}</p>
+      <p class="text-body-sm text-white/70 tabular break-words [overflow-wrap:anywhere] mt-1">Modal Tertahan {fmtRupiah(data.inventory.deadValue)}</p>
     </StatCard>
   </div>
   {#if data.inventory.inactiveStock.count > 0}
     <p class="text-body-sm text-muted mb-4">
-      Stok di produk nonaktif: {idr(data.inventory.inactiveStock.value)} ({num(data.inventory.inactiveStock.count)} produk)
+      Stok di produk nonaktif: {fmtRupiah(data.inventory.inactiveStock.value)} ({fmtInt(data.inventory.inactiveStock.count)} produk)
     </p>
   {/if}
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
@@ -382,8 +378,8 @@
           {#each data.inventory.deadList as p}
             <tr>
               <td class="px-3 py-2 text-ink font-semibold whitespace-nowrap">{p.name}</td>
-              <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{num(p.stock)}</td>
-              <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(p.value)}</td>
+              <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{fmtInt(p.stock)}</td>
+              <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{fmtRupiah(p.value)}</td>
             </tr>
           {/each}
         </Table>
@@ -409,7 +405,7 @@
         yFormat={(v) => `${v} unit`}
       />
       <p class="text-body-sm text-muted mt-3">
-        Susut (koreksi negatif): {num(data.movement.susut.units)} unit · ≈ {idr(data.movement.susut.value)} pakai harga modal saat ini.
+        Susut (koreksi negatif): {fmtInt(data.movement.susut.units)} unit · ≈ {fmtRupiah(data.movement.susut.value)} pakai harga modal saat ini.
       </p>
     {:else}
       <p class="text-body-md text-muted">Belum ada pergerakan stok pada periode ini.</p>
@@ -431,10 +427,10 @@
         {#each data.rows as r}
           <tr>
             <td class="px-3 py-2 text-ink font-semibold whitespace-nowrap">{r.name}</td>
-            <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{num(r.current.quantitySold)}×</td>
-            <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(r.current.revenue)}</td>
-            <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(r.current.profit)}</td>
-            <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{(r.current.margin * 100).toFixed(1)}%</td>
+            <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{fmtInt(r.current.quantitySold)}×</td>
+            <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{fmtRupiah(r.current.revenue)}</td>
+            <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{fmtRupiah(r.current.profit)}</td>
+            <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{fmtPercent(r.current.margin)}</td>
             <td class="px-3 py-2 whitespace-nowrap"
               ><Badge size="sm" tone={deltaTone(r.change.profitChangePercent * 100)}>{fmtDelta(r.change.profitChangePercent * 100)}</Badge></td
             >
@@ -452,7 +448,7 @@
       {#each data.lowMargin as p}
         <li class="flex items-center justify-between gap-2 rounded-[10px] bg-white px-5 py-4 text-body-md">
           <span class="text-ink">{p.name}</span>
-          <span class="tabular text-num-display text-status-warning whitespace-nowrap">{(p.margin * 100).toFixed(1)}%</span>
+          <span class="tabular text-num-display text-status-warning whitespace-nowrap">{fmtPercent(p.margin)}</span>
         </li>
       {/each}
     </ul>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import Badge from '$lib/components/ui/Badge.svelte';
   import { Package } from 'lucide-svelte';
+  import { fmtRupiah } from '$lib/shared/format';
   export let name: string;
   export let stock: number;
   export let netPrice: number;
@@ -9,11 +10,10 @@
   export let status: 'normal' | 'menipis' | 'habis' = 'normal';
   export let inCart = 0;
   export let maxed = false;
-  const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
   // Produk di keranjang memakai ikon dan badge navy biar status terpilih kebaca.
   $: tapped = inCart > 0 && status !== 'habis';
   $: disabled = status === 'habis' || maxed;
-  $: label = `${name}, ${idr(netPrice)}, ${status === 'habis' ? 'habis' : `sisa ${stock}`}${inCart > 0 ? `, di keranjang ${inCart}` : ''}`;
+  $: label = `${name}, ${fmtRupiah(netPrice)}, ${status === 'habis' ? 'habis' : `sisa ${stock}`}${inCart > 0 ? `, di keranjang ${inCart}` : ''}`;
 </script>
 
 <button
@@ -52,11 +52,11 @@
     <span class="line-clamp-2 text-body-md font-semibold text-ink">{name}</span>
     <span class="flex flex-wrap items-center gap-1.5">
       {#if discountPercent !== null}
-        <s class="text-body-sm tabular text-muted">{idr(grossPrice)}</s>
-        <span class="text-body-md font-bold tabular text-ink-navy">{idr(netPrice)}</span>
+        <s class="text-body-sm tabular text-muted">{fmtRupiah(grossPrice)}</s>
+        <span class="text-body-md font-bold tabular text-ink-navy">{fmtRupiah(netPrice)}</span>
         <Badge size="sm" tone={tapped ? 'navy' : 'positive'}>−{discountPercent}%</Badge>
       {:else}
-        <span class="text-body-md font-bold tabular text-ink-navy">{idr(netPrice)}</span>
+        <span class="text-body-md font-bold tabular text-ink-navy">{fmtRupiah(netPrice)}</span>
       {/if}
     </span>
   </span>

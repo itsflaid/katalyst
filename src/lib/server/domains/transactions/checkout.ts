@@ -3,16 +3,13 @@ import { activityLog, discount, product, stockMovement, transaction, transaction
 import { runBatch } from '$lib/server/db/batch';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { calculateCart, getDiscountStatus, quotaDeltas } from '$lib/shared/discount';
+import { fmtRupiah } from '$lib/shared/format';
 import { receiptTotals } from '$lib/analytics';
 import { INT4_MAX } from '$lib/server/domains/products';
 import { activityRow } from '$lib/server/domains/activity/log';
 import { getActiveProductDiscounts, getGlobalDiscount } from '$lib/server/domains/discounts';
 import type { Role } from '$lib/server/domains/auth/guards';
 import { checkViolationName } from './errors';
-
-// Format Rp ala kasir (duplikat kecil dari +page.svelte biar pesan server
-// tidak bergantung pada helper client).
-const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
 
 export interface CheckoutInput {
   businessId: string;
@@ -129,7 +126,7 @@ export async function checkoutCart(input: CheckoutInput): Promise<CheckoutResult
     }
   );
   if (cart.total !== expectedTotal) {
-    return fail(409, `Harga berubah, total sekarang ${idr(cart.total)}. Periksa keranjang lalu catat ulang.`, {
+    return fail(409, `Harga berubah, total sekarang ${fmtRupiah(cart.total)}. Periksa keranjang lalu catat ulang.`, {
       errorCode: 'PRICE_CHANGED',
       newTotal: cart.total
     });

@@ -5,6 +5,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import SlideOver from '$lib/components/ui/SlideOver.svelte';
   import { isBelowCost, resolveWindow, unitDiscount, type WindowPreset } from '$lib/shared/discount';
+  import { fmtRupiah } from '$lib/shared/format';
   import type { BizTime } from '$lib/shared/time';
   import type { DiscountRow } from '$lib/components/discounts/DiscountTable.svelte';
 
@@ -19,8 +20,6 @@
   export let form: { message?: string; code?: string; lossProducts?: { id: string; name: string }[] } | null = null;
   export let onSubmit: SubmitFunction;
   export let onClose: () => void;
-
-  const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
   const PRESETS: { value: WindowPreset; label: string }[] = [
     { value: 'TODAY', label: 'Hari ini' },
     { value: 'DAYS_2', label: '2 hari' },
@@ -156,7 +155,8 @@
         >
           <option value="">- Pilih produk -</option>
           {#each products as p}
-            <option value={p.id}>{p.name} · jual {idr(p.sellingPrice)} · modal {idr(p.costPrice)}{p.isActive ? '' : ' (nonaktif)'}</option>
+            <option value={p.id}>{p.name} · jual {fmtRupiah(p.sellingPrice)} · modal {fmtRupiah(p.costPrice)}{p.isActive ? '' : ' (nonaktif)'}</option
+            >
           {/each}
         </select>
       </label>
@@ -173,7 +173,8 @@
 
     {#if priceInfo}
       <p class="text-body-md text-ink tabular">
-        {idr(priceInfo.price)} → <strong>{idr(priceInfo.after)}</strong> <span class="text-body-sm text-muted">(modal {idr(priceInfo.cost)})</span>
+        {fmtRupiah(priceInfo.price)} → <strong>{fmtRupiah(priceInfo.after)}</strong>
+        <span class="text-body-sm text-muted">(modal {fmtRupiah(priceInfo.cost)})</span>
       </p>
     {/if}
 
