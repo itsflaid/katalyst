@@ -1,44 +1,21 @@
-import { db } from '$lib/server/db';
 import { requireOwner } from '$lib/server/domains/auth/guards';
-import { business, staffInvitation, user } from '$lib/server/db/schema';
-import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
-import { DEFAULT_TZ, isBizTz } from '$lib/shared/time';
+import { getBusinessById } from '$lib/server/domains/business';
+import { listPendingInvites, listStaff } from '$lib/server/domains/staff';
+import { DEFAULT_TZ } from '$lib/shared/time';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
-  requireOwner(locals);
-  const businessId = locals.user!.businessId as string;
-  const [b] = await db.select().from(business).where(eq(business.id, businessId));
-  // Urutan tetap: Owner selalu paling atas, di bawahnya staff dari yang terlama ke terbaru (createdAt naik). CASE eksplisit biar tidak bergantung pada urutan alfabet nilai enum.
-  const staffList = await db
-    .select({ id: user.id, name: user.name, username: user.username, role: user.role })
-    .from(user)
-    .where(eq(user.businessId, businessId))
-    .orderBy(sql`CASE WHEN ${user.role} = 'OWNER' THEN 0 ELSE 1 END`, asc(user.createdAt));
+  const { businessId, userId } = requireOwner(locals);
+  const b = await getBusinessById(businessId);
+  const staffList = await listStaff(businessId);
   // Undangan yang masih pending (belum diterima/dicabut, termasuk yang kedaluwarsa; frontend yang memberi badge + tombol kirim ulang).
-  const pendingInvites = await db
-    .select({
-      id: staffInvitation.id,
-      username: staffInvitation.username,
-      name: staffInvitation.name,
-      expiresAt: staffInvitation.expiresAt,
-      createdAt: staffInvitation.createdAt
-    })
-    .from(staffInvitation)
-    .where(
-      and(
-        eq(staffInvitation.businessId, businessId),
-        isNull(staffInvitation.acceptedAt),
-        isNull(staffInvitation.revokedAt)
-      )
-    )
-    .orderBy(desc(staffInvitation.createdAt));
+  const pendingInvites = await listPendingInvites(businessId);
 
   return {
     businessName: b?.name ?? '',
-    timezone: isBizTz(b?.timezone) ? b.timezone : DEFAULT_TZ,
+    timezone: b?.timezone ?? DEFAULT_TZ,
     staffList,
     pendingInvites: pendingInvites.map((i) => ({ ...i, expiresAt: i.expiresAt.toISOString(), createdAt: i.createdAt.toISOString() })),
-    currentUserId: locals.user!.id as string
+    currentUserId: userId
   };
 };

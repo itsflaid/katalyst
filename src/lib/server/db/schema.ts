@@ -14,9 +14,7 @@ export const business = pgTable(
     timezone: text('timezone').notNull().default('Asia/Makassar'),
     createdAt: timestamp('created_at').notNull().defaultNow()
   },
-  (t) => [
-    check('business_timezone_valid', sql`${t.timezone} in ('Asia/Jakarta','Asia/Makassar','Asia/Jayapura')`)
-  ]
+  (t) => [check('business_timezone_valid', sql`${t.timezone} in ('Asia/Jakarta','Asia/Makassar','Asia/Jayapura')`)]
 );
 
 export const user = pgTable('user', {
@@ -100,10 +98,7 @@ export const staffInvitation = pgTable(
     invitedBy: text('invited_by').references(() => user.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at').notNull().defaultNow()
   },
-  (t) => [
-    index('staff_invitation_business_created_idx').on(t.businessId, t.createdAt),
-    index('staff_invitation_token_hash_idx').on(t.tokenHash)
-  ]
+  (t) => [index('staff_invitation_business_created_idx').on(t.businessId, t.createdAt), index('staff_invitation_token_hash_idx').on(t.tokenHash)]
 );
 
 // Tabel domain utama untuk produk, diskon, transaksi, dan stok.
@@ -164,8 +159,7 @@ export const discount = pgTable(
     check('discount_window_valid', sql`${t.endsAt} is null or ${t.endsAt} > ${t.startsAt}`),
     check('discount_quota_valid', sql`${t.quota} is null or ${t.quota} > 0`),
     check('discount_quota_used_nonneg', sql`${t.quotaUsed} >= 0`),
-    check('discount_quota_not_exceeded', sql`${t.quota} is null or ${t.quotaUsed} <= ${t.quota}`),
-    check('discount_global_time_only', sql`${t.scope} = 'PRODUCT' or (${t.endsAt} is not null and ${t.quota} is null)`)
+    check('discount_quota_not_exceeded', sql`${t.quota} is null or ${t.quotaUsed} <= ${t.quota}`)
   ]
 );
 

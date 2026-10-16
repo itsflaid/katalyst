@@ -9,9 +9,8 @@
   import { page } from '$app/stores';
   import { makeTime, DEFAULT_TZ } from '$lib/shared/time';
   import { handoffUrl } from '$lib/shared/copilot-handoff';
+  import { fmtInt, fmtPercent, fmtRupiah } from '$lib/shared/format';
   export let data;
-  const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
-  const num = (n: number) => new Intl.NumberFormat('id-ID').format(n);
   $: T = makeTime(data.timezone ?? DEFAULT_TZ);
   $: fmtDate = (d: string | Date) => T.fmt(d, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -23,6 +22,9 @@
   $: kpiDeltas = data.deltas;
   const deltaTone = (d: number | null) => (d === null || d >= 0 ? 'positive' : 'negative');
   const fmtDeltaShort = (d: number | null) => (d === null ? 'baru' : `${d >= 0 ? '+' : ''}${d.toFixed(1)}%`);
+  // Tooltip + sumbu chart memakai satuan pendek yang sama (jt/rb), bukan angka mentah.
+  const fmtShort = (v: number) => (v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)} jt` : v >= 1_000 ? `${Math.round(v / 1_000)} rb` : `${v}`);
+  $: trendTick = (v: number) => `${v} ${data.trend.unitLabel.split(' ')[0]}`;
 
   $: topProductLabels = data.topByRevenue.map((p) => p.name);
   $: topProductRevenue = data.topByRevenue.map((p) => p.revenue);
@@ -36,25 +38,31 @@
 <div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4 mb-6">
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Revenue</p>
-    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words ">{idr(data.summary.revenue)}</p>
+    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{fmtRupiah(data.summary.revenue)}</p>
     <p class="text-body-sm text-muted mb-1.5">30 hari terakhir</p>
-    <Badge tone={deltaTone(kpiDeltas.revenue)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.revenue)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge>
+    <Badge tone={deltaTone(kpiDeltas.revenue)} class="text-[11px] sm:text-label-md"
+      >{fmtDeltaShort(kpiDeltas.revenue)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge
+    >
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Transaksi</p>
-    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{num(data.transactionCount)}</p>
+    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{fmtInt(data.transactionCount)}</p>
     <p class="text-body-sm text-muted mb-1.5">30 hari terakhir</p>
-    <Badge tone={deltaTone(kpiDeltas.transactions)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.transactions)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge>
+    <Badge tone={deltaTone(kpiDeltas.transactions)} class="text-[11px] sm:text-label-md"
+      >{fmtDeltaShort(kpiDeltas.transactions)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge
+    >
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Profit</p>
-    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words ">{idr(data.summary.profit)}</p>
+    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{fmtRupiah(data.summary.profit)}</p>
     <p class="text-body-sm text-muted mb-1.5">30 hari terakhir</p>
-    <Badge tone={deltaTone(kpiDeltas.profit)} class="text-[11px] sm:text-label-md">{fmtDeltaShort(kpiDeltas.profit)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge>
+    <Badge tone={deltaTone(kpiDeltas.profit)} class="text-[11px] sm:text-label-md"
+      >{fmtDeltaShort(kpiDeltas.profit)}<span class="hidden sm:inline">&nbsp;vs 30 hari lalu</span></Badge
+    >
   </Card>
   <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Margin</p>
-    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{(data.summary.margin * 100).toFixed(1)}%</p>
+    <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{fmtPercent(data.summary.margin)}</p>
     <p class="text-body-sm text-muted mb-1.5">30 hari terakhir</p>
     <Badge tone={data.summary.margin >= 0.3 ? 'positive' : 'warning'} class="text-[11px] sm:text-label-md">
       {data.summary.margin >= 0.3 ? 'Sehat' : 'Perlu perhatian'}
@@ -66,22 +74,23 @@
       entrance tiap masuk halaman. -->
 {#key $page.url.pathname}
   <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
-  <Card>
-    <h2 class="text-headline-sm text-ink mb-1">Tren Revenue & Profit</h2>
-    <p class="text-body-sm text-muted mb-3">{data.trend.unitLabel} · 30 hari terakhir</p>
-    <LineChart
-      labels={trendLabels}
-      datasets={[
-        { label: 'Revenue', data: revenueTrend, color: '#172554' },
-        { label: 'Profit', data: profitTrend, color: '#16A34A' }
-      ]}
-    />
-  </Card>
-  <Card>
-    <h2 class="text-headline-sm text-ink mb-1">Revenue per Produk (Top 5)</h2>
-    <p class="text-body-sm text-muted mb-3">30 hari terakhir</p>
-    <BarChart labels={topProductLabels} data={topProductRevenue} />
-  </Card>
+    <Card>
+      <h2 class="text-headline-sm text-ink mb-1">Tren Revenue & Profit</h2>
+      <p class="text-body-sm text-muted mb-3">{data.trend.unitLabel} · 30 hari terakhir</p>
+      <LineChart
+        labels={trendLabels}
+        datasets={[
+          { label: 'Revenue', data: revenueTrend, color: '#172554' },
+          { label: 'Profit', data: profitTrend, color: '#16A34A' }
+        ]}
+        yFormat={trendTick}
+      />
+    </Card>
+    <Card>
+      <h2 class="text-headline-sm text-ink mb-1">Revenue per Produk (Top 5)</h2>
+      <p class="text-body-sm text-muted mb-3">30 hari terakhir</p>
+      <BarChart labels={topProductLabels} data={topProductRevenue} yFormat={fmtShort} />
+    </Card>
   </div>
 {/key}
 
@@ -92,7 +101,9 @@
       <div class="flex items-center justify-between gap-3 border-b border-white bg-ink-navy px-5 py-3">
         <h2 class="text-headline-sm text-white">Transaksi Terbaru</h2>
         {#if data.recentTransactions.length > 0}
-          <a href="/transactions" class="shrink-0 text-body-sm font-semibold text-white/85 hover:text-white hover:underline no-underline">Lihat lainnya →</a>
+          <a href="/transactions" class="shrink-0 text-body-sm font-semibold text-white/85 hover:text-white hover:underline no-underline"
+            >Lihat lainnya →</a
+          >
         {/if}
       </div>
       {#if data.recentTransactions.length === 0}
@@ -103,8 +114,8 @@
             {#each data.recentTransactions as t}
               <tr>
                 <td class="px-3 py-2 text-ink">Struk · {fmtDate(t.createdAt)} · {t.cashier}</td>
-                <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{t.kinds} jenis · {num(t.qty)} pcs</td>
-                <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{idr(t.total)}</td>
+                <td class="px-3 py-2 tabular text-muted whitespace-nowrap">{t.kinds} jenis · {fmtInt(t.qty)} pcs</td>
+                <td class="px-3 py-2 tabular text-ink whitespace-nowrap">{fmtRupiah(t.total)}</td>
               </tr>
             {/each}
           </Table>
@@ -123,16 +134,22 @@
       <p class="text-body-sm text-white/65 mb-4">Tanya apa aja soal performa bisnismu bulan ini.</p>
 
       <div class="flex flex-col gap-2 mb-4">
-        <a href={handoffUrl('Produk mana yang marginnya paling tipis?')} class="block rounded border border-white/10 bg-white/5 px-3 py-2 text-body-sm text-white/85 no-underline hover:bg-white/10">
+        <a
+          href={handoffUrl('Produk mana yang marginnya paling tipis?')}
+          class="block rounded border border-white/10 bg-white/5 px-3 py-2 text-body-sm text-white/85 no-underline hover:bg-white/10"
+        >
           "Produk mana yang marginnya paling tipis?"
         </a>
-        <a href={handoffUrl('Kenapa profit bulan ini turun?')} class="block rounded border border-white/10 bg-white/5 px-3 py-2 text-body-sm text-white/85 no-underline hover:bg-white/10">
+        <a
+          href={handoffUrl('Kenapa profit bulan ini turun?')}
+          class="block rounded border border-white/10 bg-white/5 px-3 py-2 text-body-sm text-white/85 no-underline hover:bg-white/10"
+        >
           "Kenapa profit bulan ini turun?"
         </a>
       </div>
 
-      
-      <a  href="/copilot"
+      <a
+        href="/copilot"
         class="mt-auto flex items-center justify-center gap-2 rounded bg-status-positive text-white text-body-md font-semibold py-2 no-underline hover:opacity-90"
       >
         Buka Copilot

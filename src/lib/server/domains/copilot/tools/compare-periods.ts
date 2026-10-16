@@ -39,9 +39,30 @@ export function buildComparePeriodsData(input: {
       windowLabel: input.windowLabel,
       baselineWindow: { label: input.baselineLabel },
       baselineLabel: input.baselineLabel,
-      current: { revenue: current.revenue, revenueText: fmtRupiah(current.revenue), profit: current.profit, profitText: fmtRupiah(current.profit), margin: current.margin, marginText: fmtPercent(current.margin) },
-      baseline: { revenue: baseline.revenue, revenueText: fmtRupiah(baseline.revenue), profit: baseline.profit, profitText: fmtRupiah(baseline.profit), margin: baseline.margin, marginText: fmtPercent(baseline.margin) },
-      change: { revenue: null, revenueText: 'tidak bermakna', profit: null, profitText: 'tidak bermakna', marginPoints: 0, marginPointsText: 'tidak bermakna' }
+      current: {
+        revenue: current.revenue,
+        revenueText: fmtRupiah(current.revenue),
+        profit: current.profit,
+        profitText: fmtRupiah(current.profit),
+        margin: current.margin,
+        marginText: fmtPercent(current.margin)
+      },
+      baseline: {
+        revenue: baseline.revenue,
+        revenueText: fmtRupiah(baseline.revenue),
+        profit: baseline.profit,
+        profitText: fmtRupiah(baseline.profit),
+        margin: baseline.margin,
+        marginText: fmtPercent(baseline.margin)
+      },
+      change: {
+        revenue: null,
+        revenueText: 'tidak bermakna',
+        profit: null,
+        profitText: 'tidak bermakna',
+        marginPoints: 0,
+        marginPointsText: 'tidak bermakna'
+      }
     };
   }
   const current = metricsOf(input.current);
@@ -55,14 +76,39 @@ export function buildComparePeriodsData(input: {
     windowLabel: input.windowLabel,
     baselineWindow: { label: input.baselineLabel },
     baselineLabel: input.baselineLabel,
-    current: { revenue: current.revenue, revenueText: fmtRupiah(current.revenue), profit: current.profit, profitText: fmtRupiah(current.profit), margin: current.margin, marginText: fmtPercent(current.margin) },
-    baseline: { revenue: baseline.revenue, revenueText: fmtRupiah(baseline.revenue), profit: baseline.profit, profitText: fmtRupiah(baseline.profit), margin: baseline.margin, marginText: fmtPercent(baseline.margin) },
-    change: { revenue: revenueChange, revenueText: fmtDelta(revenueChange), profit: profitChange, profitText: fmtDelta(profitChange), marginPoints, marginPointsText: fmtPoints(marginPoints) }
+    current: {
+      revenue: current.revenue,
+      revenueText: fmtRupiah(current.revenue),
+      profit: current.profit,
+      profitText: fmtRupiah(current.profit),
+      margin: current.margin,
+      marginText: fmtPercent(current.margin)
+    },
+    baseline: {
+      revenue: baseline.revenue,
+      revenueText: fmtRupiah(baseline.revenue),
+      profit: baseline.profit,
+      profitText: fmtRupiah(baseline.profit),
+      margin: baseline.margin,
+      marginText: fmtPercent(baseline.margin)
+    },
+    change: {
+      revenue: revenueChange,
+      revenueText: fmtDelta(revenueChange),
+      profit: profitChange,
+      profitText: fmtDelta(profitChange),
+      marginPoints,
+      marginPointsText: fmtPoints(marginPoints)
+    }
   };
 }
 
 export async function comparePeriods(ctx: ToolContext, input: unknown): Promise<ToolResult<ComparePeriodsData>> {
-  const checked = validateArgs(input, { period: { type: 'string', required: true, enum: periods }, from: { type: 'string' }, to: { type: 'string' } });
+  const checked = validateArgs(input, {
+    period: { type: 'string', required: true, enum: periods },
+    from: { type: 'string' },
+    to: { type: 'string' }
+  });
   if (!checked.ok) return failure(TOOL, 'INVALID_ARGS', checked.message);
   const period = checked.value.period as NamedPeriodKey;
   const from = checked.value.from as string | undefined;

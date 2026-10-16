@@ -1,0 +1,9 @@
+.svelte-kit
+build
+node_modules
+drizzle
+static
+docs
+package-lock.json
+src/app.html
+*.md

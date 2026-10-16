@@ -1,9 +1,4 @@
-import {
-  comparableWindow,
-  resolveNamedPeriod,
-  spanLabel,
-  type NamedPeriodKey
-} from '../src/lib/shared/period';
+import { comparableWindow, resolveNamedPeriod, spanLabel, type NamedPeriodKey } from '../src/lib/shared/period';
 import type { BizTz } from '../src/lib/shared/time';
 
 let failed = 0;
@@ -42,10 +37,7 @@ for (const tz of TZS) {
     const w = resolveNamedPeriod(key, tz, now);
     ok(`${tz} ${key}: jendela berjalan`, w.from?.getTime() === curFrom.getTime() && w.to?.getTime() === curTo.getTime());
     const b = comparableWindow({ from: w.from!, to: w.to!, key }, tz, now);
-    ok(
-      `${tz} ${key}: jendela pembanding`,
-      b.from.getTime() === baseFrom.getTime() && b.to.getTime() === baseTo.getTime() && b.clamped === false
-    );
+    ok(`${tz} ${key}: jendela pembanding`, b.from.getTime() === baseFrom.getTime() && b.to.getTime() === baseTo.getTime() && b.clamped === false);
   }
 }
 
@@ -56,9 +48,7 @@ for (const tz of TZS) {
   const b = comparableWindow({ from: w.from!, to: w.to!, key: 'this_month' }, tz, now);
   ok(
     'bulan pendek memotong pembanding',
-    b.from.getTime() === at(tz, '2026-02-01', '00:00').getTime() &&
-      b.to.getTime() === endOf(tz, '2026-02-28').getTime() &&
-      b.clamped === true
+    b.from.getTime() === at(tz, '2026-02-01', '00:00').getTime() && b.to.getTime() === endOf(tz, '2026-02-28').getTime() && b.clamped === true
   );
 }
 

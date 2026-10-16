@@ -115,16 +115,39 @@ export function buildInventoryData(
   const inactiveValue = inactive.reduce((sum, item) => sum + item.stock * item.costPrice, 0);
   const groupRank = (item: InventoryItem) => (item.status === 'out' ? 0 : item.status === 'low' ? 1 : 2);
   const byCover = (a: InventoryItem, b: InventoryItem) =>
-    a.daysCover === b.daysCover ? a.name.localeCompare(b.name, 'id-ID') : a.daysCover === null ? 1 : b.daysCover === null ? -1 : a.daysCover - b.daysCover;
+    a.daysCover === b.daysCover
+      ? a.name.localeCompare(b.name, 'id-ID')
+      : a.daysCover === null
+        ? 1
+        : b.daysCover === null
+          ? -1
+          : a.daysCover - b.daysCover;
   const matched =
-    filter === 'all' ? [...items].sort((a, b) => groupRank(a) - groupRank(b) || byCover(a, b))
-    : filter === 'low' ? items.filter((item) => item.status === 'low').sort(byCover)
-    : filter === 'out' ? items.filter((item) => item.status === 'out').sort(byCover)
-    : filter === 'urgent' ? items.filter((item) => item.urgent).sort(byCover)
-    : items.filter((item) => item.dead).sort(byCover);
-  const shown: InventoryItem[] = matched
-    .slice(0, limit)
-    .map((item) => ({ id: item.id, name: item.name, stock: item.stock, stockText: item.stockText, minStock: item.minStock, sold14: item.sold14, sold14Text: item.sold14Text, stockValue: item.stockValue, stockValueText: item.stockValueText, status: item.status, statusText: item.statusText, daysCover: item.daysCover, daysCoverText: item.daysCoverText, urgent: item.urgent }));
+    filter === 'all'
+      ? [...items].sort((a, b) => groupRank(a) - groupRank(b) || byCover(a, b))
+      : filter === 'low'
+        ? items.filter((item) => item.status === 'low').sort(byCover)
+        : filter === 'out'
+          ? items.filter((item) => item.status === 'out').sort(byCover)
+          : filter === 'urgent'
+            ? items.filter((item) => item.urgent).sort(byCover)
+            : items.filter((item) => item.dead).sort(byCover);
+  const shown: InventoryItem[] = matched.slice(0, limit).map((item) => ({
+    id: item.id,
+    name: item.name,
+    stock: item.stock,
+    stockText: item.stockText,
+    minStock: item.minStock,
+    sold14: item.sold14,
+    sold14Text: item.sold14Text,
+    stockValue: item.stockValue,
+    stockValueText: item.stockValueText,
+    status: item.status,
+    statusText: item.statusText,
+    daysCover: item.daysCover,
+    daysCoverText: item.daysCoverText,
+    urgent: item.urgent
+  }));
   const truncated = matched.length > shown.length;
   const lines = [
     `${active.length} produk aktif: ${outCount} habis, ${lowCount} menipis, ${urgentCount} diperkirakan habis dalam 7 hari.`,
@@ -169,7 +192,14 @@ export async function getInventory(ctx: ToolContext, input: unknown): Promise<To
   const since = T.startOfDay(T.addDays(ctx.now, -(DAYS - 1)));
   const [products, sales] = await Promise.all([
     ctx.db
-      .select({ id: product.id, name: product.name, stock: product.stock, minStock: product.minStock, costPrice: product.costPrice, isActive: product.isActive })
+      .select({
+        id: product.id,
+        name: product.name,
+        stock: product.stock,
+        minStock: product.minStock,
+        costPrice: product.costPrice,
+        isActive: product.isActive
+      })
       .from(product)
       .where(eq(product.businessId, ctx.businessId)),
     queryFactsByProduct(ctx.db, ctx.businessId, { from: since, to: ctx.now })

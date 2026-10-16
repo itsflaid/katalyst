@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Badge from "$lib/components/ui/Badge.svelte";
+  import Badge from '$lib/components/ui/Badge.svelte';
   export let stock: number;
   export let minStock = 5;
 </script>

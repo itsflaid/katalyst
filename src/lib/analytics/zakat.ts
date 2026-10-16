@@ -37,7 +37,8 @@ function dayNum(value: string): number | null {
   const time = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
   if (!Number.isFinite(time)) return null;
   const check = new Date(time);
-  if (check.getUTCFullYear() !== Number(match[1]) || check.getUTCMonth() !== Number(match[2]) - 1 || check.getUTCDate() !== Number(match[3])) return null;
+  if (check.getUTCFullYear() !== Number(match[1]) || check.getUTCMonth() !== Number(match[2]) - 1 || check.getUTCDate() !== Number(match[3]))
+    return null;
   return time / 86_400_000;
 }
 
@@ -78,17 +79,10 @@ export function zakatOf(input: ZakatInput, adjustment = 0): ZakatResult {
   const daysLeft = dueDay === null || todayDay === null ? null : dueDay - todayDay;
   const reached = daysLeft === null ? null : daysLeft <= 0;
   const status: ZakatStatus =
-    goldPrice === null
-      ? 'NEEDS_GOLD_PRICE'
-      : nisabReached !== true
-        ? 'BELOW_NISAB'
-        : reached !== true
-          ? 'HAUL_PENDING'
-          : 'DUE';
+    goldPrice === null ? 'NEEDS_GOLD_PRICE' : nisabReached !== true ? 'BELOW_NISAB' : reached !== true ? 'HAUL_PENDING' : 'DUE';
   // Rupiah tanpa sen: dibulatkan sekali di akhir agar rincian cocok dengan total.
   // Kewajiban cuma ada bila nisab tercapai DAN haul genap DAN aset bersih positif.
-  const amount =
-    nisabReached === true && reached === true && netAssets > 0 ? Math.round(ZAKAT_RATE * netAssets) : 0;
+  const amount = nisabReached === true && reached === true && netAssets > 0 ? Math.round(ZAKAT_RATE * netAssets) : 0;
   return {
     stockValue,
     assets,

@@ -29,7 +29,11 @@
     <CircleHelp class="h-4 w-4" />
   </button>
   {#if open}
-    <div {id} role="note" class="flex w-full basis-full items-start gap-2 rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2.5 text-body-sm text-ink">
+    <div
+      {id}
+      role="note"
+      class="flex w-full basis-full items-start gap-2 rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2.5 text-body-sm text-ink"
+    >
       <Info size={18} class="mt-0.5 shrink-0 text-[#0284C7]" />
       <div class="flex min-w-0 flex-col gap-1">
         <p>{about}</p>

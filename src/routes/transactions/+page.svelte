@@ -2,21 +2,22 @@
   import Card from '$lib/components/ui/Card.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
-  import ProductTile from '$lib/components/transaksi/ProductTile.svelte';
-  import ProductRow from '$lib/components/transaksi/ProductRow.svelte';
+  import PeriodDialog from '$lib/components/transactions/PeriodDialog.svelte';
+  import { spanLabel } from '$lib/shared/period';
+  import ProductTile from '$lib/components/transactions/ProductTile.svelte';
+  import ProductRow from '$lib/components/transactions/ProductRow.svelte';
   import { enhance } from '$app/forms';
   import { goto, invalidateAll } from '$app/navigation';
   import { onMount } from 'svelte';
   import type { SubmitFunction } from '@sveltejs/kit';
   import Badge from '$lib/components/ui/Badge.svelte';
-  import { calculateCart, getDiscountStatus, unitDiscount } from '$lib/discount';
+  import { calculateCart, getDiscountStatus, unitDiscount } from '$lib/shared/discount';
+  import { fmtRupiah } from '$lib/shared/format';
   import { lineNetOf } from '$lib/analytics';
   import { makeTime, DEFAULT_TZ, type BizTime } from '$lib/shared/time';
   import { Search, ChevronDown, Minus, Plus, Trash2, Check, Pencil, X, LayoutGrid, List } from 'lucide-svelte';
   export let data;
   export let form;
-
-  const idr = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
   // Zona bisnis (bukan zona perangkat). T diteruskan eksplisit ke fungsi
   // pembantu karena Svelte 4 tidak melacak variabel yang hanya dirujuk
   // di dalam badan fungsi.
@@ -68,22 +69,32 @@
   }
   let fromEl: HTMLInputElement | null = null;
   let toEl: HTMLInputElement | null = null;
-  function goRange() {
+  let periodOpen = false;
+
+  function applyRange(from: string, to: string) {
+    periodOpen = false;
     const params = new URLSearchParams();
     if (data.kasir) params.set('kasir', data.kasir);
-    const from = fromEl?.value ?? '';
-    const to = toEl?.value ?? '';
     if (from) params.set('from', from);
     if (to) params.set('to', to);
     const qs = params.toString();
     goto(`/transactions${qs ? `?${qs}` : ''}`, { keepFocus: true });
   }
-  function resetRange() {
-    const params = new URLSearchParams();
-    if (data.kasir) params.set('kasir', data.kasir);
-    const qs = params.toString();
-    goto(`/transactions${qs ? `?${qs}` : ''}`, { keepFocus: true });
+  function goRange() {
+    applyRange(fromEl?.value ?? '', toEl?.value ?? '');
   }
+  function resetRange() {
+    applyRange('', '');
+  }
+  $: periodText = ((T) => {
+    const a = data.rangeFrom ? T.parseDay(data.rangeFrom) : null;
+    const b = data.rangeTo ? T.parseDay(data.rangeTo) : null;
+    const long = (d: Date) => T.fmt(d, { day: 'numeric', month: 'short', year: 'numeric' });
+    if (a && b) return spanLabel(a, T.endOfDay(b), T.tz);
+    if (a) return `Sejak ${long(a)}`;
+    if (b) return `Sampai ${long(b)}`;
+    return 'Semua tanggal';
+  })(T);
   $: rangeActive = !!(data.rangeFrom || data.rangeTo);
   $: moreHref = `/transactions?page=${data.page + 1}${data.kasir ? `&kasir=${data.kasir}` : ''}${data.rangeFrom ? `&from=${data.rangeFrom}` : ''}${data.rangeTo ? `&to=${data.rangeTo}` : ''}`;
 
@@ -155,8 +166,7 @@
   // Global terpilih yang tak lagi ACTIVE tidak dipakai (efektif kosong) +
   // notifikasi kecil. Murni turunan tanpa assign-diri (Svelte menolak
   // statement $: yang membaca sekaligus menulis variabel yang sama).
-  $: effectiveGlobalId =
-    selectedGlobalId !== '' && !globalList.some((g) => g.id === selectedGlobalId) ? '' : selectedGlobalId;
+  $: effectiveGlobalId = selectedGlobalId !== '' && !globalList.some((g) => g.id === selectedGlobalId) ? '' : selectedGlobalId;
   $: globalExpired = selectedGlobalId !== '' && effectiveGlobalId === '';
   $: selectedGlobal = effectiveGlobalId === '' ? null : (globalList.find((g) => g.id === effectiveGlobalId) ?? null);
 
@@ -169,7 +179,12 @@
   $: validLines = lines.filter((l) => !unavailable(l.productId));
   $: missingLines = lines.filter((l) => unavailable(l.productId));
   $: cartInputs = validLines.map((l) => ({ productId: l.productId, qty: l.qty, price: prodMap.get(l.productId)!.sellingPrice }));
-  $: cart = ((inputs, pd, g, now) => calculateCart(inputs, { productDiscounts: pd, global: g, now }))(cartInputs, productDiscountPool, selectedGlobal, now);
+  $: cart = ((inputs, pd, g, now) => calculateCart(inputs, { productDiscounts: pd, global: g, now }))(
+    cartInputs,
+    productDiscountPool,
+    selectedGlobal,
+    now
+  );
   $: cartRows = cart.lines.map((l) => ({ ...l, name: prodMap.get(l.productId)?.name ?? '-' }));
   $: discountRows = ((cart) => {
     const m = new Map<string, { name: string; amount: number }>();
@@ -223,16 +238,18 @@
   $: todayLabel = T.fmt(now, { day: 'numeric', month: 'short' });
   $: cartItemCount = cart.lines.reduce((s, l) => s + l.qty, 0);
 
-  const afterCreate: SubmitFunction = () => async ({ result, update }) => {
-    await update();
-    if (result.type === 'success') {
-      lines = [];
-      copyMsg = false;
-    } else if (result.type === 'failure' && (result.status === 409 || result.status === 400)) {
-      // Muat ulang produk & diskon (harga/kuota berubah); keranjang dipertahankan.
-      await invalidateAll();
-    }
-  };
+  const afterCreate: SubmitFunction =
+    () =>
+    async ({ result, update }) => {
+      await update();
+      if (result.type === 'success') {
+        lines = [];
+        copyMsg = false;
+      } else if (result.type === 'failure' && (result.status === 409 || result.status === 400)) {
+        // Muat ulang produk & diskon (harga/kuota berubah); keranjang dipertahankan.
+        await invalidateAll();
+      }
+    };
 
   // Notifikasi "Transaksi tersimpan." muncul tiap struk tercatat lalu
   // hilang sendiri setelah 5 detik.
@@ -248,10 +265,12 @@
   // dibatalkan utuh lalu buat struk koreksi baru, tanpa edit qty in-place.
   $: isOwner = data.user?.role === 'OWNER';
   let pendingVoid: { txId: string; total: number; cashier: string } | null = null;
-  const afterVoid: SubmitFunction = () => async ({ result, update }) => {
-    await update();
-    if (result.type === 'success') pendingVoid = null;
-  };
+  const afterVoid: SubmitFunction =
+    () =>
+    async ({ result, update }) => {
+      await update();
+      if (result.type === 'success') pendingVoid = null;
+    };
 
   // Duplikat struk sebagai koreksi: salin productId + qty saja, diskon
   // dihitung ulang dengan aturan saat ini (bukan snapshot struk lama).
@@ -273,9 +292,7 @@
     const inCart = lines.find((c) => c.productId === p.id)?.qty ?? 0;
     if (inCart + 1 > p.stock) return;
     const found = lines.find((c) => c.productId === p.id);
-    lines = found
-      ? lines.map((c) => (c.productId === p.id ? { ...c, qty: c.qty + 1 } : c))
-      : [...lines, { productId: p.id, qty: 1 }];
+    lines = found ? lines.map((c) => (c.productId === p.id ? { ...c, qty: c.qty + 1 } : c)) : [...lines, { productId: p.id, qty: 1 }];
   }
   function clearCart() {
     lines = [];
@@ -390,10 +407,10 @@
                 <div class="flex items-start justify-between gap-2">
                   <div class="min-w-0">
                     <p class="truncate text-body-md font-semibold text-ink">{c.name}</p>
-                    <p class="text-body-sm text-muted">{idr(c.price)}/unit</p>
+                    <p class="text-body-sm text-muted">{fmtRupiah(c.price)}/unit</p>
                   </div>
                   <div class="flex shrink-0 items-center gap-1.5">
-                    <span class="whitespace-nowrap text-body-md font-semibold tabular text-ink">{idr(c.net)}</span>
+                    <span class="whitespace-nowrap text-body-md font-semibold tabular text-ink">{fmtRupiah(c.net)}</span>
                     <button
                       type="button"
                       aria-label="Hapus {c.name}"
@@ -406,7 +423,7 @@
                 </div>
                 {#if c.discountAmount > 0}
                   <div class="mt-0.5 flex items-center gap-2">
-                    <s class="text-body-sm tabular text-muted">{idr(c.gross)}</s>
+                    <s class="text-body-sm tabular text-muted">{fmtRupiah(c.gross)}</s>
                     <Badge size="sm" tone="positive">Diskon {c.discountPercent}%</Badge>
                   </div>
                   {#if c.partial}
@@ -440,7 +457,9 @@
               <li class="py-2">
                 <div class="flex items-center justify-between gap-2 text-body-md">
                   <p class="text-status-negative">Produk tidak tersedia</p>
-                  <button type="button" class="text-body-sm text-status-negative hover:underline" on:click={() => removeLine(m.productId)}>Hapus</button>
+                  <button type="button" class="text-body-sm text-status-negative hover:underline" on:click={() => removeLine(m.productId)}
+                    >Hapus</button
+                  >
                 </div>
               </li>
             {/each}
@@ -450,53 +469,82 @@
       {#if globalList.length > 0}
         <label for="t-global" class="mt-4 flex flex-col gap-1">
           <span class="text-label-sm uppercase text-muted">Gunakan diskon</span>
-          <select id="t-global" bind:value={selectedGlobalId} class="h-9 w-full rounded border border-border-input bg-white px-3 text-body-md text-ink">
+          <select
+            id="t-global"
+            bind:value={selectedGlobalId}
+            class="h-9 w-full rounded border border-border-input bg-white px-3 text-body-md text-ink"
+          >
             <option value="">Tanpa diskon</option>
             {#each globalList as g}
-              <option value={g.id}>{g.name}: {g.percent}% · s.d. {g.endsAt ? T.fmt(g.endsAt, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'tanpa batas'}</option>
+              <option value={g.id}
+                >{g.name}: {g.percent}% · s.d. {g.endsAt
+                  ? T.fmt(g.endsAt, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                  : 'tanpa batas'}</option
+              >
             {/each}
           </select>
         </label>
         <p class="mb-1 mt-1 text-body-sm text-muted">Tidak menimpa diskon produk.</p>
       {/if}
       {#if globalExpired}
-        <p role="status" class="mb-3 rounded border border-status-warning-border bg-status-warning-bg px-3 py-2 text-body-sm text-status-warning">Diskon global yang dipilih sudah tidak berlaku.</p>
+        <p role="status" class="mb-3 rounded border border-status-warning-border bg-status-warning-bg px-3 py-2 text-body-sm text-status-warning">
+          Diskon global yang dipilih sudah tidak berlaku.
+        </p>
       {/if}
       <div class="mt-3 flex flex-col gap-1 border-t border-dashed border-border-cool py-2 text-body-md">
         <div class="flex items-center justify-between">
           <span class="text-body-sm text-muted">Subtotal {cartItemCount} item</span>
-          <span class="font-semibold tabular text-ink">{idr(cart.subtotal)}</span>
+          <span class="font-semibold tabular text-ink">{fmtRupiah(cart.subtotal)}</span>
         </div>
         {#if discountRows.length > 0}
           {#each discountRows as dr}
             <div class="flex items-center justify-between">
               <span class="text-body-sm text-muted">Diskon {dr.name}</span>
-              <span class="tabular text-status-positive">−{idr(dr.amount)}</span>
+              <span class="tabular text-status-positive">−{fmtRupiah(dr.amount)}</span>
             </div>
           {/each}
         {:else}
           <div class="flex items-center justify-between">
             <span class="text-body-sm text-muted">Diskon</span>
-            <span class="tabular text-muted">{idr(0)}</span>
+            <span class="tabular text-muted">{fmtRupiah(0)}</span>
           </div>
         {/if}
       </div>
       <div class="flex items-center justify-between rounded-panel bg-ink-navy px-4 py-3 shadow-level2">
         <span class="text-label-md uppercase text-white/70">Total</span>
-        <span class="text-headline-lg tabular text-white">{idr(cart.total)}</span>
+        <span class="text-headline-lg tabular text-white">{fmtRupiah(cart.total)}</span>
       </div>
       <form method="POST" action="?/create" use:enhance={afterCreate} class="mt-3">
         <input type="hidden" name="items" value={cartPayload} />
         <input type="hidden" name="globalDiscountId" value={effectiveGlobalId} />
         <input type="hidden" name="expectedTotal" value={cart.total} />
-        {#if copyMsg}<p role="status" class="mb-3 rounded border border-border-cool bg-table-header px-3 py-2 text-body-sm text-muted">Diskon dihitung ulang dengan aturan saat ini.</p>{/if}
-        {#if form?.message}<p role="alert" class="mb-3 rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative">{form.message}</p>{/if}
-        {#if showSavedMsg}<p role="status" class="mb-3 rounded border border-status-positive-border bg-status-positive-bg px-3 py-2 text-body-sm text-status-positive">Transaksi tersimpan.</p>{/if}
-        <Button type="submit" class="w-full bg-status-positive border-status-positive hover:bg-status-positive hover:brightness-95" disabled={validLines.length === 0 || hasMissing}><span class="inline-flex items-center gap-1.5"><Check size={16} />Catat Transaksi</span></Button>
+        {#if copyMsg}<p role="status" class="mb-3 rounded border border-border-cool bg-table-header px-3 py-2 text-body-sm text-muted">
+            Diskon dihitung ulang dengan aturan saat ini.
+          </p>{/if}
+        {#if form?.message}<p
+            role="alert"
+            class="mb-3 rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative"
+          >
+            {form.message}
+          </p>{/if}
+        {#if showSavedMsg}<p
+            role="status"
+            class="mb-3 rounded border border-status-positive-border bg-status-positive-bg px-3 py-2 text-body-sm text-status-positive"
+          >
+            Transaksi tersimpan.
+          </p>{/if}
+        <Button
+          type="submit"
+          class="w-full bg-status-positive border-status-positive hover:bg-status-positive hover:brightness-95"
+          disabled={validLines.length === 0 || hasMissing}
+          ><span class="inline-flex items-center gap-1.5"><Check size={16} />Catat Transaksi</span></Button
+        >
       </form>
       {#if lines.length > 0}
         <div class="mt-2">
-          <Button variant="destructive" class="w-full" on:click={clearCart}><span class="inline-flex items-center gap-1.5"><Trash2 size={16} />Kosongkan Keranjang</span></Button>
+          <Button variant="destructive" class="w-full" on:click={clearCart}
+            ><span class="inline-flex items-center gap-1.5"><Trash2 size={16} />Kosongkan Keranjang</span></Button
+          >
         </div>
       {/if}
     </Card>
@@ -508,16 +556,16 @@
         <h2 class="text-headline-sm text-white">Daftar Transaksi</h2>
         <p class="text-body-sm text-white/60">Waktu ditampilkan dalam {T.short}</p>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
+      <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
         {#if data.staffOptions.length > 1}
-          <span class="flex h-9 items-center gap-2 rounded border border-white/25 bg-white/10 px-3 text-white">
+          <span class="flex h-9 w-full items-center gap-2 rounded border border-white/25 bg-white/10 px-3 text-white sm:w-auto">
             <span class="text-label-sm uppercase text-white/60">Kasir</span>
-            <span class="relative flex items-center">
+            <span class="relative flex flex-1 items-center sm:flex-none">
               <select
                 aria-label="Filter kasir"
                 value={selectedKasir}
                 on:change={goKasir}
-                class="appearance-none border-none bg-transparent py-1 pl-0 pr-5 text-body-md text-white focus:outline-none"
+                class="w-full appearance-none border-none bg-transparent py-1 pl-0 pr-5 text-body-md text-white focus:outline-none"
               >
                 <option value="all" class="text-ink">Semua kasir</option>
                 {#each data.staffOptions as s}
@@ -528,7 +576,17 @@
             </span>
           </span>
         {/if}
-        <span class="flex h-9 items-center gap-2 rounded border border-white/25 bg-white/10 px-3 text-white">
+        <button
+          type="button"
+          on:click={() => (periodOpen = true)}
+          aria-haspopup="dialog"
+          class="flex h-9 w-full items-center gap-2 rounded border border-white/25 bg-white/10 px-3 text-left text-white sm:hidden"
+        >
+          <span class="text-label-sm uppercase text-white/60">Periode</span>
+          <span class="min-w-0 flex-1 truncate text-body-md">{periodText}</span>
+          <ChevronDown size={14} class="shrink-0 text-white/70" aria-hidden="true" />
+        </button>
+        <span class="hidden h-9 items-center gap-2 rounded border border-white/25 bg-white/10 px-3 text-white sm:flex">
           <span class="text-label-sm uppercase text-white/60">Dari</span>
           <input
             type="date"
@@ -566,7 +624,12 @@
       <Card class="!rounded-t-none !border-t-0 text-center py-10">
         {#if rangeActive}
           <p class="text-body-md text-muted">Tidak ada transaksi pada rentang ini.</p>
-          <button type="button" on:click={resetRange} class="mt-2 text-body-sm font-semibold text-ink-navy hover:underline bg-transparent border-none cursor-pointer p-0">Tampilkan semua tanggal</button>
+          <button
+            type="button"
+            on:click={resetRange}
+            class="mt-2 text-body-sm font-semibold text-ink-navy hover:underline bg-transparent border-none cursor-pointer p-0"
+            >Tampilkan semua tanggal</button
+          >
         {:else}
           <p class="text-body-md text-muted">Belum ada transaksi.</p>
         {/if}
@@ -588,19 +651,25 @@
                 <li class="border-b border-table-divider px-5 py-3 text-body-md last:border-b-0">
                   <div class="flex items-center justify-between gap-4">
                     <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                      <p class="truncate font-semibold tabular text-ink">Struk · {fmtTime(r.createdAt, T)} <span class="font-normal text-ink-navy/70">· {r.cashier}</span></p>
-                      <span class="shrink-0 rounded border border-border-cool px-1.5 py-px text-label-sm text-muted">{r.items.reduce((s, i) => s + i.quantity, 0)} item · {r.items.length} jenis produk</span>
+                      <p class="truncate font-semibold tabular text-ink">
+                        Struk · {fmtTime(r.createdAt, T)} <span class="font-normal text-ink-navy/70">· {r.cashier}</span>
+                      </p>
+                      <span class="shrink-0 rounded border border-border-cool px-1.5 py-px text-label-sm text-muted"
+                        >{r.items.reduce((s, i) => s + i.quantity, 0)} item · {r.items.length} jenis produk</span
+                      >
                     </div>
-                    <span class="whitespace-nowrap font-semibold tabular text-ink">{idr(r.total)}</span>
+                    <span class="whitespace-nowrap font-semibold tabular text-ink">{fmtRupiah(r.total)}</span>
                   </div>
                   <ul class="ml-1 mt-1.5 flex flex-col gap-0.5">
                     {#each r.items as it}
                       <li class="flex justify-between gap-4 text-body-sm">
                         <span class="truncate text-muted">
                           {it.quantity}× {it.productName}
-                          {#if it.discountAmount > 0}<span class="text-status-positive"> · Diskon {it.discountName} −{idr(it.discountAmount)}</span>{/if}
+                          {#if it.discountAmount > 0}<span class="text-status-positive">
+                              · Diskon {it.discountName} −{fmtRupiah(it.discountAmount)}</span
+                            >{/if}
                         </span>
-                        <span class="whitespace-nowrap tabular text-muted">{idr(lineNetOf(it))}</span>
+                        <span class="whitespace-nowrap tabular text-muted">{fmtRupiah(lineNetOf(it))}</span>
                       </li>
                     {/each}
                   </ul>
@@ -613,7 +682,11 @@
                       <Pencil size={13} />Buat koreksi
                     </button>
                     {#if isOwner}
-                      <button type="button" class="inline-flex items-center rounded border border-status-negative-border bg-status-negative-bg px-2 py-0.5 text-label-sm text-status-negative hover:brightness-95" on:click={() => (pendingVoid = { txId: r.txId, total: r.total, cashier: r.cashier })}>Void struk</button>
+                      <button
+                        type="button"
+                        class="inline-flex items-center rounded border border-status-negative-border bg-status-negative-bg px-2 py-0.5 text-label-sm text-status-negative hover:brightness-95"
+                        on:click={() => (pendingVoid = { txId: r.txId, total: r.total, cashier: r.cashier })}>Void struk</button
+                      >
                     {/if}
                   </div>
                 </li>
@@ -621,7 +694,7 @@
             </ul>
             <div class="flex justify-between border-t border-border-cool bg-table-header px-5 py-2.5 text-label-md font-semibold text-ink">
               <span>Subtotal</span>
-              <span class="tabular">{idr(group.subtotal)}</span>
+              <span class="tabular">{fmtRupiah(group.subtotal)}</span>
             </div>
           </div>
         {/each}
@@ -632,17 +705,26 @@
           <a href={moreHref} class="text-body-sm font-semibold text-ink-navy hover:underline no-underline">Muat struk lebih lama →</a>
         {/if}
       </div>
-      {#if form?.message}<p role="alert" class="mt-2 rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative">{form.message}</p>{/if}
+      {#if form?.message}<p
+          role="alert"
+          class="mt-2 rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative"
+        >
+          {form.message}
+        </p>{/if}
     {/if}
   </section>
 </div>
 
 {#if pendingVoid}
   <div class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Konfirmasi void struk">
-    <button type="button" class="absolute inset-0 cursor-default border-none bg-ink/40 p-0" aria-label="Batal" on:click={() => (pendingVoid = null)}></button>
+    <button type="button" class="absolute inset-0 cursor-default border-none bg-ink/40 p-0" aria-label="Batal" on:click={() => (pendingVoid = null)}
+    ></button>
     <div class="relative w-full max-w-sm rounded-panel border border-border-cool bg-surface p-5 shadow-level3">
       <h2 class="text-headline-sm text-ink mb-2">Void struk ini?</h2>
-      <p class="text-body-md text-muted">Struk {idr(pendingVoid.total)} ({pendingVoid.cashier}) dihapus permanen. Buat struk koreksi baru kalau transaksinya tetap ada tapi salah catat.</p>
+      <p class="text-body-md text-muted">
+        Struk {fmtRupiah(pendingVoid.total)} ({pendingVoid.cashier}) dihapus permanen. Buat struk koreksi baru kalau transaksinya tetap ada tapi salah
+        catat.
+      </p>
       <div class="flex gap-2 mt-4">
         <Button variant="secondary" class="flex-1" on:click={() => (pendingVoid = null)}>Batal</Button>
         <form method="POST" action="?/deleteTx" use:enhance={afterVoid} class="flex-1">
@@ -652,4 +734,14 @@
       </div>
     </div>
   </div>
+{/if}
+
+{#if periodOpen}
+  <PeriodDialog
+    initialFrom={data.rangeFrom ?? ''}
+    initialTo={data.rangeTo ?? ''}
+    onApply={applyRange}
+    onReset={resetRange}
+    onClose={() => (periodOpen = false)}
+  />
 {/if}

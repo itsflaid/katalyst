@@ -1,4 +1,4 @@
-# AGENTS.md
+﻿# AGENTS.md
 
 Aturan menulis komentar di repo ini. Berlaku untuk agen dan manusia, di semua file (`.ts`, `.svelte`, `.js`, `.cjs`, `.css`, `.jsonc`, skrip).
 
@@ -70,6 +70,7 @@ Komentar alasan yang baik:
 ## Sebelum commit
 
 - Jalankan `npm run verify:arch`; ia memeriksa bentuk komentar (banner, rujukan dokumen, kata riwayat, panjang, TODO tanpa kondisi).
+- Jalankan `npm run format:check`; rapikan dulu bila ada file yang belum sesuai gaya.
 - Baca ulang komentar yang baru ditulis: masih benar dan berguna bagi orang yang tidak ikut diskusinya?
 
 ## Pesan commit
@@ -84,5 +85,3 @@ Menjelaskan fitur, bukan proses. Format: `prefiks/fitur: apa yang berubah`.
 |---|---|
 | `feat(copilot): T1.1 format + T1.2 periode` | `feat/copilot: format jawaban + periode bernama` |
 | `fix: B1 sembuh, tambah regresi` | `fix(copilot): margin di compare_periods` |
-
-Pekerjaan Copilot: baca docs/copilot/STATUS.md dan docs/copilot/PRD.md sebelum mulai.

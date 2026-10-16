@@ -13,11 +13,24 @@ async function main() {
   const tool = findTool(name);
   if (!tool) throw new Error(`Tool tidak tersedia: ${name}.`);
   let args: unknown;
-  try { args = JSON.parse(rawArgs); } catch { throw new Error('Argumen harus JSON valid.'); }
+  try {
+    args = JSON.parse(rawArgs);
+  } catch {
+    throw new Error('Argumen harus JSON valid.');
+  }
   const client = postgres(process.env.DATABASE_URL);
   try {
     const db = drizzle(client, { schema });
-    const result = await tool.run({ businessId: process.env.BUSINESS_ID, tz: (process.env.BUSINESS_TZ ?? 'Asia/Makassar') as BizTz, now: new Date(), db, budget: new SubrequestBudget() }, args);
+    const result = await tool.run(
+      {
+        businessId: process.env.BUSINESS_ID,
+        tz: (process.env.BUSINESS_TZ ?? 'Asia/Makassar') as BizTz,
+        now: new Date(),
+        db,
+        budget: new SubrequestBudget()
+      },
+      args
+    );
     console.log(JSON.stringify(result, null, 2));
   } finally {
     await client.end();

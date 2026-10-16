@@ -83,13 +83,7 @@ export async function getGlobalDiscount(businessId: string, id: string) {
 
 // Cari diskon PRODUCT aktif yang rentangnya bertabrakan (untuk validasi overlap).
 // endsAt null berarti tak hingga; excludeId mengabaikan diri sendiri (saat update/toggle).
-export async function findOverlap(
-  businessId: string,
-  productId: string,
-  startsAt: Date,
-  endsAt: Date | null,
-  excludeId?: string
-) {
+export async function findOverlap(businessId: string, productId: string, startsAt: Date, endsAt: Date | null, excludeId?: string) {
   const conds = [
     eq(discount.businessId, businessId),
     eq(discount.scope, 'PRODUCT'),
@@ -105,4 +99,18 @@ export async function findOverlap(
     .from(discount)
     .where(and(...conds));
   return rows;
+}
+
+// Produk calon target diskon (untuk dropdown form).
+export async function listDiscountProducts(businessId: string) {
+  return db
+    .select({
+      id: product.id,
+      name: product.name,
+      sellingPrice: product.sellingPrice,
+      costPrice: product.costPrice,
+      isActive: product.isActive
+    })
+    .from(product)
+    .where(eq(product.businessId, businessId));
 }

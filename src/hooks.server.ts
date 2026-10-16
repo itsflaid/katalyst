@@ -1,10 +1,7 @@
 import { auth } from '$lib/server/domains/auth';
 import { actorOf, netOf, recordVisit } from '$lib/server/domains/activity/log';
 import { decideAccess, isBlockedAuthPath, normalizePath } from '$lib/server/domains/auth/path-guard';
-import { db } from '$lib/server/db';
-import { business } from '$lib/server/db/schema';
-import { DEFAULT_TZ, isBizTz } from '$lib/shared/time';
-import { eq } from 'drizzle-orm';
+import { getBusinessById } from '$lib/server/domains/business';
 import { error, redirect, type Handle, type RequestEvent } from '@sveltejs/kit';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { building } from '$app/environment';
@@ -43,13 +40,8 @@ export const handle: Handle = async ({ event, resolve }) => {
   // tidak query business sendiri-sendiri. Fallback DEFAULT_TZ bila nilai
   // di DB tak valid; null bila baris bisnis tak ada.
   if (typeof businessId === 'string' && businessId && !path.startsWith('/api/auth')) {
-    const [b] = await db
-      .select({ id: business.id, name: business.name, timezone: business.timezone })
-      .from(business)
-      .where(eq(business.id, businessId));
-    event.locals.business = b
-      ? { id: b.id, name: b.name, timezone: isBizTz(b.timezone) ? b.timezone : DEFAULT_TZ }
-      : null;
+    const b = await getBusinessById(businessId);
+    event.locals.business = b ? { id: b.id, name: b.name, timezone: b.timezone } : null;
   }
 
   // Delegasi ke better-auth buat nangani route /api/auth/* secara internal
@@ -72,8 +64,7 @@ function trackVisit(event: RequestEvent, path: string): void {
     actor: actorOf(u),
     ...netOf(event)
   });
-  const ctx = (event.platform as { context?: { waitUntil?: (p: Promise<unknown>) => void } } | null | undefined)
-    ?.context;
+  const ctx = (event.platform as { context?: { waitUntil?: (p: Promise<unknown>) => void } } | null | undefined)?.context;
   // Dipanggil sebagai method: dilepas dari context melempar Illegal invocation.
   try {
     ctx?.waitUntil?.(task);

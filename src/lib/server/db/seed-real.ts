@@ -7,7 +7,7 @@ import * as schema from './schema';
 import { business, user } from './schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { placeholderEmail, normalizeUsername, isValidUsername } from '../domains/invites';
+import { placeholderEmail, normalizeUsername, isValidUsername } from '../domains/invites/queries';
 
 // Bootstrap deployment (bukan demo): 1 business + 1 owner dari environment variable.
 // Jalan sekali saat deploy; ganti kredensial lewat .env tanpa ubah file ini.
@@ -39,9 +39,7 @@ async function main() {
   const rawUsername = process.env.ADMIN_USERNAME!;
   const username = normalizeUsername(rawUsername);
   if (!isValidUsername(username)) {
-    throw new Error(
-      `ADMIN_USERNAME "${rawUsername}" tidak valid (3-20 karakter, huruf/angka/titik/underscore/strip saja).`
-    );
+    throw new Error(`ADMIN_USERNAME "${rawUsername}" tidak valid (3-20 karakter, huruf/angka/titik/underscore/strip saja).`);
   }
 
   const password = process.env.ADMIN_PASSWORD!;
@@ -57,10 +55,7 @@ async function main() {
     body: { email: placeholderEmail(username), password, name: adminName }
   });
 
-  await db
-    .update(user)
-    .set({ role: 'OWNER', businessId, username })
-    .where(eq(user.id, ownerSignUp.user.id));
+  await db.update(user).set({ role: 'OWNER', businessId, username }).where(eq(user.id, ownerSignUp.user.id));
 
   console.log('Bootstrap selesai.');
   console.log(`Login sebagai Owner: ${username} / (password sesuai ADMIN_PASSWORD di .env)`);

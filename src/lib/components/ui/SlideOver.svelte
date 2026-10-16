@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { fly, fade } from "svelte/transition";
+  import { fly, fade } from 'svelte/transition';
   export let title: string;
   export let onClose: () => void;
 </script>
@@ -19,9 +19,7 @@
   aria-modal="true"
   aria-label={title}
 >
-  <div
-    class="flex items-center justify-between px-5 py-4 border-b border-border-cool flex-shrink-0"
-  >
+  <div class="flex items-center justify-between px-5 py-4 border-b border-border-cool flex-shrink-0">
     <h2 class="text-headline-sm text-ink">{title}</h2>
     <button
       on:click={onClose}

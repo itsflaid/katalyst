@@ -1,6 +1,6 @@
 # Katalyst
 
-Aplikasi pendukung keputusan bisnis untul UMKM: catat penjualan harian, lihat untung-rugi sebenarnya (bukan cuma omzet), dan uji skenario harga sebelum diterapkan disertai fitur copilot.
+Aplikasi pendukung keputusan bisnis untuk UMKM: catat penjualan harian, lihat untung-rugi sebenarnya (bukan cuma omzet), dan uji skenario harga sebelum diterapkan disertai fitur copilot.
 
 Semua angka (omzet, modal, untung, margin) dihitung langsung dari data transaksimu dengan rumus pasti dan konsisten — AI hanya membantu menjelaskan maksudnya, tidak ikut mengarang angka.
 
@@ -22,6 +22,7 @@ Semua angka (omzet, modal, untung, margin) dihitung langsung dari data transaksi
 ![Produk](docs/preview/produk.png)
 ![Transaksi](docs/preview/transaksi.png)
 ![Simulator](docs/preview/simulator.png)
+![Copilot](docs/preview/copilot.png)
 
 Copilot sekarang berjalan dari halaman `/copilot`; preview akan diperbarui setelah gladi bersih dengan data demo saat ini.
 
@@ -48,6 +49,10 @@ Akun demo setelah seed:
 | Staff | `prabowo02`, `jokowi00`, `anis01`, `ganjar03`       | `password` | `/transactions` |
 
 Semua akun masuk pakai username (owner undang staff pakai username, tanpa email).
+
+## Skrip uji
+
+Skrip yang menulis data (`verify:e2e-discount`, `db:seed:demo`) hanya boleh jalan ke DB scratch: set `DATABASE_URL`, `SCRATCH_DB_HOST` (hostname-nya saja), dan `ALLOW_DESTRUCTIVE_DB=1` di env sesi, lalu skrip berhenti sendiri bila target bukan scratch. Pakai connection string direct (tanpa `-pooler`) untuk skrip dan migrasi.
 
 ## Tech stack
 
