@@ -1,6 +1,6 @@
 export const PROTECTED_PATHS = [
 	'/dashboard',
-  '/stats',
+  '/statistics',
 	'/simulator',
 	'/settings',
 	'/transactions',
@@ -10,19 +10,19 @@ export const PROTECTED_PATHS = [
 	'/copilot',
   '/account',
 	'/zakat',
-  '/logs'
+  '/activity'
 ];
 
 export const OWNER_ONLY_PATHS = [
 	'/dashboard',
-  '/stats',
+  '/statistics',
 	'/simulator',
 	'/settings',
 	'/copilot',
   '/discounts',
   '/products/stock',
 	'/zakat',
-  '/logs'
+  '/activity'
 ];
 
 // Guard membaca path yang sama dengan router: decodeURI per potongan %25 lalu rapikan slash ganda.

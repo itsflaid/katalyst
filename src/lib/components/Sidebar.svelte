@@ -28,14 +28,14 @@
   // Flat list + field `group` → kelompok visual (Analisis / Operasional / Lainnya).
   const links = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, ownerOnly: true, group: 'Analisis' },
-    { href: '/stats', label: 'Statistik', icon: TrendingUp, ownerOnly: true, group: 'Analisis' },
+    { href: '/statistics', label: 'Statistik', icon: TrendingUp, ownerOnly: true, group: 'Analisis' },
     { href: '/simulator', label: 'Simulator', icon: FlaskConical, ownerOnly: true, group: 'Analisis' },
     { href: '/zakat', label: 'Zakat', icon: HandCoins, ownerOnly: true, group: 'Analisis' },
     { href: '/products', label: 'Produk', icon: Package, ownerOnly: false, group: 'Operasional' },
     { href: '/transactions', label: 'Transaksi', icon: ShoppingCart, ownerOnly: false, group: 'Operasional' },
     { href: '/discounts', label: 'Diskon', icon: TicketPercent, ownerOnly: true, group: 'Operasional' },
     { href: '/settings', label: 'Pengaturan', icon: Settings, ownerOnly: true, group: 'Lainnya' },
-    { href: '/logs', label: 'Log Aktivitas', icon: ScrollText, ownerOnly: true, group: 'Lainnya' },
+    { href: '/activity', label: 'Log Aktivitas', icon: ScrollText, ownerOnly: true, group: 'Lainnya' },
     { href: '/help', label: 'Bantuan', icon: CircleHelp, ownerOnly: false, group: 'Lainnya' },
     { href: '/account', label: 'Akun', icon: CircleUserRound, ownerOnly: false, group: 'Lainnya' }
   ];
