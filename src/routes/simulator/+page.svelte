@@ -6,17 +6,15 @@
   import Badge from '$lib/components/ui/Badge.svelte';
   import Tooltip from '$lib/components/ui/Tooltip.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
-  import StatCard from '$lib/components/statistik/StatCard.svelte';
-  import StatFilterBar from '$lib/components/statistik/StatFilterBar.svelte';
+  import SlideOver from '$lib/components/ui/SlideOver.svelte';
+  import FormulaTip from '$lib/components/ui/FormulaTip.svelte';
+  import StatCard from '$lib/components/statistics/StatCard.svelte';
+  import StatFilterBar from '$lib/components/statistics/StatFilterBar.svelte';
   import { goto } from '$app/navigation';
-  import { fmtQty } from '$lib/shared/format';
-  import {
-    assessScenario,
-    sanitizeLevers,
-    simulate,
-    type ScenarioCode
-  } from '$lib/simulation';
+  import { fmtDeltaPct, fmtPoin, fmtInt, fmtPercent, fmtQty, fmtRupiah } from '$lib/shared/format';
+  import { assessScenario, sanitizeLevers, simulate, type ScenarioCode } from '$lib/analytics/simulation';
   import { ZERO_FACTS, zakatImpactOf } from '$lib/analytics';
+  import { explainSim, maxDropText, peakEmptyReason } from '$lib/analytics/explain';
   export let data;
 
   type BadgeTone = 'positive' | 'warning' | 'negative' | 'neutral';
@@ -26,14 +24,6 @@
     desc: string;
   }
 
-  // Formatter dibuat sekali di level modul: Intl.NumberFormat dipanggil puluhan kali tiap render + tiap geser slider.
-  const idrFmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
-  const numFmt = new Intl.NumberFormat('id-ID');
-  const idr = (n: number) => idrFmt.format(n);
-  const num = (n: number) => numFmt.format(n);
-  const fmtDeltaPct = (v: number | null) =>
-    v === null ? 'dari nol' : `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
-  const fmtPoin = (v: number) => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)} pp`;
   const toneOf = (v: number | null) => (v === null ? 'neutral' : v >= 0 ? 'positive' : 'negative') as BadgeTone;
 
   // Produk awal: hormati ?productId= (deep-link dari halaman Produk).
@@ -50,13 +40,14 @@
 
   // Rentang baseline: hari ini / minggu ini / 7 hari / 30 hari / bulan ini / semua / custom. Default bulan ini (dari server) biar load awal ringan.
   // Ganti rentang = reload server (goto) biar agregat dihitung ulang dari transaction.created_at.
-  // Hitungan live di client (responsif tiap geser tuas); rumusnya sama dengan lib/simulation.ts (satu fungsi simulate).
+  // Hitungan live di client (responsif tiap geser tuas); rumusnya sama dengan lib/analytics/simulation.ts (satu fungsi simulate).
   let activeRange: string = data.range ?? 'month';
   let fromInput: string = data.rangeFrom ?? '';
   let toInput: string = data.rangeTo ?? '';
 
   function goWithRange(key: string, from = '', to = '') {
     activeRange = key;
+    showPeriodSheet = false;
     const u = new URL(window.location.href);
     u.searchParams.set('range', key);
     if (key === 'custom') {
@@ -81,6 +72,28 @@
     }
     goWithRange('custom', fromInput, toInput);
   }
+  function syncFrom(e: Event) {
+    fromInput = (e.currentTarget as HTMLInputElement).value;
+    applyCustom();
+  }
+  function syncTo(e: Event) {
+    toInput = (e.currentTarget as HTMLInputElement).value;
+    applyCustom();
+  }
+
+  const btn = (current: string, key: string) =>
+    `rounded border px-2.5 py-1.5 text-body-sm ${current === key ? 'border-ink-navy bg-ink-navy font-semibold text-white' : 'border-border-input bg-white text-ink hover:bg-table-header'}`;
+  const rangeNames: Record<string, string> = {
+    today: 'Hari ini',
+    week: 'Minggu ini',
+    '7d': '7 hari',
+    '30d': '30 hari',
+    month: 'Bulan ini',
+    all: 'Semua',
+    custom: 'Custom'
+  };
+
+  let showPeriodSheet = false;
 
   $: prod = data.products.find((p) => p.id === productId) ?? data.products[0] ?? null;
   $: base = (prod && data.baselines.find((b) => b.productId === prod.id)) ?? {
@@ -101,8 +114,7 @@
   $: pricePct = sellBase === 0 ? 0 : ((priceValue - sellBase) / sellBase) * 100;
   $: costPct = costBase === 0 ? 0 : ((costValue - costBase) / costBase) * 100;
 
-  $: overrideQty =
-    qtyOverride.trim() === '' ? null : Math.max(0, Math.floor(Number(qtyOverride) || 0));
+  $: overrideQty = qtyOverride.trim() === '' ? null : Math.max(0, Math.floor(Number(qtyOverride) || 0));
 
   // Satu-satunya hitungan simulasi, tak ada rumus lokal lagi.
   // Respons pembeli selalu aktif; engine yang memutuskan dipakai tidaknya.
@@ -119,6 +131,7 @@
     product: { sellingPrice: sellBase, costPrice: costBase },
     levers: simLevers
   });
+  $: ex = explainSim(result, simLevers);
 
   $: simQty = result.qty.simulated;
   $: effPrice = result.simulated.avgNetPrice;
@@ -142,21 +155,7 @@
   let assumptions: string[] = [];
   $: breakEvenQty = result.breakEvenQty;
   $: maxDiscount = result.maxDiscountPct;
-  // Alasan harga optimal kosong, untuk keterangan kecil di kartu.
-  $: peakEmptyReason = overrideQty !== null
-    ? 'qty manual'
-    : result.qty.baseline === 0
-      ? 'tidak ada histori'
-      : result.flags.includes('QUOTA_DEMAND_IGNORED')
-        ? 'diskon berkuota'
-        : '';
   $: maxDrop = result.maxVolumeDrop;
-  $: maxDropText =
-    maxDrop === null
-      ? '-'
-      : maxDrop >= 0
-        ? `${(maxDrop * 100).toFixed(1).replace('.', ',')}% dari ${num(result.qty.baseline)} unit`
-        : `harus naik ${(-maxDrop * 100).toFixed(1).replace('.', ',')}%`;
 
   // Teks verdict per kode; angkaQty/harga persenan hanya untuk tampil.
   function verdictText(
@@ -175,19 +174,40 @@
       case 'NO_VOLUME':
         return { title: 'Belum ada volume', desc: 'Isi override quantity atau pastikan produk punya histori penjualan.' };
       case 'DEMAND_COLLAPSE':
-        return { title: 'Pembeli diperkirakan hilang', desc: `Pada harga ${idr(v.effPrice)}, model memperkirakan hampir tidak ada yang membeli.` };
+        return {
+          title: 'Pembeli diperkirakan hilang',
+          desc: `Pada harga ${fmtRupiah(v.effPrice)}, model memperkirakan hampir tidak ada yang membeli.`
+        };
       case 'UNIT_LOSS':
-        return { title: 'Tiap unit merugi', desc: `Harga efektif ${idr(v.effPrice)} di bawah modal ${idr(v.costValue)}. Skenario ini rugi di setiap unit.` };
+        return {
+          title: 'Tiap unit merugi',
+          desc: `Harga efektif ${fmtRupiah(v.effPrice)} di bawah modal ${fmtRupiah(v.costValue)}. Skenario ini rugi di setiap unit.`
+        };
       case 'LOSS':
-        return { title: 'Skenario merugikan', desc: `Profit ${fmtDeltaPct(v.profitDelta)} dibanding kondisi sekarang dan margin ${fmtPoin(v.marginPts)}. Pertimbangkan ulang tuasnya.` };
+        return {
+          title: 'Skenario merugikan',
+          desc: `Profit ${fmtDeltaPct(v.profitDelta)} dibanding kondisi sekarang dan margin ${fmtPoin(v.marginPts)}. Pertimbangkan ulang tuasnya.`
+        };
       case 'OUT_OF_RANGE':
-        return { title: 'Di luar jangkauan data', desc: `Harga ${idr(v.priceValue)} berubah ${v.pricePct >= 0 ? '+' : ''}${v.pricePct.toFixed(0)}% dari harga sekarang, jauh di luar yang bisa diprediksi dari histori. Anggap hasilnya spekulatif dan uji dulu dengan kenaikan bertahap.` };
+        return {
+          title: 'Di luar jangkauan data',
+          desc: `Harga ${fmtRupiah(v.priceValue)} berubah ${v.pricePct >= 0 ? '+' : ''}${v.pricePct.toFixed(0)}% dari harga sekarang, jauh di luar yang bisa diprediksi dari histori. Anggap hasilnya spekulatif dan uji dulu dengan kenaikan bertahap.`
+        };
       case 'PROFITABLE':
-        return { title: 'Skenario menguntungkan', desc: `Profit ${fmtDeltaPct(v.profitDelta)} dibanding kondisi sekarang dengan margin terjaga di ${(v.margin * 100).toFixed(1)}%.` };
+        return {
+          title: 'Skenario menguntungkan',
+          desc: `Profit ${fmtDeltaPct(v.profitDelta)} dibanding kondisi sekarang dengan margin terjaga di ${fmtPercent(v.margin)}.`
+        };
       case 'NEUTRAL':
-        return { title: 'Dampak netral', desc: 'Perubahan kecil terhadap profit dibanding kondisi sekarang. Coba geser tuas lebih jauh atau ubah volume.' };
+        return {
+          title: 'Dampak netral',
+          desc: 'Perubahan kecil terhadap profit dibanding kondisi sekarang. Coba geser tuas lebih jauh atau ubah volume.'
+        };
       default:
-        return { title: 'Dampak netral', desc: 'Perubahan kecil terhadap profit dibanding kondisi sekarang. Coba geser tuas lebih jauh atau ubah volume.' };
+        return {
+          title: 'Dampak netral',
+          desc: 'Perubahan kecil terhadap profit dibanding kondisi sekarang. Coba geser tuas lebih jauh atau ubah volume.'
+        };
     }
   }
 
@@ -219,29 +239,25 @@
         ? `Quantity dihitung dari respons harga lalu disesuaikan ${volPct >= 0 ? '+' : ''}${volPct}%: ${fmtQty(simQty)} unit.`
         : `Quantity mengikuti histori ${histQty === 0 ? 'produk ini belum pernah terjual pada rentang ini' : `disesuaikan ${volPct >= 0 ? '+' : ''}${volPct}%`}: ${fmtQty(simQty)} unit.`,
     ...(result.demand.applied && demandDeltaPct
-      ? [`Respons pembeli: harga efektif ${demandDeltaPct.pe >= 0 ? '+' : ''}${demandDeltaPct.pe.toFixed(1).replace('.', ',')}% → penjualan ${demandDeltaPct.qe >= 0 ? '+' : ''}${demandDeltaPct.qe.toFixed(1).replace('.', ',')}% (angka ini hanya asumsi/perkiraan, bukan kepastian).`]
+      ? [
+          `Respons pembeli: harga efektif ${demandDeltaPct.pe >= 0 ? '+' : ''}${demandDeltaPct.pe.toFixed(1).replace('.', ',')}% → penjualan ${demandDeltaPct.qe >= 0 ? '+' : ''}${demandDeltaPct.qe.toFixed(1).replace('.', ',')}% (angka ini hanya asumsi/perkiraan, bukan kepastian).`
+        ]
       : []),
     ...(result.flags.includes('NO_HISTORY')
       ? ['Tidak ada data transaksi pada rentang ini untuk produk ini, hasil simulasi kurang bisa diandalkan. Isi quantity manual atau ganti rentang.']
       : []),
-    ...(result.flags.includes('DISCOUNT_ON_CHANGED_PRICE')
-      ? ['Diskon diterapkan di atas harga jual skenario, bukan harga jual saat ini.']
-      : []),
-    ...(result.flags.includes('LOW_MARGIN')
-      ? ['Margin simulasi di bawah 15%, waspada terhadap biaya tak terduga.']
-      : []),
-    ...(result.flags.includes('BELOW_COST')
-      ? ['Harga efektif di bawah modal, tiap unit menambah kerugian.']
-      : []),
+    ...(result.flags.includes('DISCOUNT_ON_CHANGED_PRICE') ? ['Diskon diterapkan di atas harga jual skenario, bukan harga jual saat ini.'] : []),
+    ...(result.flags.includes('LOW_MARGIN') ? ['Margin simulasi di bawah 15%, waspada terhadap biaya tak terduga.'] : []),
+    ...(result.flags.includes('BELOW_COST') ? ['Harga efektif di bawah modal, tiap unit menambah kerugian.'] : []),
     ...(result.demand.capped ? ['Kenaikan volume dibatasi 3× dari baseline (batas serap pasar).'] : []),
     ...(result.flags.includes('QUOTA_DEMAND_IGNORED') ? ['Diskon berkuota: respons volume dari diskon tidak dihitung.'] : []),
     ...(result.outOfRange ? ['Harga skenario di luar ±30% dari harga sekarang; hasil spekulatif.'] : []),
-    ...(base.txCount > 0 ? [`Baseline dari ${num(base.txCount)} transaksi tercatat.`] : []),
+    ...(base.txCount > 0 ? [`Baseline dari ${fmtInt(base.txCount)} transaksi tercatat.`] : []),
     'Dampak zakat dihitung dari selisih profit produk ini pada rentang baseline, dengan asumsi selisih tersebut tertahan sebagai kas atau stok sampai haul; kas, piutang, dan utang diambil dari halaman Zakat.'
   ];
   $: driftNote =
     result.flags.includes('DRIFT_PRICE') || result.flags.includes('DRIFT_COST')
-      ? `Catatan netral: harga rata-rata terjual periode ini ${idr(result.actual.avgGrossPrice)} (modal ${idr(result.actual.avgCost)}), harga sekarang ${idr(sellBase)} (modal ${idr(costBase)}). Selisihnya bukan efek tuas.`
+      ? `Catatan netral: harga rata-rata terjual periode ini ${fmtRupiah(result.actual.avgGrossPrice)} (modal ${fmtRupiah(result.actual.avgCost)}), harga sekarang ${fmtRupiah(sellBase)} (modal ${fmtRupiah(costBase)}). Selisihnya bukan efek tuas.`
       : null;
 
   // Lebar bar perbandingan (relatif ke nilai terbesar, min 2% biar kelihatan).
@@ -251,9 +267,7 @@
   $: sqMargin = result.statusQuo.margin;
 
   // Dampak zakat dari selisih profit skenario (Rupiah, bukan rasio impact).
-  $: zakatImpact = data.zakat
-    ? zakatImpactOf(data.zakat, { statusQuo: result.statusQuo.profit, simulated: result.simulated.profit })
-    : null;
+  $: zakatImpact = data.zakat ? zakatImpactOf(data.zakat, { statusQuo: result.statusQuo.profit, simulated: result.simulated.profit }) : null;
   $: zakatPartial = (zakatImpact?.before.missing.length ?? 1) > 0;
   // Tanda estimasi hanya untuk jumlah positif; nol aturan tampil tegas.
   $: zakatBeforeUncertain = zakatPartial && (zakatImpact?.before.amount ?? 0) > 0;
@@ -264,7 +278,7 @@
   $: maxProfit = Math.max(sqProfit, result.simulated.profit, 1);
   $: maxQty = Math.max(histQty, simQty, 1);
   const w = (v: number, max: number) => `${Math.max(2, (v / max) * 100).toFixed(1)}%`;
-  // Jembatan ke /diskon: persen simulasi dijadikan draf diskon produk yang dihitung dari harga jual saat ini, tombol aktif hanya bila tuas harga jual tidak diubah.
+  // Jembatan ke /discounts: persen simulasi dijadikan draf diskon produk yang dihitung dari harga jual saat ini, tombol aktif hanya bila tuas harga jual tidak diubah.
   // Baseline week/month parsial (Senin–sekarang / tgl 1–sekarang), jadi kuota dari simQty hanyalah saran awal.
   function goToDiscount() {
     if (!prod || discountMode !== 'percent' || discountPct <= 0 || priceValue !== sellBase) return;
@@ -277,7 +291,7 @@
     const preset = data.range === 'today' ? 'TODAY' : data.range === 'week' || data.range === '7d' ? 'DAYS_7' : null;
     if (preset) params.set('preset', preset);
     if (data.rangeLabel) params.set('baseline', data.rangeLabel);
-    goto(`/diskon?${params.toString()}`);
+    goto(`/discounts?${params.toString()}`);
   }
   $: discountActive = discountMode === 'percent' && discountPct > 0 && priceValue === sellBase && !!prod;
 
@@ -360,7 +374,6 @@
     bind:toInput
     onSelect={(k) => goWithRange(k)}
     onApply={applyCustom}
-    desktopOnly={false}
     ranges={[
       { value: 'today', label: 'Hari ini' },
       { value: 'week', label: 'Minggu ini' },
@@ -370,7 +383,54 @@
       { value: 'all', label: 'Semua' }
     ]}
   />
+  <div class="sm:hidden flex flex-col gap-2 p-5">
+    <button
+      type="button"
+      on:click={() => (showPeriodSheet = true)}
+      class="inline-flex h-9 items-center justify-between rounded border border-border-input bg-white px-3 text-body-md text-ink"
+    >
+      <span>Periode: <strong>{rangeNames[activeRange] ?? 'Bulan ini'}</strong></span>
+      <span aria-hidden="true" class="text-muted">▾</span>
+    </button>
+    {#if data.rangeLabel}
+      <span class="text-body-sm text-muted">Dipakai: <strong class="text-ink">{data.rangeLabel}</strong></span>
+    {/if}
+  </div>
 </StatCard>
+
+{#if showPeriodSheet}
+  <SlideOver title="Pilih Periode" onClose={() => (showPeriodSheet = false)}>
+    <div class="flex flex-col gap-2">
+      <button type="button" on:click={() => goWithRange('today')} class={`${btn(activeRange, 'today')} w-full text-left`}>Hari ini</button>
+      <button type="button" on:click={() => goWithRange('week')} class={`${btn(activeRange, 'week')} w-full text-left`}>Minggu ini</button>
+      <button type="button" on:click={() => goWithRange('7d')} class={`${btn(activeRange, '7d')} w-full text-left`}>7 hari</button>
+      <button type="button" on:click={() => goWithRange('30d')} class={`${btn(activeRange, '30d')} w-full text-left`}>30 hari</button>
+      <button type="button" on:click={() => goWithRange('month')} class={`${btn(activeRange, 'month')} w-full text-left`}>Bulan ini</button>
+      <button type="button" on:click={() => goWithRange('all')} class={`${btn(activeRange, 'all')} w-full text-left`}>Semua</button>
+      <div class="flex flex-col gap-2 rounded border border-border-cool p-3">
+        <label class="flex flex-col gap-1 text-body-md text-ink">
+          Dari
+          <input
+            type="date"
+            bind:value={fromInput}
+            on:change={syncFrom}
+            class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink"
+          />
+        </label>
+        <label class="flex flex-col gap-1 text-body-md text-ink">
+          Sampai
+          <input
+            type="date"
+            bind:value={toInput}
+            on:change={syncTo}
+            min={fromInput || undefined}
+            class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink"
+          />
+        </label>
+      </div>
+    </div>
+  </SlideOver>
+{/if}
 
 {#if !prod}
   <Card class="text-center py-10">
@@ -401,11 +461,11 @@
         <div class="grid grid-cols-2 gap-2 mt-3">
           <div class="rounded border border-border-cool px-2.5 py-2">
             <p class="text-label-sm uppercase text-muted">Jual · Modal</p>
-            <p class="text-num-cell text-ink tabular">{idr(sellBase)} · {idr(costBase)}</p>
+            <p class="text-num-cell text-ink tabular">{fmtRupiah(sellBase)} · {fmtRupiah(costBase)}</p>
           </div>
           <div class="rounded border border-border-cool px-2.5 py-2">
             <p class="text-label-sm uppercase text-muted">Histori</p>
-            <p class="text-num-cell text-ink tabular">{num(histQty)} unit · {num(base.txCount)} trx</p>
+            <p class="text-num-cell text-ink tabular">{fmtInt(histQty)} unit · {fmtInt(base.txCount)} trx</p>
           </div>
         </div>
       </Card>
@@ -413,10 +473,26 @@
       <Card>
         <p class="text-label-md text-ink mb-2">Skenario cepat</p>
         <div class="grid grid-cols-2 gap-2">
-          <button type="button" on:click={() => preset('naik10')} class="rounded border border-border-input bg-white px-2.5 py-2 text-body-sm text-ink hover:bg-table-header text-left">Harga +10%</button>
-          <button type="button" on:click={() => preset('diskon15')} class="rounded border border-border-input bg-white px-2.5 py-2 text-body-sm text-ink hover:bg-table-header text-left">Diskon 15%</button>
-          <button type="button" on:click={() => preset('modal8')} class="rounded border border-border-input bg-white px-2.5 py-2 text-body-sm text-ink hover:bg-table-header text-left">Modal −8%</button>
-          <button type="button" on:click={() => preset('gudang')} class="rounded border border-border-input bg-white px-2.5 py-2 text-body-sm text-ink hover:bg-table-header text-left">Cuci gudang</button>
+          <button
+            type="button"
+            on:click={() => preset('naik10')}
+            class="rounded border border-border-input bg-white px-2.5 py-2 text-body-sm text-ink hover:bg-table-header text-left">Harga +10%</button
+          >
+          <button
+            type="button"
+            on:click={() => preset('diskon15')}
+            class="rounded border border-border-input bg-white px-2.5 py-2 text-body-sm text-ink hover:bg-table-header text-left">Diskon 15%</button
+          >
+          <button
+            type="button"
+            on:click={() => preset('modal8')}
+            class="rounded border border-border-input bg-white px-2.5 py-2 text-body-sm text-ink hover:bg-table-header text-left">Modal −8%</button
+          >
+          <button
+            type="button"
+            on:click={() => preset('gudang')}
+            class="rounded border border-border-input bg-white px-2.5 py-2 text-body-sm text-ink hover:bg-table-header text-left">Cuci gudang</button
+          >
         </div>
       </Card>
 
@@ -434,9 +510,20 @@
                 Harga jual
                 <Tooltip text="Harga jual pengganti buat produk ini di skenario simulasi." />
               </span>
-              <span class="text-body-sm tabular {pricePct >= 0 ? 'text-status-positive' : 'text-status-negative'}">{pricePct >= 0 ? '+' : ''}{pricePct.toFixed(0)}%</span>
+              <span class="text-body-sm tabular {pricePct >= 0 ? 'text-status-positive' : 'text-status-negative'}"
+                >{pricePct >= 0 ? '+' : ''}{pricePct.toFixed(0)}%</span
+              >
             </div>
-            <input type="range" min={-30} max={50} step={1} value={pricePct} on:input={onPricePct} class="w-full accent-ink-navy" aria-label="Persentase perubahan harga jual" />
+            <input
+              type="range"
+              min={-30}
+              max={50}
+              step={1}
+              value={pricePct}
+              on:input={onPricePct}
+              class="w-full accent-ink-navy"
+              aria-label="Persentase perubahan harga jual"
+            />
             <MoneyInput value={String(priceValue)} on:input={(e) => (priceValue = Number(e.detail) || 0)} aria-label="Harga jual skenario (rupiah)" />
             {#if result.outOfRange}
               <p class="text-body-sm text-status-warning mt-1">Di luar ±30% dari harga sekarang. Hasilnya spekulatif.</p>
@@ -457,15 +544,35 @@
               {/if}
             </div>
             {#if discountMode === 'keep'}
-              <p class="text-body-sm text-muted">Sesuai histori ({histRatePct}% rata-rata nilai). Geser slider atau isi angka untuk mencoba diskon lain.</p>
+              <p class="text-body-sm text-muted">
+                Sesuai histori ({histRatePct}% rata-rata nilai). Geser slider atau isi angka untuk mencoba diskon lain.
+              </p>
             {/if}
             <!-- Elemen input tidak boleh berada di dalam cabang {#if}: ganti mode akan membongkarnya dan memutus drag/fokus ketikan. -->
-            <input type="range" min={0} max={50} step={1} value={discountMode === 'keep' ? histRateInt : discountPct} on:input={onDiscount} class="w-full accent-ink-navy" aria-label="Persentase diskon" />
-            <Input type="number" min="0" step="1" value={discountMode === 'keep' ? '' : String(discountPct)} placeholder={`histori ${histRatePct}%`} on:input={onDiscountNum} aria-label="Diskon skenario (persen)" />
+            <input
+              type="range"
+              min={0}
+              max={50}
+              step={1}
+              value={discountMode === 'keep' ? histRateInt : discountPct}
+              on:input={onDiscount}
+              class="w-full accent-ink-navy"
+              aria-label="Persentase diskon"
+            />
+            <Input
+              type="number"
+              min="0"
+              step="1"
+              value={discountMode === 'keep' ? '' : String(discountPct)}
+              placeholder={`histori ${histRatePct}%`}
+              on:input={onDiscountNum}
+              aria-label="Diskon skenario (persen)"
+            />
             {#if discountMode === 'percent'}
-              <button type="button" on:click={backToHist} class="text-body-sm font-semibold text-muted hover:text-ink mt-1">Kembali ke histori</button>
+              <button type="button" on:click={backToHist} class="text-body-sm font-semibold text-muted hover:text-ink mt-1">Kembali ke histori</button
+              >
             {/if}
-            <p class="text-body-sm text-muted mt-1">Harga efektif: <strong class="text-ink tabular">{idr(effPrice)}</strong></p>
+            <p class="text-body-sm text-muted mt-1">Harga efektif: <strong class="text-ink tabular">{fmtRupiah(effPrice)}</strong></p>
           </div>
 
           <!-- Modal -->
@@ -475,9 +582,20 @@
                 Harga modal
                 <Tooltip text="Biaya modal (COGS) pengganti buat produk ini di skenario simulasi." />
               </span>
-              <span class="text-body-sm tabular {costPct <= 0 ? 'text-status-positive' : 'text-status-negative'}">{costPct >= 0 ? '+' : ''}{costPct.toFixed(0)}%</span>
+              <span class="text-body-sm tabular {costPct <= 0 ? 'text-status-positive' : 'text-status-negative'}"
+                >{costPct >= 0 ? '+' : ''}{costPct.toFixed(0)}%</span
+              >
             </div>
-            <input type="range" min={-30} max={30} step={1} value={costPct} on:input={onCostPct} class="w-full accent-ink-navy" aria-label="Persentase perubahan harga modal" />
+            <input
+              type="range"
+              min={-30}
+              max={30}
+              step={1}
+              value={costPct}
+              on:input={onCostPct}
+              class="w-full accent-ink-navy"
+              aria-label="Persentase perubahan harga modal"
+            />
             <MoneyInput value={String(costValue)} on:input={(e) => (costValue = Number(e.detail) || 0)} aria-label="Harga modal skenario (rupiah)" />
           </div>
 
@@ -490,13 +608,29 @@
               </span>
               <span class="text-body-sm tabular text-ink">{volPct >= 0 ? '+' : ''}{volPct}%</span>
             </div>
-            <input type="range" min={-50} max={100} step={5} bind:value={volPct} class="w-full accent-ink-navy" aria-label="Persentase perubahan volume" />
-            <Input type="number" min="0" step="10" bind:value={qtyOverride} placeholder={`Otomatis: ${fmtQty(simQty)} unit`} aria-label="Override quantity (opsional)" />
+            <input
+              type="range"
+              min={-50}
+              max={100}
+              step={5}
+              value={volPct}
+              on:input={(e) => (volPct = sliderVal(e))}
+              class="w-full accent-ink-navy"
+              aria-label="Persentase perubahan volume"
+            />
+            <Input
+              type="number"
+              min="0"
+              step="10"
+              bind:value={qtyOverride}
+              placeholder={`Otomatis: ${fmtQty(simQty)} unit`}
+              aria-label="Override quantity (opsional)"
+            />
           </div>
         </div>
 
         <div class="rounded bg-status-neutral-bg border border-status-neutral-border px-3 py-2 mt-4 text-body-sm text-muted">
-          Laba/unit: <strong class="tabular {unitProfit >= 0 ? 'text-status-positive' : 'text-status-negative'}">{idr(unitProfit)}</strong>
+          Laba/unit: <strong class="tabular {unitProfit >= 0 ? 'text-status-positive' : 'text-status-negative'}">{fmtRupiah(unitProfit)}</strong>
           · Qty simulasi: <strong class="text-ink tabular">{fmtQty(simQty)}</strong>
         </div>
       </Card>
@@ -515,19 +649,25 @@
         <p class="relative text-body-md text-white/80 mb-4">{verdict.desc}</p>
         <div class="relative grid grid-cols-1 sm:grid-cols-3 gap-4 min-w-0">
           <div class="min-w-0">
-            <p class="text-label-sm uppercase text-white/50">Revenue</p>
+            <p class="flex items-center gap-1.5 text-label-sm uppercase text-white/50">Revenue <FormulaTip explain={ex.revenue} variant="dark" /></p>
             <p class="text-num-display text-white tabular break-words">{fmtDeltaPct(revDelta)}</p>
-            <p class="text-body-sm text-white/60 tabular break-words [overflow-wrap:anywhere]">{idr(sqRev)} → {idr(result.simulated.revenue)}</p>
+            <p class="text-body-sm text-white/60 tabular break-words [overflow-wrap:anywhere]">
+              {fmtRupiah(sqRev)} → {fmtRupiah(result.simulated.revenue)}
+            </p>
           </div>
           <div class="min-w-0">
-            <p class="text-label-sm uppercase text-white/50">Profit</p>
+            <p class="flex items-center gap-1.5 text-label-sm uppercase text-white/50">Profit <FormulaTip explain={ex.profit} variant="dark" /></p>
             <p class="text-num-display text-white tabular break-words">{fmtDeltaPct(profitDelta)}</p>
-            <p class="text-body-sm text-white/60 tabular break-words [overflow-wrap:anywhere]">{idr(sqProfit)} → {idr(result.simulated.profit)}</p>
+            <p class="text-body-sm text-white/60 tabular break-words [overflow-wrap:anywhere]">
+              {fmtRupiah(sqProfit)} → {fmtRupiah(result.simulated.profit)}
+            </p>
           </div>
           <div class="min-w-0">
-            <p class="text-label-sm uppercase text-white/50">Margin simulasi</p>
-            <p class="text-num-display text-white tabular">{(result.simulated.margin * 100).toFixed(1)}%</p>
-            <p class="text-body-sm text-white/60 tabular">{fmtPoin(marginPts)} dari {(sqMargin * 100).toFixed(1)}%</p>
+            <p class="flex items-center gap-1.5 text-label-sm uppercase text-white/50">
+              Margin simulasi <FormulaTip explain={ex.margin} variant="dark" />
+            </p>
+            <p class="text-num-display text-white tabular">{fmtPercent(result.simulated.margin)}</p>
+            <p class="text-body-sm text-white/60 tabular">{fmtPoin(marginPts)} dari {fmtPercent(sqMargin)}</p>
           </div>
         </div>
       </div>
@@ -536,10 +676,16 @@
         <div class="rounded-panel border border-border-cool bg-surface p-4">
           {#if discountActive}
             <Button on:click={goToDiscount}>Jadikan diskon {Math.round(discountPct)}%</Button>
-            <p class="text-body-sm text-muted mt-2">Membuka draf diskon produk {prod.name} sebesar {Math.round(discountPct)}%{simQty > 0 ? ` dengan saran kuota ${num(Math.round(simQty))} unit` : ''}.</p>
+            <p class="text-body-sm text-muted mt-2">
+              Membuka draf diskon produk {prod.name} sebesar {Math.round(discountPct)}%{simQty > 0
+                ? ` dengan saran kuota ${fmtInt(Math.round(simQty))} unit`
+                : ''}.
+            </p>
           {:else}
             <Button disabled>Jadikan diskon</Button>
-            <p class="text-body-sm text-muted mt-2">Skenario juga mengubah harga jual. Ubah harga jual di halaman Produk, lalu buat diskonnya secara terpisah.</p>
+            <p class="text-body-sm text-muted mt-2">
+              Skenario juga mengubah harga jual. Ubah harga jual di halaman Produk, lalu buat diskonnya secara terpisah.
+            </p>
           {/if}
         </div>
       {/if}
@@ -554,32 +700,44 @@
             <thead>
               <tr class="text-left text-label-sm uppercase text-muted">
                 <th class="py-1 pr-3 font-medium"></th>
-                <th class="py-1 pr-3 font-medium text-right">Revenue</th>
-                <th class="py-1 pr-3 font-medium text-right">Profit</th>
-                <th class="py-1 pr-3 font-medium text-right">Margin</th>
-                <th class="py-1 font-medium text-right">Unit</th>
+                <th class="py-1 pr-3 font-medium text-right"
+                  ><span class="inline-flex items-center justify-end gap-1.5">Revenue <FormulaTip explain={ex.revenue} /></span></th
+                >
+                <th class="py-1 pr-3 font-medium text-right"
+                  ><span class="inline-flex items-center justify-end gap-1.5">Profit <FormulaTip explain={ex.profit} /></span></th
+                >
+                <th class="py-1 pr-3 font-medium text-right"
+                  ><span class="inline-flex items-center justify-end gap-1.5">Margin <FormulaTip explain={ex.margin} /></span></th
+                >
+                <th class="py-1 font-medium text-right"
+                  ><span class="inline-flex items-center justify-end gap-1.5">Unit <FormulaTip explain={ex.qty} /></span></th
+                >
               </tr>
             </thead>
             <tbody class="tabular">
               <tr class="border-t border-border-cool">
-                <td class="py-1.5 pr-3 text-muted">Aktual (periode)</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{idr(result.actual.revenue)}</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{idr(result.actual.profit)}</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{(result.actual.margin * 100).toFixed(1)}%</td>
-                <td class="py-1.5 text-right text-ink">{num(result.qty.baseline)}</td>
+                <td class="py-1.5 pr-3 text-muted"
+                  ><span class="inline-flex items-center gap-1.5">Aktual (periode) <FormulaTip explain={ex.rows.actual} /></span></td
+                >
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtRupiah(result.actual.revenue)}</td>
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtRupiah(result.actual.profit)}</td>
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtPercent(result.actual.margin)}</td>
+                <td class="py-1.5 text-right text-ink">{fmtInt(result.qty.baseline)}</td>
               </tr>
               <tr class="border-t border-border-cool">
-                <td class="py-1.5 pr-3 text-muted">Kondisi sekarang</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{idr(sqRev)}</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{idr(sqProfit)}</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{(sqMargin * 100).toFixed(1)}%</td>
-                <td class="py-1.5 text-right text-ink">{num(result.qty.baseline)}</td>
+                <td class="py-1.5 pr-3 text-muted"
+                  ><span class="inline-flex items-center gap-1.5">Kondisi sekarang <FormulaTip explain={ex.rows.statusQuo} /></span></td
+                >
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtRupiah(sqRev)}</td>
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtRupiah(sqProfit)}</td>
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtPercent(sqMargin)}</td>
+                <td class="py-1.5 text-right text-ink">{fmtInt(result.qty.baseline)}</td>
               </tr>
               <tr class="border-t border-border-cool font-semibold">
                 <td class="py-1.5 pr-3 text-ink">Simulasi</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{idr(result.simulated.revenue)}</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{idr(result.simulated.profit)}</td>
-                <td class="py-1.5 pr-3 text-right text-ink">{(result.simulated.margin * 100).toFixed(1)}%</td>
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtRupiah(result.simulated.revenue)}</td>
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtRupiah(result.simulated.profit)}</td>
+                <td class="py-1.5 pr-3 text-right text-ink">{fmtPercent(result.simulated.margin)}</td>
                 <td class="py-1.5 text-right text-ink">{fmtQty(simQty)}</td>
               </tr>
             </tbody>
@@ -591,56 +749,83 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 min-w-0">
           <div class="min-w-0">
             <div class="flex items-center justify-between gap-2 mb-1">
-              <span class="text-label-sm uppercase text-muted">Revenue</span>
+              <span class="flex items-center gap-1.5 text-label-sm uppercase text-muted">Revenue <FormulaTip explain={ex.revenue} /></span>
               <Badge size="sm" tone={toneOf(revDelta)}>{fmtDeltaPct(revDelta)}</Badge>
             </div>
-            <p class="text-lg font-bold text-ink tabular break-words [overflow-wrap:anywhere]">{idr(result.simulated.revenue)}</p>
-            <p class="text-body-sm text-muted tabular mb-2 break-words [overflow-wrap:anywhere]">dari {idr(sqRev)}</p>
+            <p class="text-lg font-bold text-ink tabular break-words [overflow-wrap:anywhere]">{fmtRupiah(result.simulated.revenue)}</p>
+            <p class="text-body-sm text-muted tabular mb-2 break-words [overflow-wrap:anywhere]">dari {fmtRupiah(sqRev)}</p>
             <div class="relative h-2 rounded-full bg-border-cool" role="img" aria-label="Revenue simulasi dibanding kondisi sekarang">
-              <div class="absolute inset-y-0 left-0 rounded-full bg-ink-navy transition-[width]" style="width: {w(result.simulated.revenue, maxRev)}"></div>
-              <div class="absolute top-1/2 h-3.5 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded bg-white ring-2 ring-slate-400" style="left: {w(sqRev, maxRev)}" title="Sekarang: {idr(sqRev)}"></div>
+              <div
+                class="absolute inset-y-0 left-0 rounded-full bg-ink-navy transition-[width]"
+                style="width: {w(result.simulated.revenue, maxRev)}"
+              ></div>
+              <div
+                class="absolute top-1/2 h-3.5 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded bg-white ring-2 ring-slate-400"
+                style="left: {w(sqRev, maxRev)}"
+                title="Sekarang: {fmtRupiah(sqRev)}"
+              ></div>
             </div>
           </div>
           <div class="min-w-0">
             <div class="flex items-center justify-between gap-2 mb-1">
-              <span class="text-label-sm uppercase text-muted">Profit</span>
+              <span class="flex items-center gap-1.5 text-label-sm uppercase text-muted">Profit <FormulaTip explain={ex.profit} /></span>
               <Badge size="sm" tone={toneOf(profitDelta)}>{fmtDeltaPct(profitDelta)}</Badge>
             </div>
-            <p class="text-lg font-bold text-ink tabular break-words [overflow-wrap:anywhere]">{idr(result.simulated.profit)}</p>
-            <p class="text-body-sm text-muted tabular mb-2 break-words [overflow-wrap:anywhere]">dari {idr(sqProfit)}</p>
+            <p class="text-lg font-bold text-ink tabular break-words [overflow-wrap:anywhere]">{fmtRupiah(result.simulated.profit)}</p>
+            <p class="text-body-sm text-muted tabular mb-2 break-words [overflow-wrap:anywhere]">dari {fmtRupiah(sqProfit)}</p>
             <div class="relative h-2 rounded-full bg-border-cool" role="img" aria-label="Profit simulasi dibanding kondisi sekarang">
-              <div class="absolute inset-y-0 left-0 rounded-full bg-status-positive transition-[width]" style="width: {w(Math.max(0, result.simulated.profit), maxProfit)}"></div>
-              <div class="absolute top-1/2 h-3.5 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded bg-white ring-2 ring-slate-400" style="left: {w(Math.max(0, sqProfit), maxProfit)}" title="Sekarang: {idr(sqProfit)}"></div>
+              <div
+                class="absolute inset-y-0 left-0 rounded-full bg-status-positive transition-[width]"
+                style="width: {w(Math.max(0, result.simulated.profit), maxProfit)}"
+              ></div>
+              <div
+                class="absolute top-1/2 h-3.5 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded bg-white ring-2 ring-slate-400"
+                style="left: {w(Math.max(0, sqProfit), maxProfit)}"
+                title="Sekarang: {fmtRupiah(sqProfit)}"
+              ></div>
             </div>
           </div>
           <div class="min-w-0">
             <div class="flex items-center justify-between gap-2 mb-1">
-              <span class="text-label-sm uppercase text-muted">Margin</span>
+              <span class="flex items-center gap-1.5 text-label-sm uppercase text-muted">Margin <FormulaTip explain={ex.margin} /></span>
               <Badge size="sm" tone={marginPts >= 0 ? 'positive' : 'negative'}>{fmtPoin(marginPts)}</Badge>
             </div>
-            <p class="text-lg font-bold text-ink tabular break-words">{(result.simulated.margin * 100).toFixed(1)}%</p>
-            <p class="text-body-sm text-muted tabular mb-2 break-words">dari {(sqMargin * 100).toFixed(1)}%</p>
+            <p class="text-lg font-bold text-ink tabular break-words">{fmtPercent(result.simulated.margin)}</p>
+            <p class="text-body-sm text-muted tabular mb-2 break-words">dari {fmtPercent(sqMargin)}</p>
             <div class="relative h-2 rounded-full bg-border-cool" role="img" aria-label="Margin simulasi dibanding kondisi sekarang">
-              <div class="absolute inset-y-0 left-0 rounded-full bg-ink-navy transition-[width]" style="width: {w(result.simulated.margin * 100, Math.max(sqMargin, result.simulated.margin, 0.01) * 100)}"></div>
-              <div class="absolute top-1/2 h-3.5 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded bg-white ring-2 ring-slate-400" style="left: {w(sqMargin * 100, Math.max(sqMargin, result.simulated.margin, 0.01) * 100)}" title="Sekarang: {(sqMargin * 100).toFixed(1)}%"></div>
+              <div
+                class="absolute inset-y-0 left-0 rounded-full bg-ink-navy transition-[width]"
+                style="width: {w(result.simulated.margin * 100, Math.max(sqMargin, result.simulated.margin, 0.01) * 100)}"
+              ></div>
+              <div
+                class="absolute top-1/2 h-3.5 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded bg-white ring-2 ring-slate-400"
+                style="left: {w(sqMargin * 100, Math.max(sqMargin, result.simulated.margin, 0.01) * 100)}"
+                title="Sekarang: {fmtPercent(sqMargin)}"
+              ></div>
             </div>
           </div>
           <div class="min-w-0">
             <div class="flex items-center justify-between gap-2 mb-1">
-              <span class="text-label-sm uppercase text-muted">Unit terjual</span>
+              <span class="flex items-center gap-1.5 text-label-sm uppercase text-muted">Unit terjual <FormulaTip explain={ex.qty} /></span>
               <Badge size="sm" tone={toneOf(volDelta)}>{fmtDeltaPct(volDelta)}</Badge>
             </div>
             <p class="text-lg font-bold text-ink tabular break-words">{fmtQty(simQty)} unit</p>
-            <p class="text-body-sm text-muted tabular mb-2 break-words">dari {num(histQty)} unit</p>
+            <p class="text-body-sm text-muted tabular mb-2 break-words">dari {fmtInt(histQty)} unit</p>
             <div class="relative h-2 rounded-full bg-border-cool" role="img" aria-label="Unit simulasi dibanding kondisi sekarang">
               <div class="absolute inset-y-0 left-0 rounded-full bg-ink-navy transition-[width]" style="width: {w(simQty, maxQty)}"></div>
-              <div class="absolute top-1/2 h-3.5 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded bg-white ring-2 ring-slate-400" style="left: {w(histQty, maxQty)}" title="Sekarang: {num(histQty)} unit"></div>
+              <div
+                class="absolute top-1/2 h-3.5 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded bg-white ring-2 ring-slate-400"
+                style="left: {w(histQty, maxQty)}"
+                title="Sekarang: {fmtInt(histQty)} unit"
+              ></div>
             </div>
           </div>
         </div>
         <div class="flex items-center gap-4 mt-4 text-body-sm text-muted">
           <span class="flex items-center gap-1.5"><span class="inline-block h-2 w-4 rounded-full bg-ink-navy"></span>Simulasi</span>
-          <span class="flex items-center gap-1.5"><span class="inline-block h-3.5 w-[3px] rounded bg-white ring-2 ring-slate-400"></span>Sekarang</span>
+          <span class="flex items-center gap-1.5"
+            ><span class="inline-block h-3.5 w-[3px] rounded bg-white ring-2 ring-slate-400"></span>Sekarang</span
+          >
         </div>
       </Card>
 
@@ -648,20 +833,37 @@
         <Card>
           <h2 class="text-headline-sm text-ink mb-3">Titik impas</h2>
           <dl class="flex flex-col gap-2 text-body-md">
-            <div class="flex justify-between"><dt class="text-muted">Laba / unit simulasi</dt><dd class="tabular font-semibold {unitProfit >= 0 ? 'text-status-positive' : 'text-status-negative'}">{idr(unitProfit)}</dd></div>
-            <div class="flex justify-between"><dt class="text-muted">Qty simulasi</dt><dd class="tabular text-ink">{fmtQty(simQty)} unit</dd></div>
-            <div class="flex justify-between"><dt class="text-muted">Qty impas (profit = kondisi sekarang)</dt><dd class="tabular text-ink font-semibold">{breakEvenQty === null ? 'Tidak impas' : breakEvenQty === 0 ? '-' : `${num(breakEvenQty)} unit`}</dd></div>
-            <div class="flex justify-between"><dt class="text-muted">Diskon maks sebelum rugi</dt><dd class="tabular text-ink">{maxDiscount === null ? '-' : `${maxDiscount}%`}</dd></div>
-            <div class="flex justify-between"><dt class="text-muted">Penjualan boleh turun maks</dt><dd class="tabular font-semibold {maxDrop === null || maxDrop >= 0 ? 'text-ink' : 'text-status-warning'}">{maxDropText}</dd></div>
+            <div class="flex justify-between">
+              <dt class="flex items-center gap-1.5 text-muted">Laba / unit simulasi <FormulaTip explain={ex.unitProfit} /></dt>
+              <dd class="tabular font-semibold {unitProfit >= 0 ? 'text-status-positive' : 'text-status-negative'}">{fmtRupiah(unitProfit)}</dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="flex items-center gap-1.5 text-muted">Qty simulasi <FormulaTip explain={ex.qty} /></dt>
+              <dd class="tabular text-ink">{fmtQty(simQty)} unit</dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="flex items-center gap-1.5 text-muted">Qty impas (profit = kondisi sekarang) <FormulaTip explain={ex.breakEven} /></dt>
+              <dd class="tabular text-ink font-semibold">
+                {breakEvenQty === null ? 'Tidak impas' : breakEvenQty === 0 ? '-' : `${fmtInt(breakEvenQty)} unit`}
+              </dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="flex items-center gap-1.5 text-muted">Diskon maks sebelum rugi <FormulaTip explain={ex.maxDiscount} /></dt>
+              <dd class="tabular text-ink">{maxDiscount === null ? '-' : `${maxDiscount}%`}</dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="flex items-center gap-1.5 text-muted">Penjualan boleh turun maks <FormulaTip explain={ex.maxDrop} /></dt>
+              <dd class="tabular font-semibold {maxDrop === null || maxDrop >= 0 ? 'text-ink' : 'text-status-warning'}">{maxDropText(result)}</dd>
+            </div>
             <div class="flex justify-between gap-3">
-              <dt class="text-muted">Harga paling untung dalam rentang</dt>
+              <dt class="flex items-center gap-1.5 text-muted">Harga paling untung dalam rentang <FormulaTip explain={ex.peak} /></dt>
               <dd class="tabular text-right text-ink">
                 {#if result.peak}
-                  <span class="font-semibold">{idr(result.peak.price)}</span>
-                  <span class="block text-body-sm text-muted">profit {idr(result.peak.profit)}</span>
+                  <span class="font-semibold">{fmtRupiah(result.peak.price)}</span>
+                  <span class="block text-body-sm text-muted">profit {fmtRupiah(result.peak.profit)}</span>
                 {:else}
                   <span class="font-semibold">-</span>
-                  {#if peakEmptyReason}<span class="block text-body-sm text-muted">{peakEmptyReason}</span>{/if}
+                  {#if peakEmptyReason(result, simLevers)}<span class="block text-body-sm text-muted">{peakEmptyReason(result, simLevers)}</span>{/if}
                 {/if}
               </dd>
             </div>
@@ -671,7 +873,9 @@
           {:else if breakEvenQty > 0 && simQty >= breakEvenQty}
             <p class="text-body-sm text-status-positive mt-3">Qty simulasi sudah melewati titik impas. Skenario menutup profit kondisi sekarang.</p>
           {:else if breakEvenQty > 0}
-            <p class="text-body-sm text-status-warning mt-3">Butuh {fmtQty(breakEvenQty - simQty)} unit lagi biar profit menyamai kondisi sekarang.</p>
+            <p class="text-body-sm text-status-warning mt-3">
+              Butuh {fmtQty(breakEvenQty - simQty)} unit lagi biar profit menyamai kondisi sekarang.
+            </p>
           {/if}
         </Card>
         <Card>
@@ -690,18 +894,28 @@
         {#if zakatImpact && zakatImpact.before.status !== 'NEEDS_GOLD_PRICE'}
           <p class="text-body-sm text-muted mb-3">Skenario {prod?.name ?? 'produk ini'} pada rentang {data.rangeLabel ?? 'baseline'}.</p>
           <dl class="flex flex-col gap-2 text-body-md">
-            <div class="flex justify-between"><dt class="text-muted">Zakat sekarang</dt><dd class="tabular text-ink">{zakatBeforeUncertain ? '~' : ''}{idr(zakatImpact.before.amount)}</dd></div>
-            <div class="flex justify-between"><dt class="text-muted">Zakat simulasi</dt><dd class="tabular text-ink">{zakatAfterUncertain ? '~' : ''}{idr(zakatImpact.after.amount)}</dd></div>
+            <div class="flex justify-between">
+              <dt class="text-muted">Zakat sekarang</dt>
+              <dd class="tabular text-ink">{zakatBeforeUncertain ? '~' : ''}{fmtRupiah(zakatImpact.before.amount)}</dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="text-muted">Zakat simulasi</dt>
+              <dd class="tabular text-ink">{zakatAfterUncertain ? '~' : ''}{fmtRupiah(zakatImpact.after.amount)}</dd>
+            </div>
             <div class="flex justify-between">
               <dt class="text-muted">Selisih</dt>
-              <dd class="tabular font-semibold {zakatImpact.deltaAmount >= 0 ? 'text-status-positive' : 'text-status-negative'}">{zakatImpact.deltaAmount >= 0 ? '+' : ''}{idr(zakatImpact.deltaAmount)}</dd>
+              <dd class="tabular font-semibold {zakatImpact.deltaAmount >= 0 ? 'text-status-positive' : 'text-status-negative'}">
+                {zakatImpact.deltaAmount >= 0 ? '+' : ''}{fmtRupiah(zakatImpact.deltaAmount)}
+              </dd>
             </div>
           </dl>
           {#if zakatImpact.crossesNisab}
             {#if zakatHaulDue}
               <p class="text-body-sm text-status-warning mt-3">Skenario ini melewati batas nisab, status kewajiban zakat berubah.</p>
             {:else}
-              <p class="text-body-sm text-status-warning mt-3">Skenario ini melewati batas nisab, tapi haul belum genap sehingga zakat belum jatuh tempo.</p>
+              <p class="text-body-sm text-status-warning mt-3">
+                Skenario ini melewati batas nisab, tapi haul belum genap sehingga zakat belum jatuh tempo.
+              </p>
             {/if}
           {/if}
           {#if !zakatHaulDue}
@@ -716,7 +930,9 @@
           {#if zakatPartial}
             <p class="text-body-sm text-muted mt-2">Estimasi parsial: sebagian data zakat belum diisi.</p>
           {/if}
-          <p class="text-body-sm text-muted mt-2">Estimasi berdasarkan data yang Anda isi, bukan fatwa. Konfirmasi ke BAZNAS atau lembaga amil zakat.</p>
+          <p class="text-body-sm text-muted mt-2">
+            Estimasi berdasarkan data yang Anda isi, bukan fatwa. Konfirmasi ke BAZNAS atau lembaga amil zakat.
+          </p>
         {:else}
           <p class="text-body-md text-muted mb-3">Isi data zakat dulu untuk melihat dampak skenario ini ke zakat.</p>
           <a href="/zakat" class="text-body-md font-semibold text-ink-navy hover:underline no-underline">Buka halaman Zakat →</a>

@@ -38,10 +38,7 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
   const perProduct = (from: Date, to: Date) => queryFactsByProduct(db, businessId, { from, to });
 
   const [products, curRows, prevRows, dailyRows, prevTxRows, hourlyRows, cashierRows, moveRows, invData, susut] = await Promise.all([
-    db
-      .select({ id: product.id, name: product.name })
-      .from(product)
-      .where(eq(product.businessId, businessId)),
+    db.select({ id: product.id, name: product.name }).from(product).where(eq(product.businessId, businessId)),
     perProduct(range.from, range.to),
     perProduct(prevFrom, prevTo),
     // Agregat harian dari lapisan Facts.
@@ -49,13 +46,7 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
     db
       .select({ value: count() })
       .from(transaction)
-      .where(
-        and(
-          eq(transaction.businessId, businessId),
-          gte(transaction.createdAt, prevFrom),
-          lte(transaction.createdAt, prevTo)
-        )
-      ),
+      .where(and(eq(transaction.businessId, businessId), gte(transaction.createdAt, prevFrom), lte(transaction.createdAt, prevTo))),
     queryHourly(businessId, range.from, range.to, tz),
     queryCashiers(businessId, range.from, range.to),
     queryMovementWeekly(businessId, range.from, range.to, tz),
@@ -132,9 +123,7 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
   const avgMax = avgRaw.reduce<number>((s, v) => Math.max(s, v ?? 0), 0);
   const avgUnit = pickMoneyUnit(avgMax);
   const avgF = 10 ** avgUnit.decimals;
-  const avgTicketPerDay: (number | null)[] = avgRaw.map((v) =>
-    v === null ? null : Math.round((v / avgUnit.divisor) * avgF) / avgF
-  );
+  const avgTicketPerDay: (number | null)[] = avgRaw.map((v) => (v === null ? null : Math.round((v / avgUnit.divisor) * avgF) / avgF));
 
   // hourly = count struk per jam zona bisnis (kosong = 0); peak = jam max.
   const byHour = new Map(hourlyRows.map((h) => [h.hour, h.tx]));
@@ -221,7 +210,7 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
     points: withSales.map((p) => ({
       x: p.quantitySold,
       y: Math.round(p.margin * 1000) / 10,
-      r: Math.round((5 + (Math.sqrt(p.revenue / maxRev) * 13)) * 10) / 10,
+      r: Math.round((5 + Math.sqrt(p.revenue / maxRev) * 13) * 10) / 10,
       label: p.name,
       href: `/simulator?productId=${p.productId}`
     }))
@@ -279,10 +268,7 @@ export async function getLayoutInsights(businessId: string, tz: BizTz) {
   const now = new Date();
   const curFrom = T.startOfDay(T.addDays(now, -29));
   const [products, grouped] = await Promise.all([
-    db
-      .select({ id: product.id, name: product.name })
-      .from(product)
-      .where(eq(product.businessId, businessId)),
+    db.select({ id: product.id, name: product.name }).from(product).where(eq(product.businessId, businessId)),
     queryFactsByProduct(db, businessId, { from: curFrom, to: now })
   ]);
   const productNames = Object.fromEntries(products.map((p) => [p.id, p.name]));
@@ -295,13 +281,7 @@ export async function getLayoutRestock(businessId: string): Promise<BellRestock>
     db
       .select({ id: product.id, name: product.name, stock: product.stock })
       .from(product)
-      .where(
-        and(
-          eq(product.businessId, businessId),
-          eq(product.isActive, true),
-          sql`${product.stock} <= ${product.minStock}`
-        )
-      )
+      .where(and(eq(product.businessId, businessId), eq(product.isActive, true), sql`${product.stock} <= ${product.minStock}`))
       .orderBy(asc(product.stock))
       .limit(5),
     db
@@ -324,10 +304,7 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
   const sixtyDaysAgo = T.startOfDay(T.addDays(now, -59));
   const curFrom = T.startOfDay(T.addDays(now, -29));
   const [products, grouped, recentTransactions, dailyRows, restockList, restockCounts] = await Promise.all([
-    db
-      .select({ id: product.id, name: product.name })
-      .from(product)
-      .where(eq(product.businessId, businessId)),
+    db.select({ id: product.id, name: product.name }).from(product).where(eq(product.businessId, businessId)),
 
     // Agregat 30 hari terakhir per produk dari lapisan Facts.
     queryFactsByProduct(db, businessId, { from: curFrom, to: now }),
@@ -343,13 +320,7 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
     db
       .select({ id: product.id, name: product.name, stock: product.stock, minStock: product.minStock })
       .from(product)
-      .where(
-        and(
-          eq(product.businessId, businessId),
-          eq(product.isActive, true),
-          sql`${product.stock} <= ${product.minStock}`
-        )
-      )
+      .where(and(eq(product.businessId, businessId), eq(product.isActive, true), sql`${product.stock} <= ${product.minStock}`))
       .orderBy(asc(product.stock))
       .limit(5),
 
@@ -379,8 +350,7 @@ export async function getDashboardPageData(businessId: string, tz: BizTz) {
   const days = series60.map((d) => ({ key: d.key, label: d.label, revenue: d.revenue, profit: d.profit, tx: d.tx }));
   const prev = days.slice(0, 30);
   const cur = days.slice(30);
-  const sum = (arr: typeof days, f: (d: (typeof days)[number]) => number) =>
-    arr.reduce((s, d) => s + f(d), 0);
+  const sum = (arr: typeof days, f: (d: (typeof days)[number]) => number) => arr.reduce((s, d) => s + f(d), 0);
   const curRev = sum(cur, (d) => d.revenue);
   const prevRev = sum(prev, (d) => d.revenue);
   const curProfit = sum(cur, (d) => d.profit);

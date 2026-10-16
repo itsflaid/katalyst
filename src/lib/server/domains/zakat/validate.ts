@@ -44,7 +44,8 @@ function parseDate(value: string): string | null {
   if (!match) return null;
   const time = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
   const check = new Date(time);
-  if (check.getUTCFullYear() !== Number(match[1]) || check.getUTCMonth() !== Number(match[2]) - 1 || check.getUTCDate() !== Number(match[3])) return null;
+  if (check.getUTCFullYear() !== Number(match[1]) || check.getUTCMonth() !== Number(match[2]) - 1 || check.getUTCDate() !== Number(match[3]))
+    return null;
   return value;
 }
 
@@ -53,7 +54,8 @@ export function parseSettingForm(form: FormData): ZakatFormResult<ParsedSettingF
   if (gold.error) return { error: gold.error };
   const nisabRaw = String(form.get('nisabGrams') ?? '').trim();
   const nisabGrams = nisabRaw === '' ? DEFAULT_NISAB_GRAMS : Number(nisabRaw);
-  if (!Number.isInteger(nisabGrams) || nisabGrams < 1 || nisabGrams > MAX_NISAB_GRAMS) return { error: 'Nisab harus bilangan bulat 1–1.000.000 gram.' };
+  if (!Number.isInteger(nisabGrams) || nisabGrams < 1 || nisabGrams > MAX_NISAB_GRAMS)
+    return { error: 'Nisab harus bilangan bulat 1–1.000.000 gram.' };
   const haulRaw = String(form.get('haulStartDate') ?? '').trim();
   if (haulRaw !== '' && !parseDate(haulRaw)) return { error: 'Tanggal haul harus format YYYY-MM-DD yang valid.' };
   const valuation = String(form.get('stockValuation') ?? '');

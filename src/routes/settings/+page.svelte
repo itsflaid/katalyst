@@ -70,7 +70,9 @@
 
 <nav class="flex gap-2 overflow-x-auto mb-8 -mx-1 px-1">
   <a href="#profil" class="flex-shrink-0 text-label-md rounded px-3 py-2 bg-ink-navy text-white no-underline">Identitas Bisnis</a>
-  <a href="#staff" class="flex-shrink-0 text-label-md rounded px-3 py-2 border border-border-input text-muted no-underline hover:bg-table-header">Akses & Staff</a>
+  <a href="#staff" class="flex-shrink-0 text-label-md rounded px-3 py-2 border border-border-input text-muted no-underline hover:bg-table-header"
+    >Akses & Staff</a
+  >
 </nav>
 
 <section id="profil" class="mb-10 scroll-mt-4">

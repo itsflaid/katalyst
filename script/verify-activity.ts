@@ -1,10 +1,4 @@
-import {
-  ACTION_FILTERS,
-  ACTIVITY_ACTIONS,
-  describeActivity,
-  describeUserAgent,
-  isActivityAction
-} from '../src/lib/shared/activity';
+import { ACTION_FILTERS, ACTIVITY_ACTIONS, describeActivity, describeUserAgent, isActivityAction } from '../src/lib/shared/activity';
 import { activityRow } from '../src/lib/server/domains/activity/row';
 
 let passCount = 0;
@@ -19,10 +13,8 @@ function ok(label: string, cond: boolean, detail = '') {
   }
 }
 
-const CHROME_ANDROID =
-  'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
-const EDGE_WINDOWS =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0';
+const CHROME_ANDROID = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+const EDGE_WINDOWS = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0';
 const SAFARI_IPHONE =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 const FIREFOX_LINUX = 'Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0';
@@ -61,25 +53,21 @@ try {
     describeActivity('INVITE_RESEND', null),
     describeActivity('INVITE_REVOKE', null)
   ];
-  ok('meta rusak tidak melempar dan bertipe string', parts.every((p) => typeof p === 'string'));
+  ok(
+    'meta rusak tidak melempar dan bertipe string',
+    parts.every((p) => typeof p === 'string')
+  );
 } catch {
   threw = true;
 }
 ok('meta rusak tidak melempar', !threw);
 ok('login tanpa ringkasan', describeActivity('LOGIN', { newDevice: true }) === '');
-ok(
-  'tx_create memakai rupiah engine',
-  describeActivity('TX_CREATE', { total: 45000, itemCount: 3, qty: 5 }) === 'Rp45.000 · 3 jenis, 5 item'
-);
+ok('tx_create memakai rupiah engine', describeActivity('TX_CREATE', { total: 45000, itemCount: 3, qty: 5 }) === 'Rp45.000 · 3 jenis, 5 item');
 ok(
   'tx_void menyebut kasir',
-  describeActivity('TX_VOID', { total: 45000, itemCount: 2, cashierName: 'Budi', txCreatedAt: null }) ===
-    'Rp45.000 · kasir Budi'
+  describeActivity('TX_VOID', { total: 45000, itemCount: 2, cashierName: 'Budi', txCreatedAt: null }) === 'Rp45.000 · kasir Budi'
 );
-ok(
-  'staff memakai username dan nama',
-  describeActivity('STAFF_INVITE', { username: 'andi', name: 'Andi' }) === '@andi · Andi'
-);
+ok('staff memakai username dan nama', describeActivity('STAFF_INVITE', { username: 'andi', name: 'Andi' }) === '@andi · Andi');
 ok('staff null dilewati', describeActivity('STAFF_DELETE', { username: null, name: null }) === '');
 ok('logout tanpa ringkasan', describeActivity('LOGOUT', null) === '');
 ok('visit tanpa ringkasan', describeActivity('VISIT', null) === '');
@@ -91,27 +79,18 @@ ok(
   'product create menyebut harga jual',
   describeActivity('PRODUCT_CREATE', { name: 'Beras', sellingPrice: 412000, costPrice: 409850 }) === 'Beras · jual Rp412.000'
 );
-ok(
-  'product update menyebut field',
-  describeActivity('PRODUCT_UPDATE', { name: 'Beras', fields: ['jual', 'modal'] }) === 'Beras · ubah jual, modal'
-);
-ok(
-  'product toggle menyebut status',
-  describeActivity('PRODUCT_TOGGLE', { name: 'Beras', isActive: false }) === 'Beras · dinonaktifkan'
-);
+ok('product update menyebut field', describeActivity('PRODUCT_UPDATE', { name: 'Beras', fields: ['jual', 'modal'] }) === 'Beras · ubah jual, modal');
+ok('product toggle menyebut status', describeActivity('PRODUCT_TOGGLE', { name: 'Beras', isActive: false }) === 'Beras · dinonaktifkan');
 ok('product delete menyebut nama', describeActivity('PRODUCT_DELETE', { name: 'Beras' }) === 'Beras');
-ok(
-  'discount create menyebut persen',
-  describeActivity('DISCOUNT_CREATE', { name: 'Promo', percent: 15, scope: 'GLOBAL' }) === 'Promo · 15%'
-);
-ok(
-  'discount toggle menyebut status',
-  describeActivity('DISCOUNT_TOGGLE', { name: 'Promo', isActive: true }) === 'Promo · diaktifkan'
-);
+ok('discount create menyebut persen', describeActivity('DISCOUNT_CREATE', { name: 'Promo', percent: 15, scope: 'GLOBAL' }) === 'Promo · 15%');
+ok('discount toggle menyebut status', describeActivity('DISCOUNT_TOGGLE', { name: 'Promo', isActive: true }) === 'Promo · diaktifkan');
 ok('join memakai username', describeActivity('STAFF_JOIN', { username: 'andi', name: 'Andi' }) === '@andi · Andi');
 
 ok('aksi asing ditolak', !isActivityAction('HAPUS') && !isActivityAction(null) && !isActivityAction(7));
-ok('semua aksi valid diterima', ACTIVITY_ACTIONS.every((a) => isActivityAction(a)));
+ok(
+  'semua aksi valid diterima',
+  ACTIVITY_ACTIONS.every((a) => isActivityAction(a))
+);
 ok(
   'filter aksi hanya berisi aksi valid',
   ACTION_FILTERS.every((f) => f.actions.every((a) => isActivityAction(a)))

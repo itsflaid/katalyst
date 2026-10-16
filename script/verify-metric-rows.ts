@@ -42,7 +42,10 @@ const results: unknown[] = [];
     ok('kemunculan Selasa 5 Rabu 4', tue.occurrences === 5 && wed.occurrences === 4);
     ok('peringkat memakai rata-rata', res.data.rows[0].label === 'Rabu' && res.data.summary.best?.label === 'Rabu');
     ok('teks rata-rata benar', tue.perOccurrenceText === 'Rp10.000' && wed.perOccurrenceText === 'Rp12.000');
-    ok('catatan rata-rata ada', res.data.notes.some((n) => n.includes('rata-rata per hari')));
+    ok(
+      'catatan rata-rata ada',
+      res.data.notes.some((n) => n.includes('rata-rata per hari'))
+    );
     ok('tujuh baris', res.data.rows.length === 7);
   }
 }
@@ -55,15 +58,42 @@ const results: unknown[] = [];
     ['b', facts(3, 200, 0, 120, 3)],
     ['c', facts(1, 300, 0, 180, 1)]
   ]);
-  const names = new Map([['a', 'A'], ['b', 'B'], ['c', 'C']]);
-  const tx = buildMetricRows({ metric: 'tx_count', groupBy: 'product', window: { from: now, to: now }, now, T, byProduct, productNames: names, totalTxCount: 6, limit: 10 });
+  const names = new Map([
+    ['a', 'A'],
+    ['b', 'B'],
+    ['c', 'C']
+  ]);
+  const tx = buildMetricRows({
+    metric: 'tx_count',
+    groupBy: 'product',
+    window: { from: now, to: now },
+    now,
+    T,
+    byProduct,
+    productNames: names,
+    totalTxCount: 6,
+    limit: 10
+  });
   if (!tx.ok) ok('struk produk tidak dijumlahkan', false);
   else {
     results.push(tx);
     ok('struk produk tidak dijumlahkan', tx.data.total.value === 6 && tx.data.rows.every((r) => r.shareText === undefined));
-    ok('catatan struk ada', tx.data.notes.some((n) => n.includes('Satu struk')));
+    ok(
+      'catatan struk ada',
+      tx.data.notes.some((n) => n.includes('Satu struk'))
+    );
   }
-  const rev = buildMetricRows({ metric: 'revenue', groupBy: 'product', window: { from: now, to: now }, now, T, byProduct, productNames: names, order: 'desc', limit: 2 });
+  const rev = buildMetricRows({
+    metric: 'revenue',
+    groupBy: 'product',
+    window: { from: now, to: now },
+    now,
+    T,
+    byProduct,
+    productNames: names,
+    order: 'desc',
+    limit: 2
+  });
   if (!rev.ok) ok('total aditif pra-limit', false);
   else {
     results.push(rev);
@@ -95,24 +125,28 @@ const results: unknown[] = [];
     ['2026-10-06', facts(3, 30000, 0, 18000, 2)]
   ]);
   const week = buildMetricRows({
-    metric: 'revenue', groupBy: 'week',
+    metric: 'revenue',
+    groupBy: 'week',
     window: { from: T.parseDay('2026-09-30')!, to: T.endOfDay(T.parseDay('2026-10-07')!) },
-    now: new Date('2026-10-07T00:00:00Z'), T, byDay
+    now: new Date('2026-10-07T00:00:00Z'),
+    T,
+    byDay
   });
   if (!week.ok) ok('bucket mulai Senin', false);
   else {
     results.push(week);
     ok(
       'bucket mulai Senin',
-      week.data.rows.length === 2 &&
-        week.data.rows[0].label === '28 Sep–4 Okt (sebagian)' &&
-        week.data.rows[1].label === '5–7 Okt (sebagian)'
+      week.data.rows.length === 2 && week.data.rows[0].label === '28 Sep–4 Okt (sebagian)' && week.data.rows[1].label === '5–7 Okt (sebagian)'
     );
   }
   const month = buildMetricRows({
-    metric: 'revenue', groupBy: 'month',
+    metric: 'revenue',
+    groupBy: 'month',
     window: { from: T.parseDay('2026-09-15')!, to: T.endOfDay(T.parseDay('2026-10-20')!) },
-    now: new Date('2026-10-20T00:00:00Z'), T, byDay: new Map([...byDay, ['2026-10-16', facts(1, 5000, 0, 3000, 1)]])
+    now: new Date('2026-10-20T00:00:00Z'),
+    T,
+    byDay: new Map([...byDay, ['2026-10-16', facts(1, 5000, 0, 3000, 1)]])
   });
   if (!month.ok) ok('label bulan sebagian', false);
   else {
@@ -120,25 +154,31 @@ const results: unknown[] = [];
     ok('label bulan sebagian', month.data.rows.map((r) => r.label).join('|') === 'Sep 2026 (sebagian)|Okt 2026 (sebagian)');
   }
   const hour = buildMetricRows({
-    metric: 'tx_count', groupBy: 'hour',
+    metric: 'tx_count',
+    groupBy: 'hour',
     window: { from: T.parseDay('2026-09-30')!, to: T.endOfDay(T.parseDay('2026-09-30')!) },
-    now: new Date('2026-09-30T00:00:00Z'), T,
-    byHour: new Map<number, GroupedFacts>([[8, facts(2, 20000, 0, 12000, 1)], [10, facts(1, 10000, 0, 6000, 1)]])
+    now: new Date('2026-09-30T00:00:00Z'),
+    T,
+    byHour: new Map<number, GroupedFacts>([
+      [8, facts(2, 20000, 0, 12000, 1)],
+      [10, facts(1, 10000, 0, 6000, 1)]
+    ])
   });
   if (!hour.ok) ok('nol hanya di antara jam aktif', false);
   else {
     results.push(hour);
     ok(
       'nol hanya di antara jam aktif',
-      hour.data.rows.map((r) => r.key).join(',') === '8,9,10' &&
-        hour.data.rows[1].value === 0 &&
-        hour.data.rows[0].label === '08.00–08.59'
+      hour.data.rows.map((r) => r.key).join(',') === '8,9,10' && hour.data.rows[1].value === 0 && hour.data.rows[0].label === '08.00–08.59'
     );
   }
   const far = buildMetricRows({
-    metric: 'revenue', groupBy: 'day',
+    metric: 'revenue',
+    groupBy: 'day',
     window: { from: T.parseDay('2026-09-01')!, to: T.endOfDay(T.parseDay('2026-10-10')!) },
-    now: new Date('2026-10-10T00:00:00Z'), T, byDay
+    now: new Date('2026-10-10T00:00:00Z'),
+    T,
+    byDay
   });
   ok('per hari menolak rentang panjang', !far.ok && far.code === 'INVALID_ARGS');
 }
@@ -151,9 +191,12 @@ const results: unknown[] = [];
     const T = makeTime(tz);
     const byDay = new Map<string, GroupedFacts>([[T.dayKey(instant), facts(1, 10000, 0, 6000, 1)]]);
     const res = buildMetricRows({
-      metric: 'revenue', groupBy: 'day',
+      metric: 'revenue',
+      groupBy: 'day',
       window: { from: T.startOfDay(new Date(instant.getTime() - 86_400_000)), to: T.endOfDay(new Date(instant.getTime() + 86_400_000)) },
-      now: instant, T, byDay
+      now: instant,
+      T,
+      byDay
     });
     ok(`zona ${tz} memakai hari bisnis`, res.ok && res.data.rows.some((r) => r.key === expected[tz] && r.value === 10000));
     if (res.ok) results.push(res);
@@ -168,8 +211,22 @@ const results: unknown[] = [];
     ['a', facts(1, 100, 0, 60, 1)],
     ['c', facts(1, 50, 0, 30, 1)]
   ]);
-  const names = new Map([['a', 'A'], ['b', 'B'], ['c', 'C']]);
-  const res = buildMetricRows({ metric: 'revenue', groupBy: 'product', window: { from: now, to: now }, now, T, byProduct, productNames: names, order: 'desc', limit: 2 });
+  const names = new Map([
+    ['a', 'A'],
+    ['b', 'B'],
+    ['c', 'C']
+  ]);
+  const res = buildMetricRows({
+    metric: 'revenue',
+    groupBy: 'product',
+    window: { from: now, to: now },
+    now,
+    T,
+    byProduct,
+    productNames: names,
+    order: 'desc',
+    limit: 2
+  });
   if (!res.ok) ok('seri deterministik', false);
   else {
     results.push(res);
@@ -181,14 +238,20 @@ const results: unknown[] = [];
   const T = makeTime('Asia/Makassar');
   const now = new Date('2026-09-29T00:00:00Z');
   const day = buildMetricRows({
-    metric: 'margin', groupBy: 'day',
+    metric: 'margin',
+    groupBy: 'day',
     window: { from: T.parseDay('2026-09-28')!, to: T.endOfDay(T.parseDay('2026-09-30')!) },
-    now, T, byDay: new Map()
+    now,
+    T,
+    byDay: new Map()
   });
   const hour = buildMetricRows({
-    metric: 'avg_ticket', groupBy: 'hour',
+    metric: 'avg_ticket',
+    groupBy: 'hour',
     window: { from: T.parseDay('2026-09-28')!, to: T.endOfDay(T.parseDay('2026-09-28')!) },
-    now, T, byHour: new Map()
+    now,
+    T,
+    byHour: new Map()
   });
   if (!day.ok || !hour.ok) ok('histori kosong tanpa NaN', false);
   else {
@@ -203,27 +266,39 @@ ok('semua hasil finite', results.every(finiteDeep));
   const T = makeTime('Asia/Makassar');
   const now = new Date('2026-09-29T00:00:00Z');
   const thin = buildMetricRows({
-    metric: 'margin', groupBy: 'day',
+    metric: 'margin',
+    groupBy: 'day',
     window: { from: T.parseDay('2026-09-28')!, to: T.endOfDay(T.parseDay('2026-09-30')!) },
-    now, T,
+    now,
+    T,
     byDay: new Map<string, GroupedFacts>([
       ['2026-09-28', facts(10, 100000, 0, 60000, 5)],
       ['2026-09-29', facts(10, 100000, 0, 90000, 5)]
     ]),
-    order: 'asc', limit: 1
+    order: 'asc',
+    limit: 1
   });
   if (!thin.ok) ok('margin tertipis hanya dari hari berjualan', false);
   else {
     results.push(thin);
-    ok('margin tertipis hanya dari hari berjualan', thin.data.rows.length === 1 && thin.data.rows[0].key === '2026-09-29' && thin.data.rows[0].defined === true);
-    ok('baris tanpa penjualan tidak ikut peringkat', thin.data.notes.some((n) => n.includes('1 baris tanpa penjualan tidak ikut peringkat')));
+    ok(
+      'margin tertipis hanya dari hari berjualan',
+      thin.data.rows.length === 1 && thin.data.rows[0].key === '2026-09-29' && thin.data.rows[0].defined === true
+    );
+    ok(
+      'baris tanpa penjualan tidak ikut peringkat',
+      thin.data.notes.some((n) => n.includes('1 baris tanpa penjualan tidak ikut peringkat'))
+    );
   }
   const ticket = buildMetricRows({
-    metric: 'avg_ticket', groupBy: 'weekday',
+    metric: 'avg_ticket',
+    groupBy: 'weekday',
     window: { from: T.parseDay('2026-09-01')!, to: T.endOfDay(T.parseDay('2026-09-30')!) },
-    now, T,
+    now,
+    T,
     byDay: new Map<string, GroupedFacts>([['2026-09-07', facts(4, 200000, 0, 120000, 4)]]),
-    order: 'desc', limit: 7
+    order: 'desc',
+    limit: 7
   });
   if (!ticket.ok) ok('Sabtu nol berlabel tidak ada penjualan', false);
   else {
@@ -231,12 +306,17 @@ ok('semua hasil finite', results.every(finiteDeep));
     const senin = ticket.data.rows.find((r) => r.label === 'Senin');
     ok('peringkat desc hanya baris terdefinisi', ticket.data.rows.length === 1 && senin?.defined === true);
     ok('Sabtu tidak masuk best/worst', ticket.data.summary.best === null && ticket.data.summary.worst === null);
-    ok('catatan enam baris tak terdefinisi', ticket.data.notes.some((n) => n.includes('6 baris tanpa penjualan tidak ikut peringkat')));
+    ok(
+      'catatan enam baris tak terdefinisi',
+      ticket.data.notes.some((n) => n.includes('6 baris tanpa penjualan tidak ikut peringkat'))
+    );
   }
   const ticketChrono = buildMetricRows({
-    metric: 'avg_ticket', groupBy: 'weekday',
+    metric: 'avg_ticket',
+    groupBy: 'weekday',
     window: { from: T.parseDay('2026-09-01')!, to: T.endOfDay(T.parseDay('2026-09-30')!) },
-    now, T,
+    now,
+    T,
     byDay: new Map<string, GroupedFacts>([['2026-09-07', facts(4, 200000, 0, 120000, 4)]]),
     order: 'chronological'
   });
@@ -247,9 +327,11 @@ ok('semua hasil finite', results.every(finiteDeep));
     ok('Sabtu kronologis berlabel tidak ada penjualan', sabtu?.valueText === 'tidak ada penjualan' && sabtu?.defined === false && sabtu?.value === 0);
   }
   const chrono = buildMetricRows({
-    metric: 'margin', groupBy: 'day',
+    metric: 'margin',
+    groupBy: 'day',
     window: { from: T.parseDay('2026-09-28')!, to: T.endOfDay(T.parseDay('2026-09-30')!) },
-    now, T,
+    now,
+    T,
     byDay: new Map<string, GroupedFacts>([['2026-09-28', facts(10, 100000, 0, 60000, 5)]]),
     order: 'chronological'
   });
@@ -259,11 +341,14 @@ ok('semua hasil finite', results.every(finiteDeep));
     ok('kronologis menampilkan semua baris', chrono.data.rows.length === 3 && chrono.data.rows.filter((r) => !r.defined).length === 2);
   }
   const quiet = buildMetricRows({
-    metric: 'tx_count', groupBy: 'day',
+    metric: 'tx_count',
+    groupBy: 'day',
     window: { from: T.parseDay('2026-09-28')!, to: T.endOfDay(T.parseDay('2026-09-30')!) },
-    now, T,
+    now,
+    T,
     byDay: new Map<string, GroupedFacts>([['2026-09-28', facts(10, 100000, 0, 60000, 5)]]),
-    order: 'asc', limit: 1
+    order: 'asc',
+    limit: 1
   });
   if (!quiet.ok) ok('sepi aditif boleh hari nol', false);
   else {
@@ -271,14 +356,26 @@ ok('semua hasil finite', results.every(finiteDeep));
     ok('sepi aditif boleh hari nol', quiet.data.rows.length === 1 && quiet.data.rows[0].value === 0 && quiet.data.rows[0].defined === true);
   }
   const allZero = buildMetricRows({
-    metric: 'margin', groupBy: 'day',
+    metric: 'margin',
+    groupBy: 'day',
     window: { from: T.parseDay('2026-09-28')!, to: T.endOfDay(T.parseDay('2026-09-30')!) },
-    now, T, byDay: new Map<string, GroupedFacts>(), order: 'desc', limit: 5
+    now,
+    T,
+    byDay: new Map<string, GroupedFacts>(),
+    order: 'desc',
+    limit: 5
   });
   if (!allZero.ok) ok('semua nol ringkasan kosong', false);
   else {
     results.push(allZero);
-    ok('semua nol ringkasan kosong', allZero.data.rows.length === 0 && allZero.data.summary.best === null && allZero.data.summary.worst === null && allZero.data.notes.some((n) => n.includes('tidak ikut peringkat')) && finiteDeep(allZero));
+    ok(
+      'semua nol ringkasan kosong',
+      allZero.data.rows.length === 0 &&
+        allZero.data.summary.best === null &&
+        allZero.data.summary.worst === null &&
+        allZero.data.notes.some((n) => n.includes('tidak ikut peringkat')) &&
+        finiteDeep(allZero)
+    );
   }
 }
 

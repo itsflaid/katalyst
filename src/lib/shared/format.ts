@@ -4,7 +4,9 @@
 export type MoneyUnit = { key: 'jt' | 'rb' | 'rp'; divisor: number; decimals: number; label: string };
 
 function groupInt(value: number): string {
-  return Math.abs(Math.round(value)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return Math.abs(Math.round(value))
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
 export function fmtInt(value: number): string {
@@ -32,6 +34,15 @@ export function fmtDelta(value: number | null): string {
 
 export function fmtPoints(value: number): string {
   return `${value > 0 ? '+' : ''}${fmtPercent(value)} poin`;
+}
+
+// Varian badge simulator: titik desimal dan akhiran "pp", sama dengan tampilan lama.
+export function fmtDeltaPct(value: number | null): string {
+  return value === null ? 'dari nol' : `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`;
+}
+
+export function fmtPoin(value: number): string {
+  return `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)} pp`;
 }
 
 export function fmtDays(value: number): string {

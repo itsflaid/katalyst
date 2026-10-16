@@ -15,8 +15,7 @@
   class={cn(
     'relative grid cursor-pointer place-items-center rounded border-none bg-transparent transition-colors',
     variant === 'bar' && 'h-9 w-9 text-white hover:bg-white/10',
-    variant === 'float' &&
-      'h-10 w-10 rounded-full bg-status-positive text-white shadow-level2 hover:bg-white hover:text-status-positive',
+    variant === 'float' && 'h-10 w-10 rounded-full bg-status-positive text-white shadow-level2 hover:bg-white hover:text-status-positive',
     className
   )}
 >

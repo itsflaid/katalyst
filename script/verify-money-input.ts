@@ -75,11 +75,19 @@ console.log('\n== kontrak server: hidden input membawa digit mentah ==');
   ok('produk menerima digit mentah', 'data' in p && p.data?.costPrice === 15000 && p.data?.sellingPrice === 25000, JSON.stringify(p));
   // Number("15.000") terbaca 15 tanpa error: teks bertitik tidak boleh pernah dikirim ke server produk.
   const dotted = parseProductFields(form({ name: 'Kopi', costPrice: '15.000', sellingPrice: '25.000' }));
-  ok('produk salah baca teks bertitik (alasan hidden input membawa digit mentah)', !('data' in dotted) || dotted.data?.costPrice !== 15000, JSON.stringify(dotted));
+  ok(
+    'produk salah baca teks bertitik (alasan hidden input membawa digit mentah)',
+    !('data' in dotted) || dotted.data?.costPrice !== 15000,
+    JSON.stringify(dotted)
+  );
   const multi = parseProductFields(form({ name: 'Kopi', costPrice: '1.350.000', sellingPrice: '2.000.000' }));
   ok('produk menolak teks bertitik ganda', 'error' in multi, JSON.stringify(multi));
   const z = parseBalanceForm(form({ cash: '10000000', receivable: '', debt: '0' }));
-  ok('zakat: digit mentah, kosong = null, 0 = nol', 'data' in z && z.data.cash === 10_000_000 && z.data.receivable === null && z.data.debt === 0, JSON.stringify(z));
+  ok(
+    'zakat: digit mentah, kosong = null, 0 = nol',
+    'data' in z && z.data.cash === 10_000_000 && z.data.receivable === null && z.data.debt === 0,
+    JSON.stringify(z)
+  );
   const s = parseSettingForm(form({ goldPrice: '1350000', nisabGrams: '85', haulStartDate: '', stockValuation: 'SELLING' }));
   ok('zakat: harga emas digit mentah', 'data' in s && s.data.goldPricePerGram === 1_350_000, JSON.stringify(s));
 }

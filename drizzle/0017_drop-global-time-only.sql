@@ -1,0 +1,1 @@
+ALTER TABLE "discount" DROP CONSTRAINT "discount_global_time_only";
