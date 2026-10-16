@@ -126,6 +126,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
   const loaded = await loadHistory(requestDb, business.id, askedConv, parsed.messages);
   if (!loaded) return Response.json({ error: 'Percakapan tidak ditemukan.' }, { status: 404 });
   const history: LlmMessage[] = loaded.history;
+  const priorAnswers = loaded.history.filter((m) => m.role === 'assistant').map((m) => m.content);
   const T = makeTime(tz);
   const system = copilotPrompt({ businessName: business.name, dateLabel: T.fmt(now, { day: 'numeric', month: 'short', year: 'numeric' }), tz });
 
@@ -250,13 +251,13 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
           }
         }
         if (finalText) {
-          const checked = verifyGrounding(finalText, toolResults);
+          const checked = verifyGrounding(finalText, toolResults, priorAnswers);
           if (!checked.ok) {
             grounding = 'retried';
             let retryText = '';
             for await (const ev of client.stream(
               {
-                system: `${system} Jawaban sebelumnya ditolak karena memuat angka yang tidak ada di hasil tool. Jawab ulang tanpa tool dan hanya gunakan angka dari hasil tool.`,
+                system: `${system} Jawaban sebelumnya ditolak karena memuat angka yang tidak ada di hasil tool atau jawaban sebelumnya. Jawab ulang tanpa tool dan hanya gunakan angka dari keduanya.`,
                 messages: history,
                 tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
                 toolChoice: 'none',
@@ -273,7 +274,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
                 outputTokens += ev.outputTokens;
               } else if (ev.type === 'text') retryText += ev.delta;
             }
-            if (retryText && verifyGrounding(retryText, toolResults).ok) finalText = retryText;
+            if (retryText && verifyGrounding(retryText, toolResults, priorAnswers).ok) finalText = retryText;
             else {
               finalText = null;
               grounding = 'failed';
