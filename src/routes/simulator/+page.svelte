@@ -7,8 +7,8 @@
   import Tooltip from '$lib/components/ui/Tooltip.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
   import FormulaTip from '$lib/components/ui/FormulaTip.svelte';
-  import StatCard from '$lib/components/stats/StatCard.svelte';
-  import StatFilterBar from '$lib/components/stats/StatFilterBar.svelte';
+  import StatCard from '$lib/components/statistics/StatCard.svelte';
+  import StatFilterBar from '$lib/components/statistics/StatFilterBar.svelte';
   import { goto } from '$app/navigation';
   import { fmtDeltaPct, fmtPoin, fmtQty } from '$lib/shared/format';
   import {

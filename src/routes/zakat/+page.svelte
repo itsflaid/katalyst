@@ -8,7 +8,7 @@
   import FieldHelp from '$lib/components/ui/FieldHelp.svelte';
   import Input from '$lib/components/ui/Input.svelte';
   import MoneyInput from '$lib/components/ui/MoneyInput.svelte';
-  import StatCard from '$lib/components/stats/StatCard.svelte';
+  import StatCard from '$lib/components/statistics/StatCard.svelte';
   import { ShieldCheck } from 'lucide-svelte';
   import { ZAKAT_RATE } from '$lib/analytics';
   import { fmtPercent, fmtRupiah } from '$lib/shared/format';

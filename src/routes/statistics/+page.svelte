@@ -7,9 +7,9 @@
   import ScatterChart from '$lib/components/ui/ScatterChart.svelte';
   import Badge from '$lib/components/ui/Badge.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
-  import StatFilterBar from '$lib/components/stats/StatFilterBar.svelte';
-  import StatCard from '$lib/components/stats/StatCard.svelte';
-  import DonutLegendCard from '$lib/components/stats/DonutLegendCard.svelte';
+  import StatFilterBar from '$lib/components/statistics/StatFilterBar.svelte';
+  import StatCard from '$lib/components/statistics/StatCard.svelte';
+  import DonutLegendCard from '$lib/components/statistics/DonutLegendCard.svelte';
   import { ShoppingCart } from 'lucide-svelte';
   import type { PeriodKey } from '$lib/shared/period';
   import { goto } from '$app/navigation';
