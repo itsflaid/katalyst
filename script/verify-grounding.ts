@@ -78,4 +78,10 @@ ok('persen karangan ditolak', !verifyGrounding('Margin 40%.', [naikBesar]).ok);
 ok('singkatan miliar ditolak', !verifyGrounding('Rugi 3 miliar.', [ringkas]).ok);
 ok('rupiah tanpa pemisah ditolak', !verifyGrounding('Omzet Rp66972000.', [ringkas]).ok);
 
+const jawabanLalu = 'Total modal (cost): Rp308.638.903. Total profit: Rp8.631.097.';
+ok('angka dari jawaban sebelumnya diterima', verifyGrounding('Modal Rp308.638.903, profit Rp8.631.097.', [], [jawabanLalu]).ok);
+ok('angka baru tetap ditolak walau ada jawaban sebelumnya', !verifyGrounding('Modal Rp999.999.', [], [jawabanLalu]).ok);
+ok('singkatan juta tetap ditolak walau ada jawaban sebelumnya', !verifyGrounding('Modal sekitar 308 juta.', [], [jawabanLalu]).ok);
+ok('tanpa jawaban sebelumnya angka tetap ditolak', !verifyGrounding('Modal Rp308.638.903.', []).ok);
+
 if (failed) process.exit(1);

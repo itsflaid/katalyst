@@ -54,10 +54,11 @@ function tokensOf(pattern: RegExp, value: string): string[] {
   return (value.match(pattern) ?? []).map(normalize);
 }
 
-export function verifyGrounding(text: string, toolResults: unknown[]): GroundingResult {
+export function verifyGrounding(text: string, toolResults: unknown[], priorTexts: string[] = []): GroundingResult {
   const allowStrings: string[] = [];
   const rawNumbers: number[] = [];
   toolResults.forEach((result) => collectAllow(result, allowStrings, rawNumbers));
+  allowStrings.push(...priorTexts);
   for (const n of rawNumbers) {
     if (Number.isInteger(n)) allowStrings.push(String(n));
   }
