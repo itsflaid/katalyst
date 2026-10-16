@@ -472,16 +472,8 @@
 
 <style>
   .copilot-shell {
-    margin: -1rem;
+    flex: 1 1 0;
     min-height: 360px;
-    height: calc(100vh - var(--mobile-bar-h, 3.75rem));
-    height: calc(100dvh - var(--mobile-bar-h, 3.75rem));
-  }
-  @media (min-width: 1024px) {
-    .copilot-shell {
-      margin: -2rem;
-      height: 100vh;
-    }
   }
   .copilot-form {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));

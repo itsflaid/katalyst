@@ -1,5 +1,5 @@
-// Formatter uang/bulat/persen di shared/format (murni, tanpa DB); exit 1 bila ada FAIL.
-import { fmtDelta, fmtInt, fmtPercent, fmtRupiah } from '../src/lib/shared/format';
+// Formatter uang/bulat/persen/delta di shared/format (murni, tanpa DB); exit 1 bila ada FAIL.
+import { fmtDelta, fmtInt, fmtPercent, fmtRupiah, fmtDeltaPct, fmtPoin } from '../src/lib/shared/format';
 
 let passCount = 0;
 let failCount = 0;
@@ -13,6 +13,11 @@ function ok(label: string, cond: boolean, detail = '') {
   }
 }
 
+ok('fmtDeltaPct(null)', fmtDeltaPct(null) === 'dari nol');
+ok('fmtDeltaPct(0.125)', fmtDeltaPct(0.125) === '+12.5%');
+ok('fmtDeltaPct(-0.02)', fmtDeltaPct(-0.02) === '-2.0%');
+ok('fmtPoin(0.006)', fmtPoin(0.006) === '+0.6 pp');
+ok('fmtPoin(-0.012)', fmtPoin(-0.012) === '-1.2 pp');
 ok('fmtRupiah(1000)', fmtRupiah(1000) === 'Rp1.000');
 ok('fmtRupiah(-1500)', fmtRupiah(-1500) === '-Rp1.500');
 ok('fmtRupiah(0)', fmtRupiah(0) === 'Rp0');
