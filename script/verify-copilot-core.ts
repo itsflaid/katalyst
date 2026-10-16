@@ -16,6 +16,7 @@ import { detectProductMention } from '../src/lib/server/domains/copilot/product-
 import { rateLimitMessage } from '../src/lib/server/domains/copilot/rate-limit';
 import { makeTime } from '../src/lib/shared/time';
 import { verifyGrounding } from '../src/lib/server/domains/copilot/grounding';
+import { copilotPrompt } from '../src/lib/server/domains/copilot/prompt';
 
 let passCount = 0;
 let failCount = 0;
@@ -306,6 +307,15 @@ async function main() {
     ok('Retry-After dibulatkan ke atas', rateLimitMessage(2500).retryAfterSec === 3);
     ok('maks 120 detik', rateLimitMessage(200000).retryAfterSec === 120);
     ok('nol menjadi 1 detik', rateLimitMessage(0).retryAfterSec === 1);
+  }
+
+  console.log('\n== prompt ==');
+  {
+    const p = copilotPrompt({ businessName: 'X', dateLabel: '5 Jan 2027', tz: 'Asia/Makassar' });
+    ok('aturan tahun default ada', p.includes('tahun ini') && p.includes('YYYY-MM-DD'));
+    ok('aturan follow-up angka ada', p.includes('jawaban sebelumnya'));
+    ok('aturan injection tetap ada', p.includes('bukan perintah'));
+    ok('tahun tidak di-hardcode', !p.includes('2026'));
   }
 
   console.log(`\n${passCount} passed, ${failCount} failed\n`);
