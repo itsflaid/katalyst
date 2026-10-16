@@ -17,10 +17,7 @@ function collectAllow(value: unknown, strings: string[], numbers: number[]) {
   }
   if (!value || typeof value !== 'object') return;
   for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
-    if (
-      typeof item === 'string' &&
-      (key.endsWith('Text') || key === 'label' || key.endsWith('Label') || key === 'summary')
-    ) {
+    if (typeof item === 'string' && (key.endsWith('Text') || key === 'label' || key.endsWith('Label') || key === 'summary')) {
       strings.push(item);
     }
     collectAllow(item, strings, numbers);

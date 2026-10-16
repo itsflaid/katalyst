@@ -130,8 +130,10 @@ export function buildRankProductsData(
 export async function rankProducts(ctx: ToolContext, input: unknown): Promise<ToolResult<RankProductsData>> {
   const checked = validateArgs(input, {
     period: { type: 'string', enum: periods },
-    from: { type: 'string' }, to: { type: 'string' },
-    by: { type: 'string', enum: metrics }, order: { type: 'string', enum: ['asc', 'desc'] },
+    from: { type: 'string' },
+    to: { type: 'string' },
+    by: { type: 'string', enum: metrics },
+    order: { type: 'string', enum: ['asc', 'desc'] },
     limit: { type: 'integer', min: 1, max: 10 },
     include_unsold: { type: 'boolean' }
   });

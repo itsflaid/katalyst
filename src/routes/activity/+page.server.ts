@@ -1,27 +1,18 @@
-import { db } from '$lib/server/db';
-import { user } from '$lib/server/db/schema';
 import { requireOwner } from '$lib/server/domains/auth/guards';
-import { listActivity } from '$lib/server/domains/activity/queries';
+import { listActivity, listActivityUsers } from '$lib/server/domains/activity/queries';
 import { ACTION_FILTERS, type ActivityAction } from '$lib/shared/activity';
 import { DEFAULT_TZ, isBizTz, makeTime } from '$lib/shared/time';
-import { asc, eq, sql } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
 const PAGE_SIZE = 30;
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-  requireOwner(locals);
-  const businessId = locals.user!.businessId as string;
+  const { businessId } = requireOwner(locals);
 
   const peranRaw = url.searchParams.get('peran') ?? 'all';
   const peran = peranRaw === 'owner' ? 'owner' : peranRaw === 'staff' ? 'staff' : 'all';
 
-  // Opsi orang mengikuti peran yang dipilih; validasi memakai daftar penuh.
-  const userRows = await db
-    .select({ id: user.id, name: user.name, username: user.username, role: user.role })
-    .from(user)
-    .where(eq(user.businessId, businessId))
-    .orderBy(sql`CASE WHEN ${user.role} = 'OWNER' THEN 0 ELSE 1 END`, asc(user.createdAt));
+  const userRows = await listActivityUsers(businessId);
   const orangOptions = userRows
     .filter((u) => (peran === 'staff' ? u.role === 'STAFF' : peran === 'owner' ? u.role === 'OWNER' : true))
     .map((u) => ({ id: u.id, name: u.name ?? u.username ?? '-' }));

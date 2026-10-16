@@ -10,8 +10,7 @@ export const TZ_INFO: Record<BizTz, { short: 'WIB' | 'WITA' | 'WIT'; offsetHours
   'Asia/Makassar': { short: 'WITA', offsetHours: 8, label: 'WITA: Waktu Indonesia Tengah (UTC+8)' },
   'Asia/Jayapura': { short: 'WIT', offsetHours: 9, label: 'WIT: Waktu Indonesia Timur (UTC+9)' }
 };
-export const isBizTz = (v: unknown): v is BizTz =>
-  typeof v === 'string' && (BIZ_TZS as readonly string[]).includes(v);
+export const isBizTz = (v: unknown): v is BizTz => typeof v === 'string' && (BIZ_TZS as readonly string[]).includes(v);
 
 export function deviceTzToBizTz(tz: string): BizTz | null {
   if (tz === 'Asia/Jakarta' || tz === 'Asia/Pontianak') return 'Asia/Jakarta';

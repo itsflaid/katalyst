@@ -83,10 +83,10 @@
   aria-label={`Rumus ${explain.title}`}
   aria-expanded={open}
   aria-controls={popId}
-  class="relative grid h-4 w-4 place-items-center rounded-full transition-colors after:absolute after:-inset-2.5 after:content-[''] {variant === 'dark'
+  class="relative grid h-4 w-4 place-items-center rounded-full transition-colors after:absolute after:-inset-2.5 after:content-[''] {variant ===
+  'dark'
     ? 'text-white/60 hover:text-white focus-visible:ring-2 focus-visible:ring-white/30'
-    : 'text-muted hover:text-ink-navy focus-visible:ring-2 focus-visible:ring-ink-navy/15'}"
-  ><Info class="h-2.5 w-2.5" aria-hidden="true" /></button
+    : 'text-muted hover:text-ink-navy focus-visible:ring-2 focus-visible:ring-ink-navy/15'}"><Info class="h-2.5 w-2.5" aria-hidden="true" /></button
 >
 
 {#if open}
@@ -119,7 +119,12 @@
     {#if explain.versus}
       <div class="mt-2">
         <p class="text-muted">Dibanding kondisi sekarang:</p>
-        <p class="mt-1 tabular"><span class="text-muted">{explain.versus.label}:</span> {explain.versus.expr} {explain.versus.approx ? '≈' : '='} {explain.versus.result}</p>
+        <p class="mt-1 tabular">
+          <span class="text-muted">{explain.versus.label}:</span>
+          {explain.versus.expr}
+          {explain.versus.approx ? '≈' : '='}
+          {explain.versus.result}
+        </p>
       </div>
     {/if}
     {#if explain.notes.length > 0}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Badge from "$lib/components/ui/Badge.svelte";
+  import Badge from '$lib/components/ui/Badge.svelte';
   export let status: 'ACTIVE' | 'SCHEDULED' | 'EXPIRED' | 'SOLD_OUT' | 'INACTIVE';
 
   // Label dan tone per status.

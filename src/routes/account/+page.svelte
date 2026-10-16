@@ -88,9 +88,7 @@
 <div class="flex flex-col gap-6 max-w-lg">
   <Card>
     <h2 class="text-headline-sm text-ink mb-1">Profil</h2>
-    <p class="text-body-sm text-muted mb-4">
-      Nama ini tampil sebagai nama kasir di struk baru. Struk lama tetap menampilkan nama saat dicatat.
-    </p>
+    <p class="text-body-sm text-muted mb-4">Nama ini tampil sebagai nama kasir di struk baru. Struk lama tetap menampilkan nama saat dicatat.</p>
     <form on:submit|preventDefault={saveName} class="flex flex-col gap-3">
       <label for="account-name" class="flex flex-col gap-1 text-body-md text-ink">
         Nama tampil
@@ -116,11 +114,27 @@
       </label>
       <label for="account-new" class="flex flex-col gap-1 text-body-md text-ink">
         Password baru
-        <Input id="account-new" type="password" placeholder="Min. 6 karakter" bind:value={newPassword} autocomplete="new-password" minlength={6} required />
+        <Input
+          id="account-new"
+          type="password"
+          placeholder="Min. 6 karakter"
+          bind:value={newPassword}
+          autocomplete="new-password"
+          minlength={6}
+          required
+        />
       </label>
       <label for="account-confirm" class="flex flex-col gap-1 text-body-md text-ink">
         Konfirmasi password baru
-        <Input id="account-confirm" type="password" placeholder="Ulangi password baru" bind:value={confirmPassword} autocomplete="new-password" minlength={6} required />
+        <Input
+          id="account-confirm"
+          type="password"
+          placeholder="Ulangi password baru"
+          bind:value={confirmPassword}
+          autocomplete="new-password"
+          minlength={6}
+          required
+        />
       </label>
       {#if passwordError}<p role="alert" class="text-body-sm text-status-negative">{passwordError}</p>{/if}
       <div><Button type="submit" disabled={savingPassword}>{savingPassword ? 'Menyimpan...' : 'Ganti Password'}</Button></div>

@@ -11,8 +11,7 @@
 
   // Zona bisnis agar jam sama dengan SSR, bukan zona perangkat.
   $: T = makeTime(data.timezone ?? DEFAULT_TZ);
-  const fmtTime = (d: string | Date, T: BizTime) =>
-    T.fmt(d, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const fmtTime = (d: string | Date, T: BizTime) => T.fmt(d, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
   // Satu sumber kebenaran = URL/server; kontrol satu arah biar tidak berantem dengan state reaktif.
   function paramsWith(patch: Record<string, string | null>): string {
@@ -71,9 +70,24 @@
 <Card class="mb-4">
   <div class="flex flex-wrap items-center gap-2">
     <div class="flex gap-1.5" role="group" aria-label="Filter peran">
-      <button type="button" class={segClass(data.peran === 'all')} aria-pressed={data.peran === 'all'} on:click={() => go({ peran: 'all', orang: null })}>Semua</button>
-      <button type="button" class={segClass(data.peran === 'owner')} aria-pressed={data.peran === 'owner'} on:click={() => go({ peran: 'owner', orang: null })}>Owner</button>
-      <button type="button" class={segClass(data.peran === 'staff')} aria-pressed={data.peran === 'staff'} on:click={() => go({ peran: 'staff', orang: null })}>Staff</button>
+      <button
+        type="button"
+        class={segClass(data.peran === 'all')}
+        aria-pressed={data.peran === 'all'}
+        on:click={() => go({ peran: 'all', orang: null })}>Semua</button
+      >
+      <button
+        type="button"
+        class={segClass(data.peran === 'owner')}
+        aria-pressed={data.peran === 'owner'}
+        on:click={() => go({ peran: 'owner', orang: null })}>Owner</button
+      >
+      <button
+        type="button"
+        class={segClass(data.peran === 'staff')}
+        aria-pressed={data.peran === 'staff'}
+        on:click={() => go({ peran: 'staff', orang: null })}>Staff</button
+      >
     </div>
     <select
       aria-label="Filter orang"
@@ -112,9 +126,15 @@
       min={data.rangeFrom ?? undefined}
       class="h-9 rounded border border-border-input bg-white px-2 text-body-sm text-ink"
     />
-    <button type="button" class="h-9 rounded border border-border-input bg-white px-3 text-body-md text-ink hover:bg-table-header" on:click={goRange}>Terapkan</button>
+    <button type="button" class="h-9 rounded border border-border-input bg-white px-3 text-body-md text-ink hover:bg-table-header" on:click={goRange}
+      >Terapkan</button
+    >
     {#if rangeActive}
-      <button type="button" class="h-9 rounded border border-border-input bg-white px-3 text-body-md text-ink hover:bg-table-header" on:click={resetRange}>Reset</button>
+      <button
+        type="button"
+        class="h-9 rounded border border-border-input bg-white px-3 text-body-md text-ink hover:bg-table-header"
+        on:click={resetRange}>Reset</button
+      >
     {/if}
   </div>
 </Card>

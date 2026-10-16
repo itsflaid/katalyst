@@ -23,8 +23,7 @@ export const ACTIVITY_ACTIONS = [
   'DISCOUNT_DELETE'
 ] as const;
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
-export const isActivityAction = (v: unknown): v is ActivityAction =>
-  typeof v === 'string' && (ACTIVITY_ACTIONS as readonly string[]).includes(v);
+export const isActivityAction = (v: unknown): v is ActivityAction => typeof v === 'string' && (ACTIVITY_ACTIONS as readonly string[]).includes(v);
 
 export const ACTIVITY_LABEL: Record<ActivityAction, string> = {
   LOGIN: 'Login',
@@ -57,8 +56,12 @@ export const ACTION_FILTERS = [
   { key: 'transaksi', label: 'Transaksi', actions: ['TX_CREATE', 'TX_VOID'] },
   { key: 'void', label: 'Void', actions: ['TX_VOID'] },
   { key: 'produk', label: 'Produk', actions: ['PRODUCT_CREATE', 'PRODUCT_UPDATE', 'PRODUCT_TOGGLE', 'PRODUCT_DELETE'] },
-  { key: 'diskon', label: 'Diskon', actions: ['DISCOUNT_CREATE', 'DISCOUNT_UPDATE', 'DISCOUNT_TOGGLE', 'DISCOUNT_DELETE'] },
-  { key: 'staff', label: 'Kelola staff', actions: ['STAFF_INVITE', 'STAFF_DELETE', 'STAFF_PASSWORD_RESET', 'STAFF_JOIN', 'STAFF_USERNAME_CHANGE', 'INVITE_RESEND', 'INVITE_REVOKE'] }
+  { key: 'discounts', label: 'Diskon', actions: ['DISCOUNT_CREATE', 'DISCOUNT_UPDATE', 'DISCOUNT_TOGGLE', 'DISCOUNT_DELETE'] },
+  {
+    key: 'staff',
+    label: 'Kelola staff',
+    actions: ['STAFF_INVITE', 'STAFF_DELETE', 'STAFF_PASSWORD_RESET', 'STAFF_JOIN', 'STAFF_USERNAME_CHANGE', 'INVITE_RESEND', 'INVITE_REVOKE']
+  }
 ] as const satisfies readonly { key: string; label: string; actions: readonly ActivityAction[] }[];
 
 export type LoginMeta = { newDevice: boolean };
@@ -142,11 +145,13 @@ export function parseMeta(action: 'STAFF_USERNAME_CHANGE', raw: unknown): Userna
 export function parseMeta(action: 'PRODUCT_CREATE' | 'PRODUCT_UPDATE' | 'PRODUCT_TOGGLE' | 'PRODUCT_DELETE', raw: unknown): ProductMeta;
 export function parseMeta(action: 'DISCOUNT_CREATE' | 'DISCOUNT_UPDATE' | 'DISCOUNT_TOGGLE' | 'DISCOUNT_DELETE', raw: unknown): DiscountMeta;
 export function parseMeta(action: ActivityAction, raw: unknown): StaffMeta;
-export function parseMeta(action: ActivityAction, raw: unknown): LoginMeta | TxCreateMeta | TxVoidMeta | StaffMeta | UsernameChangeMeta | ProductMeta | DiscountMeta {
+export function parseMeta(
+  action: ActivityAction,
+  raw: unknown
+): LoginMeta | TxCreateMeta | TxVoidMeta | StaffMeta | UsernameChangeMeta | ProductMeta | DiscountMeta {
   const m = objOf(raw);
   if (action === 'LOGIN') return { newDevice: m.newDevice === true };
-  if (action === 'TX_CREATE')
-    return { total: numOf(m.total) ?? 0, itemCount: numOf(m.itemCount) ?? 0, qty: numOf(m.qty) ?? 0 };
+  if (action === 'TX_CREATE') return { total: numOf(m.total) ?? 0, itemCount: numOf(m.itemCount) ?? 0, qty: numOf(m.qty) ?? 0 };
   if (action === 'TX_VOID')
     return {
       total: numOf(m.total) ?? 0,
@@ -154,8 +159,7 @@ export function parseMeta(action: ActivityAction, raw: unknown): LoginMeta | TxC
       cashierName: strOf(m.cashierName),
       txCreatedAt: strOf(m.txCreatedAt)
     };
-  if (action === 'STAFF_USERNAME_CHANGE')
-    return { username: strOf(m.username), oldUsername: strOf(m.oldUsername), name: strOf(m.name) };
+  if (action === 'STAFF_USERNAME_CHANGE') return { username: strOf(m.username), oldUsername: strOf(m.oldUsername), name: strOf(m.name) };
   if (action === 'PRODUCT_CREATE' || action === 'PRODUCT_UPDATE' || action === 'PRODUCT_TOGGLE' || action === 'PRODUCT_DELETE')
     return {
       name: strOf(m.name),
@@ -188,21 +192,16 @@ export function describeActivity(action: ActivityAction, meta: unknown): string 
   if (action === 'PRODUCT_CREATE' || action === 'PRODUCT_UPDATE' || action === 'PRODUCT_TOGGLE' || action === 'PRODUCT_DELETE') {
     const p = parseMeta(action, meta);
     const name = p.name ?? '-';
-    if (action === 'PRODUCT_CREATE' && p.sellingPrice !== null)
-      return `${name} · jual ${fmtRupiah(p.sellingPrice)}`;
-    if (action === 'PRODUCT_UPDATE' && p.fields && p.fields.length > 0)
-      return `${name} · ubah ${p.fields.join(', ')}`;
-    if (action === 'PRODUCT_TOGGLE' && p.isActive !== null)
-      return `${name} · ${p.isActive ? 'diaktifkan' : 'dinonaktifkan'}`;
+    if (action === 'PRODUCT_CREATE' && p.sellingPrice !== null) return `${name} · jual ${fmtRupiah(p.sellingPrice)}`;
+    if (action === 'PRODUCT_UPDATE' && p.fields && p.fields.length > 0) return `${name} · ubah ${p.fields.join(', ')}`;
+    if (action === 'PRODUCT_TOGGLE' && p.isActive !== null) return `${name} · ${p.isActive ? 'diaktifkan' : 'dinonaktifkan'}`;
     return name;
   }
   if (action === 'DISCOUNT_CREATE' || action === 'DISCOUNT_UPDATE' || action === 'DISCOUNT_TOGGLE' || action === 'DISCOUNT_DELETE') {
     const d = parseMeta(action, meta);
     const name = d.name ?? '-';
-    if ((action === 'DISCOUNT_CREATE' || action === 'DISCOUNT_UPDATE') && d.percent !== null)
-      return `${name} · ${d.percent}%`;
-    if (action === 'DISCOUNT_TOGGLE' && d.isActive !== null)
-      return `${name} · ${d.isActive ? 'diaktifkan' : 'dinonaktifkan'}`;
+    if ((action === 'DISCOUNT_CREATE' || action === 'DISCOUNT_UPDATE') && d.percent !== null) return `${name} · ${d.percent}%`;
+    if (action === 'DISCOUNT_TOGGLE' && d.isActive !== null) return `${name} · ${d.isActive ? 'diaktifkan' : 'dinonaktifkan'}`;
     return name;
   }
   const s = parseMeta(action, meta);

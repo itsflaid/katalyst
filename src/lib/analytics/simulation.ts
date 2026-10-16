@@ -1,24 +1,13 @@
 // Simulator "what-if" satu produk. Murni + isomorfik (server & browser):
 // tanpa drizzle-orm/$env/$app, tanpa jam sistem. Diskon hipotetis memakai
 // unitDiscount (bulat per unit, sama seperti kasir) dan boleh dibatasi kuota unit.
-import {
-  deltaRatio,
-  factsOfItem,
-  metricsOf,
-  sumFacts,
-  type Facts,
-  type Metrics
-} from './analytics/facts';
-import type { TransactionItemLike } from './analytics/core';
-import { isBelowCost, unitDiscount } from './discount';
+import { deltaRatio, factsOfItem, metricsOf, sumFacts, type Facts, type Metrics } from './facts';
+import type { TransactionItemLike } from './core';
+import { isBelowCost, unitDiscount } from '../shared/discount';
 
-export type DiscountLever =
-  | { kind: 'keep' }
-  | { kind: 'percent'; pct: number; units?: number };
+export type DiscountLever = { kind: 'keep' } | { kind: 'percent'; pct: number; units?: number };
 
-export type VolumeLever =
-  | { kind: 'pct'; pct: number }
-  | { kind: 'override'; qty: number };
+export type VolumeLever = { kind: 'pct'; pct: number } | { kind: 'override'; qty: number };
 
 // Respons permintaan terhadap harga efektif; mati berarti qty ikut rumus lama.
 export type DemandLever = { kind: 'off' } | { kind: 'on' };
@@ -165,18 +154,10 @@ export function simulate(input: SimInput): SimResult {
   const dr0 = B.discountRate;
   const Peff0 = P * (1 - dr0);
   const quotaDemand = discountLever?.kind === 'percent' && discountLever.units !== undefined;
-  const Peff2 = discountLever?.kind === 'percent'
-    ? quotaDemand
-      ? P2
-      : P2 - unitDiscount(P2, discountLever.pct)
-    : P2 * (1 - dr0);
+  const Peff2 = discountLever?.kind === 'percent' ? (quotaDemand ? P2 : P2 - unitDiscount(P2, discountLever.pct)) : P2 * (1 - dr0);
 
   // Model dipakai bila qty bukan manual, ada histori, dan harga acuan positif.
-  const useDemand =
-    demandLever?.kind === 'on' &&
-    levers.volume?.kind !== 'override' &&
-    baseline.qty > 0 &&
-    Peff0 > 0;
+  const useDemand = demandLever?.kind === 'on' && levers.volume?.kind !== 'override' && baseline.qty > 0 && Peff0 > 0;
 
   let simQty: number;
   let volumeChanged = false;
@@ -236,9 +217,7 @@ export function simulate(input: SimInput): SimResult {
   // Harga efektif ikut dicek setelah dibulatkan: diskon besar
   // menggeser jangkauan walau harga etiket tetap.
   const listOut = P > 0 ? Math.abs(P2 - P) * 100 > P * PRICE_RANGE_LIMIT_PCT : P2 > 0;
-  const peffOut =
-    Peff0 > 0 &&
-    (Math.round(Peff2) * 100 > Math.round(Peff0) * 130 || Math.round(Peff2) * 100 < Math.round(Peff0) * 70);
+  const peffOut = Peff0 > 0 && (Math.round(Peff2) * 100 > Math.round(Peff0) * 130 || Math.round(Peff2) * 100 < Math.round(Peff0) * 70);
   const outOfRange = listOut || peffOut;
   if (outOfRange) flags.push('OUT_OF_RANGE_PRICE');
   if (demand.capped) flags.push('VOLUME_CAPPED');
@@ -250,8 +229,7 @@ export function simulate(input: SimInput): SimResult {
   } else if (unitProfit <= 0) {
     breakEvenQty = null;
   } else {
-    const profitAt = (q: number) =>
-      metricsOf(projectQty(q, P2, c2, B.discountRate, discountLever, baseline.discountedQty, baseline.qty)).profit;
+    const profitAt = (q: number) => metricsOf(projectQty(q, P2, c2, B.discountRate, discountLever, baseline.discountedQty, baseline.qty)).profit;
     const target = statusQuo.profit;
     const upper = Math.max(simQty * 100, 1000000);
     if (profitAt(upper) < target) {
@@ -284,8 +262,7 @@ export function simulate(input: SimInput): SimResult {
   }
 
   // maxVolumeDrop = 1 − breakEvenQty / baseline.qty   (negatif berarti harus naik)
-  const maxVolumeDrop =
-    breakEvenQty === null || baseline.qty === 0 ? null : 1 - breakEvenQty / baseline.qty;
+  const maxVolumeDrop = breakEvenQty === null || baseline.qty === 0 ? null : 1 - breakEvenQty / baseline.qty;
 
   // Harga optimal = laba model yang sama pada harga list bulat.
   // PeffBoundary = Peff0 × 3^(−1/e); ±30% harga efektif sekarang = terbaik dalam rentang data.
@@ -293,10 +270,14 @@ export function simulate(input: SimInput): SimResult {
   if (demand.applied && baseline.qty > 0 && !quotaDemand && c2 >= 0) {
     const d = discountLever?.kind === 'percent' ? discountLever.pct / 100 : dr0;
     if (1 - d > 0) {
-      const peffStar = Math.min(Math.max(optimalEffectivePrice(c2, demand.e), Peff0 * Math.pow(DEMAND_MAX_FACTOR, -1 / demand.e), Peff0 * 0.7), Peff0 * 1.3);
+      const peffStar = Math.min(
+        Math.max(optimalEffectivePrice(c2, demand.e), Peff0 * Math.pow(DEMAND_MAX_FACTOR, -1 / demand.e), Peff0 * 0.7),
+        Peff0 * 1.3
+      );
       const price = Math.round(peffStar / (1 - d));
       if (Number.isFinite(price) && price >= 0) {
-        const ratioAt = Peff0 > 0 ? (discountLever?.kind === 'percent' ? price - unitDiscount(price, discountLever.pct) : price * (1 - dr0)) / Peff0 : 1;
+        const ratioAt =
+          Peff0 > 0 ? (discountLever?.kind === 'percent' ? price - unitDiscount(price, discountLever.pct) : price * (1 - dr0)) / Peff0 : 1;
         const factorAt = Math.min(ratioAt <= 0 ? Infinity : Math.pow(ratioAt, -demand.e), DEMAND_MAX_FACTOR);
         const qtyAt = Math.max(0, baseline.qty * factorAt * (1 + (vol?.kind === 'pct' ? vol.pct : 0) / 100));
         const profit = metricsOf(roundMoney(projectQty(qtyAt, price, c2, dr0, discountLever, baseline.discountedQty, baseline.qty))).profit;
@@ -323,24 +304,13 @@ export function simulate(input: SimInput): SimResult {
   };
 }
 
-export type ScenarioCode =
-  | 'NO_VOLUME'
-  | 'DEMAND_COLLAPSE'
-  | 'UNIT_LOSS'
-  | 'LOSS'
-  | 'OUT_OF_RANGE'
-  | 'PROFITABLE'
-  | 'NEUTRAL';
+export type ScenarioCode = 'NO_VOLUME' | 'DEMAND_COLLAPSE' | 'UNIT_LOSS' | 'LOSS' | 'OUT_OF_RANGE' | 'PROFITABLE' | 'NEUTRAL';
 
-export function assessScenario(
-  result: SimResult
-): { tone: 'positive' | 'warning' | 'negative' | 'neutral'; code: ScenarioCode } {
+export function assessScenario(result: SimResult): { tone: 'positive' | 'warning' | 'negative' | 'neutral'; code: ScenarioCode } {
   const pd = result.impact.vsStatusQuo.profit ?? 0;
   const mp = result.impact.vsStatusQuo.marginPoints;
   if (result.qty.simulated < 0.5) {
-    return result.demand.applied && result.qty.baseline > 0
-      ? { tone: 'negative', code: 'DEMAND_COLLAPSE' }
-      : { tone: 'neutral', code: 'NO_VOLUME' };
+    return result.demand.applied && result.qty.baseline > 0 ? { tone: 'negative', code: 'DEMAND_COLLAPSE' } : { tone: 'neutral', code: 'NO_VOLUME' };
   }
   if (result.unit.unitProfit < 0) return { tone: 'negative', code: 'UNIT_LOSS' };
   if (pd <= -0.05 || result.simulated.margin < 0) return { tone: 'negative', code: 'LOSS' };
@@ -379,17 +349,13 @@ export function sanitizeLevers(levers: NonNullable<SimInput['levers']>): NonNull
   }
   if (levers.volume !== undefined) {
     out.volume =
-      levers.volume.kind === 'override'
-        ? { kind: 'override', qty: nonNeg(levers.volume.qty) }
-        : { kind: 'pct', pct: roundInt(levers.volume.pct) };
+      levers.volume.kind === 'override' ? { kind: 'override', qty: nonNeg(levers.volume.qty) } : { kind: 'pct', pct: roundInt(levers.volume.pct) };
   }
   if (levers.demand !== undefined) {
     out.demand = { kind: levers.demand.kind === 'on' ? 'on' : 'off' };
   }
   return out;
 }
-
-
 
 export interface ProductLike {
   id: string;
@@ -423,12 +389,7 @@ export interface ScenarioResult {
   assumptions: string[];
 }
 
-
-export function simulateScenario(
-  product: ProductLike,
-  historicalItems: TransactionItemLike[],
-  scenario: ScenarioInput
-): ScenarioResult {
+export function simulateScenario(product: ProductLike, historicalItems: TransactionItemLike[], scenario: ScenarioInput): ScenarioResult {
   const productItems = historicalItems.filter((i) => i.productId === product.id);
   const baseline = sumFacts(productItems.map(factsOfItem));
 

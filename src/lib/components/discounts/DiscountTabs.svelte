@@ -17,7 +17,7 @@
       aria-selected={tab === t.key}
       class="px-4 h-10 inline-flex items-center gap-2 text-body-md no-underline border-b-2 -mb-px {tab === t.key
         ? 'border-ink-navy text-ink font-semibold'
-        : 'border-transparent text-muted hover:text-ink'}"
-    >{t.label} <span class="tabular text-body-sm text-muted">{counts[t.key]}</span></a>
+        : 'border-transparent text-muted hover:text-ink'}">{t.label} <span class="tabular text-body-sm text-muted">{counts[t.key]}</span></a
+    >
   {/each}
 </div>

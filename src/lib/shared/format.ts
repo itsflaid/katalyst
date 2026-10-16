@@ -4,7 +4,9 @@
 export type MoneyUnit = { key: 'jt' | 'rb' | 'rp'; divisor: number; decimals: number; label: string };
 
 function groupInt(value: number): string {
-  return Math.abs(Math.round(value)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return Math.abs(Math.round(value))
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
 export function fmtInt(value: number): string {

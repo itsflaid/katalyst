@@ -1,14 +1,12 @@
 import { fail } from '@sveltejs/kit';
 import { requireOwner } from '$lib/server/domains/auth/guards';
-import { denyUnlessOwner } from '$lib/server/domains/products';
 import { daysBetween, zakatOf } from '$lib/analytics';
 import { getZakatInput, getZakatSetting, parseBalanceForm, parseSettingForm, upsertZakatSetting } from '$lib/server/domains/zakat';
 import { DEFAULT_TZ, makeTime } from '$lib/shared/time';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
-  requireOwner(locals);
-  const businessId = locals.user!.businessId as string;
+  const { businessId } = requireOwner(locals);
   const tz = locals.business?.timezone ?? DEFAULT_TZ;
   const now = new Date();
   const T = makeTime(tz);
@@ -35,18 +33,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
   saveSetting: async ({ request, locals }) => {
-    const denied = denyUnlessOwner(locals, 'saveSetting', 'Cuma Owner yang bisa mengatur zakat.');
-    if (denied) return denied;
-    const businessId = locals.user!.businessId as string;
+    const { businessId } = requireOwner(locals);
     const parsed = parseSettingForm(await request.formData());
     if ('error' in parsed) return fail(400, { message: parsed.error });
     await upsertZakatSetting(businessId, parsed.data, { gold: true });
     return { success: true };
   },
   saveBalance: async ({ request, locals }) => {
-    const denied = denyUnlessOwner(locals, 'saveBalance', 'Cuma Owner yang bisa menyimpan posisi keuangan.');
-    if (denied) return denied;
-    const businessId = locals.user!.businessId as string;
+    const { businessId } = requireOwner(locals);
     const parsed = parseBalanceForm(await request.formData());
     if ('error' in parsed) return fail(400, { message: parsed.error });
     await upsertZakatSetting(businessId, parsed.data, { balance: true });

@@ -1,6 +1,6 @@
 // Penjelasan rumus simulator (murni, tanpa DB); exit 1 bila ada FAIL.
 import { fmtInt, fmtPercent, fmtQty, fmtRupiah, fmtDeltaPct, fmtPoin } from '../src/lib/shared/format';
-import { simulate, type SimInput, type SimResult } from '../src/lib/simulation';
+import { simulate, type SimInput, type SimResult } from '../src/lib/analytics/simulation';
 import { explainSim, maxDropText, peakEmptyReason, type SimExplain } from '../src/lib/analytics/explain';
 
 let passCount = 0;
@@ -87,10 +87,12 @@ for (const sc of scenarios) {
   textsMatch(sc.label, sim, ex, sc.levers);
   if (sc.label === 'permintaan aktif') {
     const all = [ex.revenue, ex.profit, ex.margin, ex.qty, ex.unitProfit];
-    const hasApprox =
-      all.some((e) => e.main?.approx) || all.some((e) => e.parts.some((p) => p.approx)) || all.some((e) => e.versus?.approx);
+    const hasApprox = all.some((e) => e.main?.approx) || all.some((e) => e.parts.some((p) => p.approx)) || all.some((e) => e.versus?.approx);
     ok('permintaan aktif ada approx', hasApprox);
-    ok('permintaan aktif notes pembulatan', ex.qty.notes.some((n) => n.includes('dibulatkan')));
+    ok(
+      'permintaan aktif notes pembulatan',
+      ex.qty.notes.some((n) => n.includes('dibulatkan'))
+    );
   }
   if (sc.label === 'tanpa histori') {
     ok(

@@ -5,9 +5,8 @@ import { DEFAULT_TZ } from '$lib/shared/time';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-  requireOwner(locals);
+  const { businessId } = requireOwner(locals);
   const tz = locals.business?.timezone ?? DEFAULT_TZ;
-  const businessId = locals.user!.businessId as string;
   const data = await getSimulatorPageData(businessId, url, tz);
   // Input zakat mentah (null bila pengaturan belum ada); dampak dihitung di client.
   const zakat = await getZakatInput(businessId, tz, new Date());

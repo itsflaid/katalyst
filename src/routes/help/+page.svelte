@@ -144,12 +144,24 @@
   const pages = [
     { t: 'Dashboard', d: 'Ringkasan kondisi bisnis: omzet, untung, margin, tren 30 hari, produk teratas, dan temuan otomatis.' },
     { t: 'Statistik', d: 'Laporan lengkap per periode (harian/mingguan/bulanan/custom): komposisi untung, margin per produk, dan hari tersibuk.' },
-    { t: 'Produk', d: 'Daftar barang dagangan: harga modal, harga jual, margin, stok, dan batas menipis per produk. Stok habis otomatis hilang dari kasir (tanpa menonaktifkan). Tab Riwayat Stok mencatat semua pergerakan.' },
+    {
+      t: 'Produk',
+      d: 'Daftar barang dagangan: harga modal, harga jual, margin, stok, dan batas menipis per produk. Stok habis otomatis hilang dari kasir (tanpa menonaktifkan). Tab Riwayat Stok mencatat semua pergerakan.'
+    },
     { t: 'Transaksi', d: 'Kasir: catat penjualan multi-produk per struk, lihat riwayat per hari, void struk yang salah catat.' },
-    { t: 'Simulator', d: 'Lab percobaan: geser harga, diskon, modal, atau volume untuk lihat dampaknya sebelum benar-benar diterapkan. Ada kartu dampak ke zakat bila data zakat terisi.' },
-    { t: 'Zakat', d: 'Estimasi zakat perdagangan 2,5% dari aset bersih (stok + kas + piutang − utang) bila mencapai nisab dan haul genap. Kas, piutang, utang, dan harga emas diisi manual.' },
+    {
+      t: 'Simulator',
+      d: 'Lab percobaan: geser harga, diskon, modal, atau volume untuk lihat dampaknya sebelum benar-benar diterapkan. Ada kartu dampak ke zakat bila data zakat terisi.'
+    },
+    {
+      t: 'Zakat',
+      d: 'Estimasi zakat perdagangan 2,5% dari aset bersih (stok + kas + piutang − utang) bila mencapai nisab dan haul genap. Kas, piutang, utang, dan harga emas diisi manual.'
+    },
     { t: 'Copilot', d: 'Asisten tanya-jawab soal performa bisnismu, jawabannya dihitung dari data transaksimu sendiri.' },
-    { t: 'Pengaturan', d: 'Nama bisnis dan kelola staff: undang akun baru, kirim ulang undangan, reset password yang lupa, dan hapus (khusus Owner).' },
+    {
+      t: 'Pengaturan',
+      d: 'Nama bisnis dan kelola staff: undang akun baru, kirim ulang undangan, reset password yang lupa, dan hapus (khusus Owner).'
+    },
     { t: 'Akun', d: 'Profil kamu: ganti nama tampil dan password sendiri.' }
   ];
 </script>
@@ -159,10 +171,9 @@
 <Card class="mb-4">
   <h2 class="text-headline-sm text-ink mb-2">Apa itu Katalyst?</h2>
   <p class="text-body-md text-muted">
-    Katalyst adalah aplikasi kasir + laporan untuk UMKM yang menjual barang. Setiap penjualan dicatat sebagai struk,
-    lalu aplikasi menghitung otomatis omzet, modal, untung, dan margin, plus memberi tahu produk mana
-    yang paling menguntungkan dan mana yang marginnya tipis. Semua angka dihitung langsung dari data
-    transaksimu dengan rumus pasti; AI hanya membantu menjelaskan, tidak mengarang angka.
+    Katalyst adalah aplikasi kasir + laporan untuk UMKM yang menjual barang. Setiap penjualan dicatat sebagai struk, lalu aplikasi menghitung otomatis
+    omzet, modal, untung, dan margin, plus memberi tahu produk mana yang paling menguntungkan dan mana yang marginnya tipis. Semua angka dihitung
+    langsung dari data transaksimu dengan rumus pasti; AI hanya membantu menjelaskan, tidak mengarang angka.
   </p>
 </Card>
 

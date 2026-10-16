@@ -15,15 +15,10 @@ import { sanitizeText } from '$lib/server/domains/copilot/sanitize';
 import { verifyGrounding } from '$lib/server/domains/copilot/grounding';
 import { canUseCopilot, dailyLimitFrom } from '$lib/server/domains/copilot/limits';
 import { copilotPrompt } from '$lib/server/domains/copilot/prompt';
-import {
-  addMessage,
-  createConversation,
-  hasConversation,
-  recentTextContext,
-  renameFromFirstMessage
-} from '$lib/server/domains/copilot/history';
+import { addMessage, createConversation, hasConversation, recentTextContext, renameFromFirstMessage } from '$lib/server/domains/copilot/history';
 import { countedDb } from '$lib/server/domains/copilot/db';
 import type { Db } from '$lib/server/domains/facts/queries';
+import { requireTenant } from '$lib/server/domains/auth/guards';
 import { makeTime, type BizTz } from '$lib/shared/time';
 
 const MAX_MESSAGES = 6;
@@ -81,7 +76,9 @@ async function loadHistory(
 
 export const POST: RequestHandler = async ({ request, url, locals }) => {
   if (!locals.user) return Response.json({ error: 'Belum masuk. Silakan login dulu.' }, { status: 401 });
-  if ((locals.user as { role?: unknown }).role !== 'OWNER') {
+  // Balasan JSON dibaca client dari body.error; alasan guard tetap lokal walau role diambil dari Tenant.
+  const { role } = requireTenant(locals);
+  if (role !== 'OWNER') {
     return Response.json({ error: 'Hanya owner yang boleh memakai Copilot.' }, { status: 403 });
   }
   if (!locals.business) return Response.json({ error: 'Bisnis tidak ditemukan.' }, { status: 403 });
@@ -101,7 +98,10 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
 
   const apiKey = env.LLM_API_KEY ?? '';
   if (!apiKey) return Response.json({ error: 'LLM belum dikonfigurasi.' }, { status: 503 });
-  const models = (env.LLM_MODELS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  const models = (env.LLM_MODELS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 
   const business = locals.business;
   const tz = business.timezone;
@@ -112,22 +112,17 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
   const ctx: ToolContext = { businessId: business.id, tz, now, db: requestDb, budget };
   const limit = dailyLimitFrom(env.COPILOT_DAILY_LIMIT);
   if (!(await canUseCopilot(requestDb, business.id, limit, now)).ok) {
-    return Response.json(
-      { code: 'DAILY_LIMIT', error: `Batas ${limit} jawaban per 24 jam tercapai. Coba lagi nanti.` },
-      { status: 429 }
-    );
+    return Response.json({ code: 'DAILY_LIMIT', error: `Batas ${limit} jawaban per 24 jam tercapai. Coba lagi nanti.` }, { status: 429 });
   }
   const tools = TOOL_REGISTRY.filter((tool) => tool.enabled);
-  const client = createLlmClient(
-    {
-      provider: env.LLM_PROVIDER || 'groq',
-      apiKey,
-      models: models.length > 0 ? models : undefined,
-      baseUrl: env.LLM_BASE_URL || undefined,
-      maxFailover: Number(env.COPILOT_MAX_FAILOVER) || 2,
-      onAttempt: () => budget.spend(1)
-    }
-  );
+  const client = createLlmClient({
+    provider: env.LLM_PROVIDER || 'groq',
+    apiKey,
+    models: models.length > 0 ? models : undefined,
+    baseUrl: env.LLM_BASE_URL || undefined,
+    maxFailover: Number(env.COPILOT_MAX_FAILOVER) || 2,
+    onAttempt: () => budget.spend(1)
+  });
   const loaded = await loadHistory(requestDb, business.id, askedConv, parsed.messages);
   if (!loaded) return Response.json({ error: 'Percakapan tidak ditemukan.' }, { status: 404 });
   const history: LlmMessage[] = loaded.history;
@@ -161,7 +156,14 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
           const pending: { id: string; name: string; argsJson: string }[] = [];
           steps++;
           for await (const ev of client.stream(
-            { system, messages: history, tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })), toolChoice: step === MAX_STEPS - 1 ? 'none' : 'auto', maxTokens: 600, temperature: 0 },
+            {
+              system,
+              messages: history,
+              tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
+              toolChoice: step === MAX_STEPS - 1 ? 'none' : 'auto',
+              maxTokens: 600,
+              temperature: 0
+            },
             request.signal
           )) {
             if (ev.type === 'model') {
@@ -198,24 +200,37 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             const cacheKey = `${call.name}:${JSON.stringify(args)}`;
             // Menyebut produk katalog tanpa argumen product: tolak sebelum tool berjalan agar model memanggil ulang.
             let result = toolCache.get(cacheKey) as Awaited<ReturnType<typeof runTool>> | undefined;
-            if (result === undefined && tool && called.length <= MAX_TOOL_CALLS && budget.canAfford(tool.maxQueries) && missingProductArgs(call.name, args)) {
+            if (
+              result === undefined &&
+              tool &&
+              called.length <= MAX_TOOL_CALLS &&
+              budget.canAfford(tool.maxQueries) &&
+              missingProductArgs(call.name, args)
+            ) {
               const lastUser = [...parsed.messages].reverse().find((m) => m.role === 'user');
               const catalog = await ctx.db
                 .select({ name: product.name })
                 .from(product)
                 .where(and(eq(product.businessId, ctx.businessId), eq(product.isActive, true)));
-              const mentions = detectProductMention(lastUser?.content ?? '', catalog.map((c) => c.name));
+              const mentions = detectProductMention(
+                lastUser?.content ?? '',
+                catalog.map((c) => c.name)
+              );
               if (mentions.length > 0) {
-                result = failure(call.name, 'INVALID_ARGS', `Pertanyaan menyebut produk '${sanitizeText(mentions[0].phrase, 80)}'; isi argumen product.`);
+                result = failure(
+                  call.name,
+                  'INVALID_ARGS',
+                  `Pertanyaan menyebut produk '${sanitizeText(mentions[0].phrase, 80)}'; isi argumen product.`
+                );
               }
             }
             result ??= !tool
               ? failure(call.name, 'INVALID_ARGS', `Tool tak dikenal: ${call.name}`)
               : called.length > MAX_TOOL_CALLS
                 ? failure(call.name, 'BUDGET_EXCEEDED', 'Terlalu banyak tool dipanggil, persempit pertanyaan.')
-              : !budget.canAfford(tool.maxQueries)
-                ? failure(call.name, 'BUDGET_EXCEEDED', 'Anggaran komputasi habis, persempit pertanyaan.')
-                : await runTool(tool, ctx, args);
+                : !budget.canAfford(tool.maxQueries)
+                  ? failure(call.name, 'BUDGET_EXCEEDED', 'Anggaran komputasi habis, persempit pertanyaan.')
+                  : await runTool(tool, ctx, args);
             toolCache.set(cacheKey, result);
             toolResults.push(result);
             send('tool_result', { id: call.id, name: call.name, result });
@@ -240,15 +255,29 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             grounding = 'retried';
             let retryText = '';
             for await (const ev of client.stream(
-              { system: `${system} Jawaban sebelumnya ditolak karena memuat angka yang tidak ada di hasil tool. Jawab ulang tanpa tool dan hanya gunakan angka dari hasil tool.`, messages: history, tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })), toolChoice: 'none', maxTokens: 600, temperature: 0 },
+              {
+                system: `${system} Jawaban sebelumnya ditolak karena memuat angka yang tidak ada di hasil tool. Jawab ulang tanpa tool dan hanya gunakan angka dari hasil tool.`,
+                messages: history,
+                tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
+                toolChoice: 'none',
+                maxTokens: 600,
+                temperature: 0
+              },
               request.signal
             )) {
-              if (ev.type === 'model') { model = ev.model; failovers = ev.failovers; }
-              else if (ev.type === 'usage') { inputTokens += ev.inputTokens; outputTokens += ev.outputTokens; }
-              else if (ev.type === 'text') retryText += ev.delta;
+              if (ev.type === 'model') {
+                model = ev.model;
+                failovers = ev.failovers;
+              } else if (ev.type === 'usage') {
+                inputTokens += ev.inputTokens;
+                outputTokens += ev.outputTokens;
+              } else if (ev.type === 'text') retryText += ev.delta;
             }
             if (retryText && verifyGrounding(retryText, toolResults).ok) finalText = retryText;
-            else { finalText = null; grounding = 'failed'; }
+            else {
+              finalText = null;
+              grounding = 'failed';
+            }
           }
         }
         const donePayload = {

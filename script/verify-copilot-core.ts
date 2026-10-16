@@ -56,7 +56,10 @@ async function main() {
     ok('rupiah tanpa spasi tak-putus', fmtRupiah(1_250_000) === 'Rp1.250.000' && !fmtRupiah(1_250_000).includes(' '));
     ok('rupiah negatif dan nol', fmtRupiah(-250_000) === '-Rp250.000' && fmtRupiah(0) === 'Rp0');
     ok('integer bertanda', fmtInt(1_250) === '1.250' && fmtInt(-5) === '-5');
-    ok('persen, delta, dan poin', fmtPercent(0.183) === '18,3%' && fmtDelta(0.12) === '+12,0%' && fmtDelta(null) === 'baru' && fmtPoints(-0.021) === '-2,1% poin');
+    ok(
+      'persen, delta, dan poin',
+      fmtPercent(0.183) === '18,3%' && fmtDelta(0.12) === '+12,0%' && fmtDelta(null) === 'baru' && fmtPoints(-0.021) === '-2,1% poin'
+    );
   }
 
   console.log('\n== copilot core ==');
@@ -121,9 +124,7 @@ async function main() {
     ]);
     ok(
       'kandidat resolver bersih',
-      ambiguous.kind === 'ambiguous' &&
-        ambiguous.candidates.every((c) => !/[\n\u200b\u2028]/.test(c.name)) &&
-        ambiguous.candidates.length === 2
+      ambiguous.kind === 'ambiguous' && ambiguous.candidates.every((c) => !/[\n\u200b\u2028]/.test(c.name)) && ambiguous.candidates.length === 2
     );
   }
 
@@ -163,8 +164,14 @@ async function main() {
     ok('nonaktif terjual ikut dengan tanda', old?.inactive === true && (old?.inactiveText ?? '') === '(nonaktif)');
     ok('nonaktif tanpa jual tidak dihitung unsold', mixedRes.summary.unsold === 1 && !mixedRes.items.some((item) => item.id === 'p12'));
     const tie = buildRankProductsData(
-      [{ id: 'x', name: 'B Satu', isActive: true }, { id: 'y', name: 'A Dua', isActive: true }],
-      new Map([['x', { qty: 1, gross: 20000, discount: 0, cost: 10000, discountedQty: 0 }], ['y', { qty: 1, gross: 20000, discount: 0, cost: 10000, discountedQty: 0 }]]),
+      [
+        { id: 'x', name: 'B Satu', isActive: true },
+        { id: 'y', name: 'A Dua', isActive: true }
+      ],
+      new Map([
+        ['x', { qty: 1, gross: 20000, discount: 0, cost: 10000, discountedQty: 0 }],
+        ['y', { qty: 1, gross: 20000, discount: 0, cost: 10000, discountedQty: 0 }]
+      ]),
       { by: 'profit', order: 'asc', limit: 2 }
     );
     ok('seri deterministik menurut nama', tie.items[0]?.name === 'A Dua' && tie.items[1]?.name === 'B Satu');
@@ -179,7 +186,9 @@ async function main() {
     ok('model-view tanpa angka mentah berpasangan', view.includes('Rp5.000') && view.includes('Abon Ikan 150g') && !view.includes('5000'));
     ok(
       'jawaban salinan lolos grounding',
-      verifyGrounding('Keuntungan terendah Abon Ikan 150g Rp5.000. 1 produk aktif belum terjual: Madu Kelulut Kaltim 250ml.', [{ data: { summary: lowest.summary, items: lowest.items } }]).ok
+      verifyGrounding('Keuntungan terendah Abon Ikan 150g Rp5.000. 1 produk aktif belum terjual: Madu Kelulut Kaltim 250ml.', [
+        { data: { summary: lowest.summary, items: lowest.items } }
+      ]).ok
     );
   }
 
@@ -189,12 +198,25 @@ async function main() {
     const amplang = detectProductMention('Amplang paling laku hari apa?', catalog);
     ok('Amplang cocok dua produk', amplang.length === 1 && amplang[0].phrase === 'Amplang' && amplang[0].productNames.length === 2);
     const kaos = detectProductMention('Kaos Pesut paling laku kapan?', catalog);
-    ok('Kaos Pesut cocok nama lengkap sebagian', kaos.length === 1 && kaos[0].phrase === 'Kaos Pesut' && kaos[0].productNames.join() === 'Kaos Pesut Mahakam');
-    ok('tanpa produk tidak cocok', detectProductMention('hari apa paling ramai?', catalog).length === 0 && detectProductMention('omzet kemarin', catalog).length === 0);
+    ok(
+      'Kaos Pesut cocok nama lengkap sebagian',
+      kaos.length === 1 && kaos[0].phrase === 'Kaos Pesut' && kaos[0].productNames.join() === 'Kaos Pesut Mahakam'
+    );
+    ok(
+      'tanpa produk tidak cocok',
+      detectProductMention('hari apa paling ramai?', catalog).length === 0 && detectProductMention('omzet kemarin', catalog).length === 0
+    );
     ok('stopword tidak memicu', detectProductMention('paket produk apa yang besar?', catalog).length === 0);
-    ok('batas kata', detectProductMention('madura laku?', ['Madu Kelulut 250ml']).length === 0 && detectProductMention('madu kelulut laku?', ['Madu Kelulut 250ml']).length === 1);
+    ok(
+      'batas kata',
+      detectProductMention('madura laku?', ['Madu Kelulut 250ml']).length === 0 &&
+        detectProductMention('madu kelulut laku?', ['Madu Kelulut 250ml']).length === 1
+    );
     const caps = detectProductMention('AMPLANG ikan apa?', catalog);
-    ok('frasa sama dengan teks pengguna', caps.some((m) => m.phrase === 'AMPLANG' && m.productNames.length === 2));
+    ok(
+      'frasa sama dengan teks pengguna',
+      caps.some((m) => m.phrase === 'AMPLANG' && m.productNames.length === 2)
+    );
   }
 
   console.log('\n== cakupan query_metrics ==');
@@ -204,9 +226,24 @@ async function main() {
     const to = T.endOfDay(T.parseDay('2026-09-30')!);
     const now = new Date('2026-09-30T00:00:00Z');
     const byDay = new Map([['2026-09-07', { qty: 4, gross: 200000, discount: 0, cost: 120000, discountedQty: 0, txCount: 4 }]]);
-    const shared = { metric: 'qty', groupBy: 'weekday', period: 'last_30d', windowLabel: '30 hari terakhir', window: { from, to }, now, T, byDay } as const;
+    const shared = {
+      metric: 'qty',
+      groupBy: 'weekday',
+      period: 'last_30d',
+      windowLabel: '30 hari terakhir',
+      window: { from, to },
+      now,
+      T,
+      byDay
+    } as const;
     const all = buildQueryMetricsData({ ...shared, metric: 'qty', groupBy: 'weekday', period: 'last_30d' });
-    const one = buildQueryMetricsData({ ...shared, metric: 'qty', groupBy: 'weekday', period: 'last_30d', product: { id: 'a', name: 'Amplang Ikan Tenggiri 250g' } });
+    const one = buildQueryMetricsData({
+      ...shared,
+      metric: 'qty',
+      groupBy: 'weekday',
+      period: 'last_30d',
+      product: { id: 'a', name: 'Amplang Ikan Tenggiri 250g' }
+    });
     ok('scope semua produk', all.ok && all.data.scope.kind === 'all' && all.data.scope.label === 'Semua produk');
     ok('scope satu produk', one.ok && one.data.scope.kind === 'product' && one.data.scope.label === 'Amplang Ikan Tenggiri 250g');
   }
@@ -224,13 +261,41 @@ async function main() {
       baselineLabel: 'Kemarin'
     });
     ok('explain current kosong tanpa faktor', e1.empty === true && e1.factors.length === 0);
-    const e2 = buildExplainChangeData({ factors: { volume: 0, price: 0, discount: 0, cost: 0 }, profitDelta: 0, empty: true, period: 'today', windowLabel: 'Hari ini', baselineLabel: 'Kemarin' });
+    const e2 = buildExplainChangeData({
+      factors: { volume: 0, price: 0, discount: 0, cost: 0 },
+      profitDelta: 0,
+      empty: true,
+      period: 'today',
+      windowLabel: 'Hari ini',
+      baselineLabel: 'Kemarin'
+    });
     ok('explain dua-dua kosong', e2.empty === true && e2.factors.length === 0);
-    const e3 = buildExplainChangeData({ factors: { volume: -100000, price: 51000, discount: 0, cost: -20000 }, profitDelta: -69000, empty: false, period: 'last_30d', windowLabel: '30 hari terakhir', baselineLabel: '30 hari sebelumnya' });
+    const e3 = buildExplainChangeData({
+      factors: { volume: -100000, price: 51000, discount: 0, cost: -20000 },
+      profitDelta: -69000,
+      empty: false,
+      period: 'last_30d',
+      windowLabel: '30 hari terakhir',
+      baselineLabel: '30 hari sebelumnya'
+    });
     ok('explain berisi tak berubah', e3.empty === false && e3.factors.length === 4);
-    const c1 = buildComparePeriodsData({ current: emptyFacts, baseline: fullFacts, empty: true, period: 'today', windowLabel: 'Hari ini', baselineLabel: 'Kemarin' });
+    const c1 = buildComparePeriodsData({
+      current: emptyFacts,
+      baseline: fullFacts,
+      empty: true,
+      period: 'today',
+      windowLabel: 'Hari ini',
+      baselineLabel: 'Kemarin'
+    });
     ok('compare kosong tanpa deret', c1.empty === true && c1.change.revenue === null && c1.change.profit === null);
-    const c2 = buildComparePeriodsData({ current: fullFacts, baseline: fullFacts, empty: false, period: 'last_30d', windowLabel: '30 hari terakhir', baselineLabel: '30 hari sebelumnya' });
+    const c2 = buildComparePeriodsData({
+      current: fullFacts,
+      baseline: fullFacts,
+      empty: false,
+      period: 'last_30d',
+      windowLabel: '30 hari terakhir',
+      baselineLabel: '30 hari sebelumnya'
+    });
     ok('compare berisi tak berubah', c2.empty === false && c2.change.revenue === 0);
   }
 
