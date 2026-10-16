@@ -48,7 +48,7 @@
           <InsightBell class="ml-auto" count={bellCount} on:click={() => (insightsOpen = true)} />
         {/if}
       </header>
-      <main bind:this={mainEl}>
+      <main bind:this={mainEl} class:flush={$page.url.pathname === '/copilot'}>
         <slot />
       </main>
     </div>
@@ -85,12 +85,13 @@
 
 <style>
   /*
-    .app-shell di-pin 100vh + overflow hidden: tanpa batas tinggi, scroll
-    container jadi dokumen dan Sidebar ikut kegeser. Hanya <main> yang scroll.
+    .app-shell dipatok setinggi viewport + overflow hidden supaya hanya <main> yang scroll dan Sidebar tidak ikut bergeser.
+    dvh dipakai karena vh di browser mobile lebih tinggi dari area terlihat.
   */
   .app-shell {
     display: flex;
     height: 100vh;
+    height: 100dvh;
     overflow: hidden;
   }
   .content-col {
@@ -111,6 +112,12 @@
     main {
       padding: 2rem;
     }
+  }
+  /* Halaman penuh layar mengisi sisa tinggi lewat flex, tanpa padding dan tanpa hitungan vh. */
+  main.flush {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
   }
   .mobile-bar {
     display: flex;

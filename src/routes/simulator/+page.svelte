@@ -6,12 +6,15 @@
   import Badge from '$lib/components/ui/Badge.svelte';
   import Tooltip from '$lib/components/ui/Tooltip.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
+  import SlideOver from '$lib/components/ui/SlideOver.svelte';
+  import FormulaTip from '$lib/components/ui/FormulaTip.svelte';
   import StatCard from '$lib/components/statistics/StatCard.svelte';
   import StatFilterBar from '$lib/components/statistics/StatFilterBar.svelte';
   import { goto } from '$app/navigation';
-  import { fmtInt, fmtPercent, fmtQty, fmtRupiah } from '$lib/shared/format';
+  import { fmtDeltaPct, fmtPoin, fmtInt, fmtPercent, fmtQty, fmtRupiah } from '$lib/shared/format';
   import { assessScenario, sanitizeLevers, simulate, type ScenarioCode } from '$lib/analytics/simulation';
   import { ZERO_FACTS, zakatImpactOf } from '$lib/analytics';
+  import { explainSim, maxDropText, peakEmptyReason } from '$lib/analytics/explain';
   export let data;
 
   type BadgeTone = 'positive' | 'warning' | 'negative' | 'neutral';
@@ -21,8 +24,6 @@
     desc: string;
   }
 
-  const fmtDeltaPct = (v: number | null) => (v === null ? 'dari nol' : `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`);
-  const fmtPoin = (v: number) => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)} pp`;
   const toneOf = (v: number | null) => (v === null ? 'neutral' : v >= 0 ? 'positive' : 'negative') as BadgeTone;
 
   // Produk awal: hormati ?productId= (deep-link dari halaman Produk).
@@ -46,6 +47,7 @@
 
   function goWithRange(key: string, from = '', to = '') {
     activeRange = key;
+    showPeriodSheet = false;
     const u = new URL(window.location.href);
     u.searchParams.set('range', key);
     if (key === 'custom') {
@@ -70,6 +72,28 @@
     }
     goWithRange('custom', fromInput, toInput);
   }
+  function syncFrom(e: Event) {
+    fromInput = (e.currentTarget as HTMLInputElement).value;
+    applyCustom();
+  }
+  function syncTo(e: Event) {
+    toInput = (e.currentTarget as HTMLInputElement).value;
+    applyCustom();
+  }
+
+  const btn = (current: string, key: string) =>
+    `rounded border px-2.5 py-1.5 text-body-sm ${current === key ? 'border-ink-navy bg-ink-navy font-semibold text-white' : 'border-border-input bg-white text-ink hover:bg-table-header'}`;
+  const rangeNames: Record<string, string> = {
+    today: 'Hari ini',
+    week: 'Minggu ini',
+    '7d': '7 hari',
+    '30d': '30 hari',
+    month: 'Bulan ini',
+    all: 'Semua',
+    custom: 'Custom'
+  };
+
+  let showPeriodSheet = false;
 
   $: prod = data.products.find((p) => p.id === productId) ?? data.products[0] ?? null;
   $: base = (prod && data.baselines.find((b) => b.productId === prod.id)) ?? {
@@ -107,6 +131,7 @@
     product: { sellingPrice: sellBase, costPrice: costBase },
     levers: simLevers
   });
+  $: ex = explainSim(result, simLevers);
 
   $: simQty = result.qty.simulated;
   $: effPrice = result.simulated.avgNetPrice;
@@ -130,18 +155,7 @@
   let assumptions: string[] = [];
   $: breakEvenQty = result.breakEvenQty;
   $: maxDiscount = result.maxDiscountPct;
-  // Alasan harga optimal kosong, untuk keterangan kecil di kartu.
-  $: peakEmptyReason =
-    overrideQty !== null
-      ? 'qty manual'
-      : result.qty.baseline === 0
-        ? 'tidak ada histori'
-        : result.flags.includes('QUOTA_DEMAND_IGNORED')
-          ? 'diskon berkuota'
-          : '';
   $: maxDrop = result.maxVolumeDrop;
-  $: maxDropText =
-    maxDrop === null ? '-' : maxDrop >= 0 ? `${fmtPercent(maxDrop)} dari ${fmtInt(result.qty.baseline)} unit` : `harus naik ${fmtPercent(-maxDrop)}`;
 
   // Teks verdict per kode; angkaQty/harga persenan hanya untuk tampil.
   function verdictText(
@@ -360,7 +374,6 @@
     bind:toInput
     onSelect={(k) => goWithRange(k)}
     onApply={applyCustom}
-    desktopOnly={false}
     ranges={[
       { value: 'today', label: 'Hari ini' },
       { value: 'week', label: 'Minggu ini' },
@@ -370,7 +383,54 @@
       { value: 'all', label: 'Semua' }
     ]}
   />
+  <div class="sm:hidden flex flex-col gap-2 p-5">
+    <button
+      type="button"
+      on:click={() => (showPeriodSheet = true)}
+      class="inline-flex h-9 items-center justify-between rounded border border-border-input bg-white px-3 text-body-md text-ink"
+    >
+      <span>Periode: <strong>{rangeNames[activeRange] ?? 'Bulan ini'}</strong></span>
+      <span aria-hidden="true" class="text-muted">▾</span>
+    </button>
+    {#if data.rangeLabel}
+      <span class="text-body-sm text-muted">Dipakai: <strong class="text-ink">{data.rangeLabel}</strong></span>
+    {/if}
+  </div>
 </StatCard>
+
+{#if showPeriodSheet}
+  <SlideOver title="Pilih Periode" onClose={() => (showPeriodSheet = false)}>
+    <div class="flex flex-col gap-2">
+      <button type="button" on:click={() => goWithRange('today')} class={`${btn(activeRange, 'today')} w-full text-left`}>Hari ini</button>
+      <button type="button" on:click={() => goWithRange('week')} class={`${btn(activeRange, 'week')} w-full text-left`}>Minggu ini</button>
+      <button type="button" on:click={() => goWithRange('7d')} class={`${btn(activeRange, '7d')} w-full text-left`}>7 hari</button>
+      <button type="button" on:click={() => goWithRange('30d')} class={`${btn(activeRange, '30d')} w-full text-left`}>30 hari</button>
+      <button type="button" on:click={() => goWithRange('month')} class={`${btn(activeRange, 'month')} w-full text-left`}>Bulan ini</button>
+      <button type="button" on:click={() => goWithRange('all')} class={`${btn(activeRange, 'all')} w-full text-left`}>Semua</button>
+      <div class="flex flex-col gap-2 rounded border border-border-cool p-3">
+        <label class="flex flex-col gap-1 text-body-md text-ink">
+          Dari
+          <input
+            type="date"
+            bind:value={fromInput}
+            on:change={syncFrom}
+            class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink"
+          />
+        </label>
+        <label class="flex flex-col gap-1 text-body-md text-ink">
+          Sampai
+          <input
+            type="date"
+            bind:value={toInput}
+            on:change={syncTo}
+            min={fromInput || undefined}
+            class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink"
+          />
+        </label>
+      </div>
+    </div>
+  </SlideOver>
+{/if}
 
 {#if !prod}
   <Card class="text-center py-10">
@@ -553,7 +613,8 @@
               min={-50}
               max={100}
               step={5}
-              bind:value={volPct}
+              value={volPct}
+              on:input={(e) => (volPct = sliderVal(e))}
               class="w-full accent-ink-navy"
               aria-label="Persentase perubahan volume"
             />
@@ -588,21 +649,23 @@
         <p class="relative text-body-md text-white/80 mb-4">{verdict.desc}</p>
         <div class="relative grid grid-cols-1 sm:grid-cols-3 gap-4 min-w-0">
           <div class="min-w-0">
-            <p class="text-label-sm uppercase text-white/50">Revenue</p>
+            <p class="flex items-center gap-1.5 text-label-sm uppercase text-white/50">Revenue <FormulaTip explain={ex.revenue} variant="dark" /></p>
             <p class="text-num-display text-white tabular break-words">{fmtDeltaPct(revDelta)}</p>
             <p class="text-body-sm text-white/60 tabular break-words [overflow-wrap:anywhere]">
               {fmtRupiah(sqRev)} → {fmtRupiah(result.simulated.revenue)}
             </p>
           </div>
           <div class="min-w-0">
-            <p class="text-label-sm uppercase text-white/50">Profit</p>
+            <p class="flex items-center gap-1.5 text-label-sm uppercase text-white/50">Profit <FormulaTip explain={ex.profit} variant="dark" /></p>
             <p class="text-num-display text-white tabular break-words">{fmtDeltaPct(profitDelta)}</p>
             <p class="text-body-sm text-white/60 tabular break-words [overflow-wrap:anywhere]">
               {fmtRupiah(sqProfit)} → {fmtRupiah(result.simulated.profit)}
             </p>
           </div>
           <div class="min-w-0">
-            <p class="text-label-sm uppercase text-white/50">Margin simulasi</p>
+            <p class="flex items-center gap-1.5 text-label-sm uppercase text-white/50">
+              Margin simulasi <FormulaTip explain={ex.margin} variant="dark" />
+            </p>
             <p class="text-num-display text-white tabular">{fmtPercent(result.simulated.margin)}</p>
             <p class="text-body-sm text-white/60 tabular">{fmtPoin(marginPts)} dari {fmtPercent(sqMargin)}</p>
           </div>
@@ -637,22 +700,34 @@
             <thead>
               <tr class="text-left text-label-sm uppercase text-muted">
                 <th class="py-1 pr-3 font-medium"></th>
-                <th class="py-1 pr-3 font-medium text-right">Revenue</th>
-                <th class="py-1 pr-3 font-medium text-right">Profit</th>
-                <th class="py-1 pr-3 font-medium text-right">Margin</th>
-                <th class="py-1 font-medium text-right">Unit</th>
+                <th class="py-1 pr-3 font-medium text-right"
+                  ><span class="inline-flex items-center justify-end gap-1.5">Revenue <FormulaTip explain={ex.revenue} /></span></th
+                >
+                <th class="py-1 pr-3 font-medium text-right"
+                  ><span class="inline-flex items-center justify-end gap-1.5">Profit <FormulaTip explain={ex.profit} /></span></th
+                >
+                <th class="py-1 pr-3 font-medium text-right"
+                  ><span class="inline-flex items-center justify-end gap-1.5">Margin <FormulaTip explain={ex.margin} /></span></th
+                >
+                <th class="py-1 font-medium text-right"
+                  ><span class="inline-flex items-center justify-end gap-1.5">Unit <FormulaTip explain={ex.qty} /></span></th
+                >
               </tr>
             </thead>
             <tbody class="tabular">
               <tr class="border-t border-border-cool">
-                <td class="py-1.5 pr-3 text-muted">Aktual (periode)</td>
+                <td class="py-1.5 pr-3 text-muted"
+                  ><span class="inline-flex items-center gap-1.5">Aktual (periode) <FormulaTip explain={ex.rows.actual} /></span></td
+                >
                 <td class="py-1.5 pr-3 text-right text-ink">{fmtRupiah(result.actual.revenue)}</td>
                 <td class="py-1.5 pr-3 text-right text-ink">{fmtRupiah(result.actual.profit)}</td>
                 <td class="py-1.5 pr-3 text-right text-ink">{fmtPercent(result.actual.margin)}</td>
                 <td class="py-1.5 text-right text-ink">{fmtInt(result.qty.baseline)}</td>
               </tr>
               <tr class="border-t border-border-cool">
-                <td class="py-1.5 pr-3 text-muted">Kondisi sekarang</td>
+                <td class="py-1.5 pr-3 text-muted"
+                  ><span class="inline-flex items-center gap-1.5">Kondisi sekarang <FormulaTip explain={ex.rows.statusQuo} /></span></td
+                >
                 <td class="py-1.5 pr-3 text-right text-ink">{fmtRupiah(sqRev)}</td>
                 <td class="py-1.5 pr-3 text-right text-ink">{fmtRupiah(sqProfit)}</td>
                 <td class="py-1.5 pr-3 text-right text-ink">{fmtPercent(sqMargin)}</td>
@@ -674,7 +749,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 min-w-0">
           <div class="min-w-0">
             <div class="flex items-center justify-between gap-2 mb-1">
-              <span class="text-label-sm uppercase text-muted">Revenue</span>
+              <span class="flex items-center gap-1.5 text-label-sm uppercase text-muted">Revenue <FormulaTip explain={ex.revenue} /></span>
               <Badge size="sm" tone={toneOf(revDelta)}>{fmtDeltaPct(revDelta)}</Badge>
             </div>
             <p class="text-lg font-bold text-ink tabular break-words [overflow-wrap:anywhere]">{fmtRupiah(result.simulated.revenue)}</p>
@@ -693,7 +768,7 @@
           </div>
           <div class="min-w-0">
             <div class="flex items-center justify-between gap-2 mb-1">
-              <span class="text-label-sm uppercase text-muted">Profit</span>
+              <span class="flex items-center gap-1.5 text-label-sm uppercase text-muted">Profit <FormulaTip explain={ex.profit} /></span>
               <Badge size="sm" tone={toneOf(profitDelta)}>{fmtDeltaPct(profitDelta)}</Badge>
             </div>
             <p class="text-lg font-bold text-ink tabular break-words [overflow-wrap:anywhere]">{fmtRupiah(result.simulated.profit)}</p>
@@ -712,7 +787,7 @@
           </div>
           <div class="min-w-0">
             <div class="flex items-center justify-between gap-2 mb-1">
-              <span class="text-label-sm uppercase text-muted">Margin</span>
+              <span class="flex items-center gap-1.5 text-label-sm uppercase text-muted">Margin <FormulaTip explain={ex.margin} /></span>
               <Badge size="sm" tone={marginPts >= 0 ? 'positive' : 'negative'}>{fmtPoin(marginPts)}</Badge>
             </div>
             <p class="text-lg font-bold text-ink tabular break-words">{fmtPercent(result.simulated.margin)}</p>
@@ -731,7 +806,7 @@
           </div>
           <div class="min-w-0">
             <div class="flex items-center justify-between gap-2 mb-1">
-              <span class="text-label-sm uppercase text-muted">Unit terjual</span>
+              <span class="flex items-center gap-1.5 text-label-sm uppercase text-muted">Unit terjual <FormulaTip explain={ex.qty} /></span>
               <Badge size="sm" tone={toneOf(volDelta)}>{fmtDeltaPct(volDelta)}</Badge>
             </div>
             <p class="text-lg font-bold text-ink tabular break-words">{fmtQty(simQty)} unit</p>
@@ -759,36 +834,36 @@
           <h2 class="text-headline-sm text-ink mb-3">Titik impas</h2>
           <dl class="flex flex-col gap-2 text-body-md">
             <div class="flex justify-between">
-              <dt class="text-muted">Laba / unit simulasi</dt>
+              <dt class="flex items-center gap-1.5 text-muted">Laba / unit simulasi <FormulaTip explain={ex.unitProfit} /></dt>
               <dd class="tabular font-semibold {unitProfit >= 0 ? 'text-status-positive' : 'text-status-negative'}">{fmtRupiah(unitProfit)}</dd>
             </div>
             <div class="flex justify-between">
-              <dt class="text-muted">Qty simulasi</dt>
+              <dt class="flex items-center gap-1.5 text-muted">Qty simulasi <FormulaTip explain={ex.qty} /></dt>
               <dd class="tabular text-ink">{fmtQty(simQty)} unit</dd>
             </div>
             <div class="flex justify-between">
-              <dt class="text-muted">Qty impas (profit = kondisi sekarang)</dt>
+              <dt class="flex items-center gap-1.5 text-muted">Qty impas (profit = kondisi sekarang) <FormulaTip explain={ex.breakEven} /></dt>
               <dd class="tabular text-ink font-semibold">
                 {breakEvenQty === null ? 'Tidak impas' : breakEvenQty === 0 ? '-' : `${fmtInt(breakEvenQty)} unit`}
               </dd>
             </div>
             <div class="flex justify-between">
-              <dt class="text-muted">Diskon maks sebelum rugi</dt>
+              <dt class="flex items-center gap-1.5 text-muted">Diskon maks sebelum rugi <FormulaTip explain={ex.maxDiscount} /></dt>
               <dd class="tabular text-ink">{maxDiscount === null ? '-' : `${maxDiscount}%`}</dd>
             </div>
             <div class="flex justify-between">
-              <dt class="text-muted">Penjualan boleh turun maks</dt>
-              <dd class="tabular font-semibold {maxDrop === null || maxDrop >= 0 ? 'text-ink' : 'text-status-warning'}">{maxDropText}</dd>
+              <dt class="flex items-center gap-1.5 text-muted">Penjualan boleh turun maks <FormulaTip explain={ex.maxDrop} /></dt>
+              <dd class="tabular font-semibold {maxDrop === null || maxDrop >= 0 ? 'text-ink' : 'text-status-warning'}">{maxDropText(result)}</dd>
             </div>
             <div class="flex justify-between gap-3">
-              <dt class="text-muted">Harga paling untung dalam rentang</dt>
+              <dt class="flex items-center gap-1.5 text-muted">Harga paling untung dalam rentang <FormulaTip explain={ex.peak} /></dt>
               <dd class="tabular text-right text-ink">
                 {#if result.peak}
                   <span class="font-semibold">{fmtRupiah(result.peak.price)}</span>
                   <span class="block text-body-sm text-muted">profit {fmtRupiah(result.peak.profit)}</span>
                 {:else}
                   <span class="font-semibold">-</span>
-                  {#if peakEmptyReason}<span class="block text-body-sm text-muted">{peakEmptyReason}</span>{/if}
+                  {#if peakEmptyReason(result, simLevers)}<span class="block text-body-sm text-muted">{peakEmptyReason(result, simLevers)}</span>{/if}
                 {/if}
               </dd>
             </div>

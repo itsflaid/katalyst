@@ -45,7 +45,7 @@
     "verify:money-input": "tsx script/verify-money-input.ts",
     "eval:copilot": "tsx script/eval-copilot.ts",
     "copilot:call": "tsx script/copilot-call.ts",
-    "verify:all": "npm run verify:engine && npm run verify:discount && npm run verify:time && npm run verify:facts && npm run verify:sim && npm run verify:period && npm run verify:copilot-llm && npm run verify:copilot-core && npm run verify:copilot-period && npm run verify:simulate-price && npm run verify:inventory && npm run verify:metric-rows && npm run verify:zakat && npm run verify:path-guard && npm run verify:guards && npm run verify:scratch-guard && npm run verify:activity && npm run verify:stat-inventory && npm run verify:http && npm run verify:arch && npm run verify:tokens && npm run verify:product-fields && npm run verify:copilot-handoff && npm run verify:money-input && npm run verify:format && npm run verify:chat-markdown && npm run verify:decompose && npm run verify:grounding",
+    "verify:all": "npm run verify:engine && npm run verify:discount && npm run verify:time && npm run verify:facts && npm run verify:sim && npm run verify:explain && npm run verify:period && npm run verify:copilot-llm && npm run verify:copilot-core && npm run verify:copilot-period && npm run verify:simulate-price && npm run verify:inventory && npm run verify:metric-rows && npm run verify:zakat && npm run verify:path-guard && npm run verify:guards && npm run verify:scratch-guard && npm run verify:activity && npm run verify:stat-inventory && npm run verify:http && npm run verify:arch && npm run verify:tokens && npm run verify:product-fields && npm run verify:copilot-handoff && npm run verify:money-input && npm run verify:format && npm run verify:chat-markdown && npm run verify:decompose && npm run verify:grounding",
     "verify:path-guard": "tsx script/verify-path-guard.ts",
     "verify:guards": "tsx script/verify-guards.ts",
     "verify:scratch-guard": "tsx script/verify-scratch-guard.ts",
@@ -58,10 +58,11 @@
     "verify:facts": "tsx script/verify-facts.ts",
     "verify:facts-db": "tsx script/verify-facts-db.ts",
     "verify:sim": "tsx script/verify-sim.ts",
+    "verify:explain": "tsx script/verify-explain.ts",
     "golden:record": "tsx script/golden.ts record",
     "golden:check": "tsx script/golden.ts check",
     "verify:deps": "npm ls esbuild @esbuild/win32-x64 wrangler",
-    "verify:lock": "node scripts/lock-optionals.cjs",
+    "verify:lock": "node script/lock-optionals.cjs",
     "verify:stock": "tsx script/verify-stock.ts"
   },
   "dependencies": {

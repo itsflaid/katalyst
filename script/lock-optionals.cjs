@@ -1,5 +1,5 @@
-// Pakai: node scripts/lock-optionals.cjs          (dry-run, hanya laporan)
-//        node scripts/lock-optionals.cjs --apply  (tulis ke package-lock.json)
+// Pakai: node script/lock-optionals.cjs          (dry-run, hanya laporan)
+//        node script/lock-optionals.cjs --apply  (tulis ke package-lock.json)
 const fs = require('fs');
 const semver = require('semver');
 const APPLY = process.argv.includes('--apply');

@@ -113,6 +113,11 @@ function projectQty(
   return { qty, gross, discount, cost: qty * cost, discountedQty };
 }
 
+// peffAnalytic = cost × e / (e − 1)   (harga efektif pemaksimal laba, tanpa batas rentang)
+export function optimalEffectivePrice(cost: number, e: number): number {
+  return (cost * e) / (e - 1);
+}
+
 // impact.revenue, .profit, .qty = deltaRatio(sim, base)   (null bila base = 0 dan sim ≠ 0)
 // impact.marginPoints           = sim.margin − base.margin
 function impactOf(sim: Metrics, base: Metrics): Impact {
@@ -260,14 +265,13 @@ export function simulate(input: SimInput): SimResult {
   const maxVolumeDrop = breakEvenQty === null || baseline.qty === 0 ? null : 1 - breakEvenQty / baseline.qty;
 
   // Harga optimal = laba model yang sama pada harga list bulat.
-  // PeffAnalytic = c2 × e / (e − 1)
   // PeffBoundary = Peff0 × 3^(−1/e); ±30% harga efektif sekarang = terbaik dalam rentang data.
   let peak: { price: number; profit: number } | null = null;
   if (demand.applied && baseline.qty > 0 && !quotaDemand && c2 >= 0) {
     const d = discountLever?.kind === 'percent' ? discountLever.pct / 100 : dr0;
     if (1 - d > 0) {
       const peffStar = Math.min(
-        Math.max((c2 * demand.e) / (demand.e - 1), Peff0 * Math.pow(DEMAND_MAX_FACTOR, -1 / demand.e), Peff0 * 0.7),
+        Math.max(optimalEffectivePrice(c2, demand.e), Peff0 * Math.pow(DEMAND_MAX_FACTOR, -1 / demand.e), Peff0 * 0.7),
         Peff0 * 1.3
       );
       const price = Math.round(peffStar / (1 - d));

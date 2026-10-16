@@ -2,6 +2,8 @@
   import Card from '$lib/components/ui/Card.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import PageHeader from '$lib/components/ui/PageHeader.svelte';
+  import PeriodDialog from '$lib/components/transactions/PeriodDialog.svelte';
+  import { spanLabel } from '$lib/shared/period';
   import ProductTile from '$lib/components/transactions/ProductTile.svelte';
   import ProductRow from '$lib/components/transactions/ProductRow.svelte';
   import { enhance } from '$app/forms';
@@ -67,22 +69,32 @@
   }
   let fromEl: HTMLInputElement | null = null;
   let toEl: HTMLInputElement | null = null;
-  function goRange() {
+  let periodOpen = false;
+
+  function applyRange(from: string, to: string) {
+    periodOpen = false;
     const params = new URLSearchParams();
     if (data.kasir) params.set('kasir', data.kasir);
-    const from = fromEl?.value ?? '';
-    const to = toEl?.value ?? '';
     if (from) params.set('from', from);
     if (to) params.set('to', to);
     const qs = params.toString();
     goto(`/transactions${qs ? `?${qs}` : ''}`, { keepFocus: true });
   }
-  function resetRange() {
-    const params = new URLSearchParams();
-    if (data.kasir) params.set('kasir', data.kasir);
-    const qs = params.toString();
-    goto(`/transactions${qs ? `?${qs}` : ''}`, { keepFocus: true });
+  function goRange() {
+    applyRange(fromEl?.value ?? '', toEl?.value ?? '');
   }
+  function resetRange() {
+    applyRange('', '');
+  }
+  $: periodText = ((T) => {
+    const a = data.rangeFrom ? T.parseDay(data.rangeFrom) : null;
+    const b = data.rangeTo ? T.parseDay(data.rangeTo) : null;
+    const long = (d: Date) => T.fmt(d, { day: 'numeric', month: 'short', year: 'numeric' });
+    if (a && b) return spanLabel(a, T.endOfDay(b), T.tz);
+    if (a) return `Sejak ${long(a)}`;
+    if (b) return `Sampai ${long(b)}`;
+    return 'Semua tanggal';
+  })(T);
   $: rangeActive = !!(data.rangeFrom || data.rangeTo);
   $: moreHref = `/transactions?page=${data.page + 1}${data.kasir ? `&kasir=${data.kasir}` : ''}${data.rangeFrom ? `&from=${data.rangeFrom}` : ''}${data.rangeTo ? `&to=${data.rangeTo}` : ''}`;
 
@@ -544,16 +556,16 @@
         <h2 class="text-headline-sm text-white">Daftar Transaksi</h2>
         <p class="text-body-sm text-white/60">Waktu ditampilkan dalam {T.short}</p>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
+      <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
         {#if data.staffOptions.length > 1}
-          <span class="flex h-9 items-center gap-2 rounded border border-white/25 bg-white/10 px-3 text-white">
+          <span class="flex h-9 w-full items-center gap-2 rounded border border-white/25 bg-white/10 px-3 text-white sm:w-auto">
             <span class="text-label-sm uppercase text-white/60">Kasir</span>
-            <span class="relative flex items-center">
+            <span class="relative flex flex-1 items-center sm:flex-none">
               <select
                 aria-label="Filter kasir"
                 value={selectedKasir}
                 on:change={goKasir}
-                class="appearance-none border-none bg-transparent py-1 pl-0 pr-5 text-body-md text-white focus:outline-none"
+                class="w-full appearance-none border-none bg-transparent py-1 pl-0 pr-5 text-body-md text-white focus:outline-none"
               >
                 <option value="all" class="text-ink">Semua kasir</option>
                 {#each data.staffOptions as s}
@@ -564,7 +576,17 @@
             </span>
           </span>
         {/if}
-        <span class="flex h-9 items-center gap-2 rounded border border-white/25 bg-white/10 px-3 text-white">
+        <button
+          type="button"
+          on:click={() => (periodOpen = true)}
+          aria-haspopup="dialog"
+          class="flex h-9 w-full items-center gap-2 rounded border border-white/25 bg-white/10 px-3 text-left text-white sm:hidden"
+        >
+          <span class="text-label-sm uppercase text-white/60">Periode</span>
+          <span class="min-w-0 flex-1 truncate text-body-md">{periodText}</span>
+          <ChevronDown size={14} class="shrink-0 text-white/70" aria-hidden="true" />
+        </button>
+        <span class="hidden h-9 items-center gap-2 rounded border border-white/25 bg-white/10 px-3 text-white sm:flex">
           <span class="text-label-sm uppercase text-white/60">Dari</span>
           <input
             type="date"
@@ -712,4 +734,14 @@
       </div>
     </div>
   </div>
+{/if}
+
+{#if periodOpen}
+  <PeriodDialog
+    initialFrom={data.rangeFrom ?? ''}
+    initialTo={data.rangeTo ?? ''}
+    onApply={applyRange}
+    onReset={resetRange}
+    onClose={() => (periodOpen = false)}
+  />
 {/if}
