@@ -41,14 +41,6 @@ Zona waktu diatur per bisnis di halaman Pengaturan (Owner), default WITA (`Asia/
 4. `npm run db:seed:demo` (data demo: Cindera Etam, 10 produk khas Kaltim, 90 hari transaksi)
 5. `npm run dev`
 
-Akun demo setelah seed:
-
-| Role  | Username                                           | Password   | Mendarat di     |
-| ----- | -------------------------------------------------- | ---------- | --------------- |
-| Owner | `owner123`                                         | `password` | `/dashboard`    |
-| Staff | `prabowo02`, `jokowi00`, `anis01`, `ganjar03`       | `password` | `/transactions` |
-
-Semua akun masuk pakai username (owner undang staff pakai username, tanpa email).
 
 ## Skrip uji
 
