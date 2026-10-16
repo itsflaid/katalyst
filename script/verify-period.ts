@@ -76,7 +76,10 @@ function oracleStatistikRange(url: URL, tz: BizTz): { key: StatistikRangeKey; fr
 
 type SimulatorRangeKey = 'today' | 'week' | '7d' | '30d' | 'month' | 'all' | 'custom';
 
-function oracleSimulatorRange(url: URL, tz: BizTz): { key: SimulatorRangeKey; from: Date | null; to: Date | null; label: string; fromISO: string; toISO: string } {
+function oracleSimulatorRange(
+  url: URL,
+  tz: BizTz
+): { key: SimulatorRangeKey; from: Date | null; to: Date | null; label: string; fromISO: string; toISO: string } {
   const T = makeTime(tz);
   const raw = (url.searchParams.get('range') ?? 'month').toLowerCase();
   const now = new Date();

@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db';
 import { discount, product } from '$lib/server/db/schema';
 import { and, eq } from 'drizzle-orm';
-import { isBelowCost, resolveWindow, type DiscountScope, type WindowPreset } from '$lib/discount';
+import { isBelowCost, resolveWindow, type DiscountScope, type WindowPreset } from '$lib/shared/discount';
 import type { BizTime } from '$lib/shared/time';
 import { findOverlap } from './queries';
 
@@ -31,9 +31,7 @@ export interface ParsedDiscountForm {
   quota: number | null;
 }
 
-export type DiscountFormResult =
-  | { data: ParsedDiscountForm }
-  | { error: string; code?: string; lossProducts?: { id: string; name: string }[] };
+export type DiscountFormResult = { data: ParsedDiscountForm } | { error: string; code?: string; lossProducts?: { id: string; name: string }[] };
 
 const PRESETS: WindowPreset[] = ['TODAY', 'DAYS_2', 'DAYS_7', 'CUSTOM', 'OPEN'];
 
@@ -94,15 +92,10 @@ export async function parseDiscountForm(form: FormData, ctx: DiscountFormCtx): P
     return { error: 'Waktu berakhir harus setelah waktu mulai.' };
   }
 
-  // GLOBAL wajib berbatas waktu dan tanpa kuota unit (aturan DB juga).
-  if (scope === 'GLOBAL') {
-    if (endsAt === null) return { error: 'Diskon global wajib ada batas waktu.' };
-    const quotaRaw = String(form.get('quota') ?? '').trim();
-    if (quotaRaw !== '') return { error: 'Diskon global tidak memakai kuota.' };
-  }
-
+  // Kuota unit opsional untuk PRODUCT maupun GLOBAL; kosong berarti tanpa batas.
+  // Bila waktu dan kuota dua-duanya diisi, diskon mati saat salah satunya terpenuhi.
   let quota: number | null = null;
-  if (scope === 'PRODUCT') {
+  {
     const quotaRaw = String(form.get('quota') ?? '').trim();
     if (quotaRaw !== '') {
       const q = Number(quotaRaw);
@@ -160,7 +153,7 @@ export async function parseDiscountForm(form: FormData, ctx: DiscountFormCtx): P
 }
 
 // Dipakai aksi hapus: hanya boleh bila belum pernah dipakai di transaksi.
-export async function canDeleteDiscount(id: string, businessId: string) {
+export async function canDeleteDiscount(id: string, businessId: string): Promise<{ data: { id: string; quotaUsed: number } } | { error: string }> {
   const [row] = await db
     .select({ id: discount.id, quotaUsed: discount.quotaUsed })
     .from(discount)

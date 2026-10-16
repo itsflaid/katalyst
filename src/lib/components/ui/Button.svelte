@@ -7,7 +7,7 @@
   export { className as class };
 </script>
 
-  <!-- Solid structural corner (radius 4px), bukan rounded-full. -->
+<!-- Solid structural corner (radius 4px), bukan rounded-full. -->
 <button
   class={cn(
     'inline-flex items-center justify-center font-label-lg text-label-lg transition-colors border disabled:opacity-50 disabled:pointer-events-none',

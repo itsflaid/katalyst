@@ -13,11 +13,4 @@
   export { className as class };
 </script>
 
-<input
-  {id}
-  bind:value
-  class={cn(inputClass, className)}
-  on:input
-  on:change
-  {...$$restProps}
-/>
+<input {id} bind:value class={cn(inputClass, className)} on:input on:change {...$$restProps} />

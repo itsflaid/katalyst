@@ -2,8 +2,10 @@
 // Murni: jam masuk lewat `now`; hanya import relatif.
 import { makeTime, type BizTz } from './time';
 
-export type PeriodKey = 'today' | 'week' | '7d' | 'month' | '30d' | 'all' | 'custom' | 'yesterday' | 'last_week' | 'last_month' | 'last_7d' | 'last_90d';
-export type NamedPeriodKey = 'today' | 'yesterday' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'last_30d' | 'last_7d' | 'last_90d' | 'custom';
+export type PeriodKey =
+  'today' | 'week' | '7d' | 'month' | '30d' | 'all' | 'custom' | 'yesterday' | 'last_week' | 'last_month' | 'last_7d' | 'last_90d';
+export type NamedPeriodKey =
+  'today' | 'yesterday' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'last_30d' | 'last_7d' | 'last_90d' | 'custom';
 
 export interface Period {
   key: PeriodKey;
@@ -23,10 +25,7 @@ export function resolvePeriod(url: URL, tz: BizTz, now: Date, opts: ResolveOpts)
   const T = makeTime(tz);
   const rawParam = (url.searchParams.get('range') ?? opts.default).toLowerCase();
   const KNOWN = ['today', 'week', '7d', '30d', 'month', 'custom'];
-  const key =
-    KNOWN.includes(rawParam) && (opts.allow as string[]).includes(rawParam)
-      ? (rawParam as PeriodKey)
-      : null;
+  const key = KNOWN.includes(rawParam) && (opts.allow as string[]).includes(rawParam) ? (rawParam as PeriodKey) : null;
   const iso = (d: Date) => T.dayKey(d);
   const fmtLong = (d: Date) => T.fmt(d, { day: 'numeric', month: 'short', year: 'numeric' });
   if (key === 'today') {
@@ -87,12 +86,7 @@ export function previousWindow(p: Period & { from: Date; to: Date }): { from: Da
 
 const MAX_CUSTOM_DAYS = 366;
 
-export function resolveNamedPeriod(
-  key: NamedPeriodKey,
-  tz: BizTz,
-  now: Date,
-  custom?: { from: string; to: string }
-): Period {
+export function resolveNamedPeriod(key: NamedPeriodKey, tz: BizTz, now: Date, custom?: { from: string; to: string }): Period {
   const T = makeTime(tz);
   const iso = (d: Date) => T.dayKey(d);
   if (key === 'yesterday') {
@@ -141,11 +135,7 @@ export interface BaselineWindow {
 // Pembanding sejajar jam dinding: durasi berjalan yang sama dari awal periode
 // sebelumnya (Senin untuk pekan, tanggal 1 untuk bulan). Periode penuh memakai
 // periode penuh sebelumnya; last_30d dan custom menempel seperti sebelumnya.
-export function comparableWindow(
-  window: { from: Date; to: Date; key: NamedPeriodKey },
-  tz: BizTz,
-  now: Date
-): BaselineWindow {
+export function comparableWindow(window: { from: Date; to: Date; key: NamedPeriodKey }, tz: BizTz, now: Date): BaselineWindow {
   const T = makeTime(tz);
   const { from, to, key } = window;
   const dur = to.getTime() - from.getTime();

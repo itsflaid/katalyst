@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { DEMAND_ELASTICITY, assessScenario, dropFromElasticity, simulate, type ScenarioCode, type SimFlag } from '../../../../simulation';
+import { DEMAND_ELASTICITY, assessScenario, dropFromElasticity, simulate, type ScenarioCode, type SimFlag } from '../../../../analytics/simulation';
 import { ZERO_FACTS, type Facts } from '../../../../analytics/facts';
 import { fmtDelta, fmtInt, fmtPercent, fmtPoints, fmtRupiah } from '../../../../shared/format';
 import { resolveNamedPeriod, type NamedPeriodKey } from '../../../../shared/period';
@@ -152,15 +152,19 @@ export function buildSimulatePriceData(input: {
     .flatMap((result) => result.flags)
     .filter((flag) => (seen.has(flag) ? false : (seen.add(flag), true)))
     .map((code) => ({ code, text: simFlagText(code) }));
-  const breakEvenVolume =
-    base.breakEvenQty === null || input.baseline.qty === 0 ? null : base.breakEvenQty / input.baseline.qty - 1;
+  const breakEvenVolume = base.breakEvenQty === null || input.baseline.qty === 0 ? null : base.breakEvenQty / input.baseline.qty - 1;
   // Laba bila diskon maksimal ikut dipasang: titik impas, bukan angka simulated.profit.
   let profitAtMaxDiscount: number | null = null;
   if (base.maxDiscountPct !== null) {
     const atMax = simulate({
       baseline: input.baseline,
       product: input.product,
-      levers: { price: input.targetPrice, discount: { kind: 'percent' as const, pct: base.maxDiscountPct }, volume: { kind: 'pct' as const, pct: input.volumePcts[chosenIndex] }, demand: demandLever }
+      levers: {
+        price: input.targetPrice,
+        discount: { kind: 'percent' as const, pct: base.maxDiscountPct },
+        volume: { kind: 'pct' as const, pct: input.volumePcts[chosenIndex] },
+        demand: demandLever
+      }
     });
     profitAtMaxDiscount = atMax.simulated.profit;
   }
@@ -169,14 +173,25 @@ export function buildSimulatePriceData(input: {
   return {
     product: { id: input.product.id, name: input.product.name },
     window: { key: input.period, label: input.windowLabel },
-    current: { profit: base.statusQuo.profit, profitText: fmtRupiah(base.statusQuo.profit), margin: base.statusQuo.margin, marginText: fmtPercent(base.statusQuo.margin), qty: base.statusQuo.qty, qtyText: fmtInt(base.statusQuo.qty) },
-    simulated: { profit: chosen.simulated.profit, profitText: fmtRupiah(chosen.simulated.profit), margin: chosen.simulated.margin, marginText: fmtPercent(chosen.simulated.margin), qty: chosen.simulated.qty, qtyText: fmtInt(chosen.simulated.qty) },
+    current: {
+      profit: base.statusQuo.profit,
+      profitText: fmtRupiah(base.statusQuo.profit),
+      margin: base.statusQuo.margin,
+      marginText: fmtPercent(base.statusQuo.margin),
+      qty: base.statusQuo.qty,
+      qtyText: fmtInt(base.statusQuo.qty)
+    },
+    simulated: {
+      profit: chosen.simulated.profit,
+      profitText: fmtRupiah(chosen.simulated.profit),
+      margin: chosen.simulated.margin,
+      marginText: fmtPercent(chosen.simulated.margin),
+      qty: chosen.simulated.qty,
+      qtyText: fmtInt(chosen.simulated.qty)
+    },
     scenario: {
       priceText: fmtRupiah(input.targetPrice),
-      priceChangeText:
-        input.priceDelta === undefined
-          ? null
-          : `${input.priceDelta < 0 ? '-' : '+'}${fmtRupiah(Math.abs(input.priceDelta))}`,
+      priceChangeText: input.priceDelta === undefined ? null : `${input.priceDelta < 0 ? '-' : '+'}${fmtRupiah(Math.abs(input.priceDelta))}`,
       discountPctText: input.discountPct === undefined ? null : fmtPercent(input.discountPct / 100)
     },
     volumeScenarios,
@@ -185,7 +200,12 @@ export function buildSimulatePriceData(input: {
       volumePctText: breakEvenVolume === null ? null : fmtPercent(breakEvenVolume),
       text: breakEvenVolume === null ? null : fmtPercent(breakEvenVolume)
     },
-    impact: { profit: chosen.impact.vsStatusQuo.profit, profitText: fmtDelta(chosen.impact.vsStatusQuo.profit), marginPoints: chosen.impact.vsStatusQuo.marginPoints, marginPointsText: fmtPoints(chosen.impact.vsStatusQuo.marginPoints) },
+    impact: {
+      profit: chosen.impact.vsStatusQuo.profit,
+      profitText: fmtDelta(chosen.impact.vsStatusQuo.profit),
+      marginPoints: chosen.impact.vsStatusQuo.marginPoints,
+      marginPointsText: fmtPoints(chosen.impact.vsStatusQuo.marginPoints)
+    },
     breakEvenQty: base.breakEvenQty,
     breakEvenQtyText: base.breakEvenQty === null ? null : fmtInt(base.breakEvenQty),
     maxDiscountPct: base.maxDiscountPct,
@@ -204,7 +224,12 @@ export function buildSimulatePriceData(input: {
     peak:
       chosen.peak === null
         ? null
-        : { price: chosen.peak.price, priceText: fmtRupiah(chosen.peak.price), profit: chosen.peak.profit, profitText: fmtRupiah(chosen.peak.profit) },
+        : {
+            price: chosen.peak.price,
+            priceText: fmtRupiah(chosen.peak.price),
+            profit: chosen.peak.profit,
+            profitText: fmtRupiah(chosen.peak.profit)
+          },
     maxVolumeDrop: chosen.maxVolumeDrop,
     maxVolumeDropText: chosen.maxVolumeDrop === null ? null : fmtPercent(chosen.maxVolumeDrop),
     assessment: { tone: assessed.tone, code: assessed.code, text: assessmentText(assessed.code) },
@@ -215,8 +240,14 @@ export function buildSimulatePriceData(input: {
 
 export async function simulatePrice(ctx: ToolContext, input: unknown): Promise<ToolResult<SimulatePriceData>> {
   const checked = validateArgs(input, {
-    product: { type: 'string', required: true }, period: { type: 'string', enum: periods }, from: { type: 'string' }, to: { type: 'string' },
-    priceDelta: { type: 'integer' }, price: { type: 'integer', min: 0 }, discountPct: { type: 'integer', min: 0, max: 100 }, volumePct: { type: 'integer', min: -100, max: 1000 }
+    product: { type: 'string', required: true },
+    period: { type: 'string', enum: periods },
+    from: { type: 'string' },
+    to: { type: 'string' },
+    priceDelta: { type: 'integer' },
+    price: { type: 'integer', min: 0 },
+    discountPct: { type: 'integer', min: 0, max: 100 },
+    volumePct: { type: 'integer', min: -100, max: 1000 }
   });
   if (!checked.ok) return failure(TOOL, 'INVALID_ARGS', checked.message);
   const period = (checked.value.period ?? 'last_30d') as NamedPeriodKey;
@@ -225,13 +256,22 @@ export async function simulatePrice(ctx: ToolContext, input: unknown): Promise<T
   if (period === 'custom' && (!from || !to)) return failure(TOOL, 'INVALID_ARGS', 'Periode custom memerlukan from dan to.');
   const window = resolveNamedPeriod(period, ctx.tz, ctx.now, from && to ? { from, to } : undefined);
   if (!window.from || !window.to) return failure(TOOL, 'INVALID_ARGS', 'Periode tidak valid.');
-  const products = await ctx.db.select({ id: product.id, name: product.name, sellingPrice: product.sellingPrice, costPrice: product.costPrice }).from(product).where(and(eq(product.businessId, ctx.businessId), eq(product.isActive, true)));
+  const products = await ctx.db
+    .select({ id: product.id, name: product.name, sellingPrice: product.sellingPrice, costPrice: product.costPrice })
+    .from(product)
+    .where(and(eq(product.businessId, ctx.businessId), eq(product.isActive, true)));
   const resolved = resolveProduct(checked.value.product as string, products);
   if (resolved.kind === 'not_found') {
     const names = resolved.candidates.map((c) => c.name).join(', ');
-    return failure(TOOL, 'PRODUCT_NOT_FOUND', `Produk '${resolved.query}' tidak ditemukan.${names ? ` Yang mirip: ${names}.` : ''}`, resolved.candidates);
+    return failure(
+      TOOL,
+      'PRODUCT_NOT_FOUND',
+      `Produk '${resolved.query}' tidak ditemukan.${names ? ` Yang mirip: ${names}.` : ''}`,
+      resolved.candidates
+    );
   }
-  if (resolved.kind === 'ambiguous') return failure(TOOL, 'AMBIGUOUS_PRODUCT', `Ada ${resolved.candidates.length} produk yang cocok dengan '${resolved.query}'.`, resolved.candidates);
+  if (resolved.kind === 'ambiguous')
+    return failure(TOOL, 'AMBIGUOUS_PRODUCT', `Ada ${resolved.candidates.length} produk yang cocok dengan '${resolved.query}'.`, resolved.candidates);
   const selected = products.find((item) => item.id === resolved.product.id)!;
   const facts = await queryFactsByProduct(ctx.db, ctx.businessId, { from: window.from, to: window.to }, { productIds: [selected.id] });
   const baseline = facts.get(selected.id) ?? ZERO_FACTS;

@@ -4,10 +4,7 @@ import { metricsOf, type Facts } from './facts';
 import type { BusinessSummary, ProductSummary } from './core';
 import type { BizTime } from '../shared/time';
 
-export function summarizeFacts(
-  byProduct: ReadonlyMap<string, Facts>,
-  names: Record<string, string>
-): ProductSummary[] {
+export function summarizeFacts(byProduct: ReadonlyMap<string, Facts>, names: Record<string, string>): ProductSummary[] {
   return Array.from(byProduct.entries()).map(([productId, f]) => {
     const m = metricsOf(f);
     return {
@@ -44,10 +41,7 @@ export interface DailyPoint {
   tx: number;
 }
 
-export function fillDailySeries(
-  byDay: ReadonlyMap<string, Facts & { txCount: number }>,
-  opts: { from: Date; to: Date; T: BizTime }
-): DailyPoint[] {
+export function fillDailySeries(byDay: ReadonlyMap<string, Facts & { txCount: number }>, opts: { from: Date; to: Date; T: BizTime }): DailyPoint[] {
   const { T } = opts;
   const rows: DailyPoint[] = [];
   let cursor = T.startOfDay(opts.from);

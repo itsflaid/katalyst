@@ -2,12 +2,7 @@
 // dependensi biar bisa dites skrip tsx.
 export const COPILOT_HANDOFF_MAX = 800;
 
-export const COPILOT_SUGGESTIONS = [
-  'Omzet minggu ini berapa?',
-  'Produk paling laku bulan ini?',
-  'Kenapa profit turun?',
-  'Stok apa yang menipis?'
-];
+export const COPILOT_SUGGESTIONS = ['Omzet minggu ini berapa?', 'Produk paling laku bulan ini?', 'Kenapa profit turun?', 'Stok apa yang menipis?'];
 
 export function parseHandoffQuestion(search: string): string | null {
   const raw = new URLSearchParams(search).get('q');

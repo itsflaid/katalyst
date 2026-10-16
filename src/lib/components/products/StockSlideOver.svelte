@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { SubmitFunction } from "@sveltejs/kit";
-  import { enhance } from "$app/forms";
-  import Input from "$lib/components/ui/Input.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import SlideOver from "$lib/components/ui/SlideOver.svelte";
+  import type { SubmitFunction } from '@sveltejs/kit';
+  import { enhance } from '$app/forms';
+  import Input from '$lib/components/ui/Input.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
+  import SlideOver from '$lib/components/ui/SlideOver.svelte';
 
   export let modal: { mode: 'restock' | 'adjust'; id: string; name: string; stock: number };
   export let form: { for?: string; message?: string } | null = null;
@@ -16,7 +16,7 @@
   let sNote = '';
 </script>
 
-<SlideOver title={modal.mode === 'restock' ? `Restock: ${modal.name}` : `Koreksi Stok: ${modal.name}`} onClose={onClose}>
+<SlideOver title={modal.mode === 'restock' ? `Restock: ${modal.name}` : `Koreksi Stok: ${modal.name}`} {onClose}>
   {#if modal.mode === 'restock'}
     <form method="POST" action="?/restock" use:enhance={onSubmit} class="flex flex-col gap-3">
       <input type="hidden" name="id" value={modal.id} />
@@ -29,7 +29,7 @@
         Catatan (opsional)
         <Input id="s-note" name="note" bind:value={sNote} placeholder="Barang dari supplier" />
       </label>
-      {#if form?.for === "restock"}<p class="text-body-sm text-status-negative">{form.message}</p>{/if}
+      {#if form?.for === 'restock'}<p class="text-body-sm text-status-negative">{form.message}</p>{/if}
       <div class="flex justify-end gap-2 mt-1">
         <Button variant="secondary" type="button" on:click={onClose}>Batal</Button>
         <Button type="submit">Tambah Stok</Button>
@@ -46,7 +46,7 @@
         Alasan (wajib)
         <Input id="s-note2" name="note" bind:value={sNote} placeholder="Selisih hitung fisik" required />
       </label>
-      {#if form?.for === "adjust"}<p class="text-body-sm text-status-negative">{form.message}</p>{/if}
+      {#if form?.for === 'adjust'}<p class="text-body-sm text-status-negative">{form.message}</p>{/if}
       <div class="flex justify-end gap-2 mt-1">
         <Button variant="secondary" type="button" on:click={() => onSwitchMode('restock')}>Ke Restock</Button>
         <Button type="submit">Simpan Koreksi</Button>
@@ -54,7 +54,11 @@
     </form>
   {/if}
   {#if modal.mode === 'restock'}
-    <button type="button" on:click={() => onSwitchMode('adjust')} class="text-body-sm text-muted hover:text-ink mt-3 bg-transparent border-none cursor-pointer p-0">
+    <button
+      type="button"
+      on:click={() => onSwitchMode('adjust')}
+      class="text-body-sm text-muted hover:text-ink mt-3 bg-transparent border-none cursor-pointer p-0"
+    >
       Malah mau koreksi hasil opname?
     </button>
   {/if}

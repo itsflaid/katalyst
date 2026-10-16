@@ -72,22 +72,36 @@ async function main() {
 
       // 1. percent di luar 1–100.
       await expectFail('percent=0 ditolak', 'discount_percent_range', (s) =>
-        s.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'D', scope: 'GLOBAL', percent: 0, endsAt: new Date(Date.now() + 3600_000) })
+        s
+          .insert(discount)
+          .values({ id: randomUUID(), businessId: biz, name: 'D', scope: 'GLOBAL', percent: 0, endsAt: new Date(Date.now() + 3600_000) })
       );
       await expectFail('percent=101 ditolak', 'discount_percent_range', (s) =>
-        s.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'D', scope: 'GLOBAL', percent: 101, endsAt: new Date(Date.now() + 3600_000) })
+        s
+          .insert(discount)
+          .values({ id: randomUUID(), businessId: biz, name: 'D', scope: 'GLOBAL', percent: 101, endsAt: new Date(Date.now() + 3600_000) })
       );
       // 2. scope vs productId.
       await expectFail('PRODUCT tanpa productId ditolak', 'discount_scope_product', (s) =>
         s.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'D', scope: 'PRODUCT', percent: 10 })
       );
       await expectFail('GLOBAL dengan productId ditolak', 'discount_scope_product', (s) =>
-        s.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'D', scope: 'GLOBAL', percent: 10, productId: prod, endsAt: new Date(Date.now() + 3600_000) })
+        s.insert(discount).values({
+          id: randomUUID(),
+          businessId: biz,
+          name: 'D',
+          scope: 'GLOBAL',
+          percent: 10,
+          productId: prod,
+          endsAt: new Date(Date.now() + 3600_000)
+        })
       );
       // 3. endsAt <= startsAt.
       const now = new Date();
       await expectFail('endsAt <= startsAt ditolak', 'discount_window_valid', (s) =>
-        s.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'D', scope: 'PRODUCT', percent: 10, productId: prod, startsAt: now, endsAt: now })
+        s
+          .insert(discount)
+          .values({ id: randomUUID(), businessId: biz, name: 'D', scope: 'PRODUCT', percent: 10, productId: prod, startsAt: now, endsAt: now })
       );
       // 4. quota = 0.
       await expectFail('quota=0 ditolak', 'discount_quota_valid', (s) =>
@@ -103,13 +117,25 @@ async function main() {
       await expectFail('quota_used=-1 ditolak', 'discount_quota_used_nonneg', (s) =>
         s.update(discount).set({ quotaUsed: -1 }).where(eq(discount.id, q5))
       );
-      // 7. Aturan khusus GLOBAL.
-      await expectFail('GLOBAL tanpa endsAt ditolak', 'discount_global_time_only', (s) =>
-        s.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'G', scope: 'GLOBAL', percent: 10 })
-      );
-      await expectFail('GLOBAL dengan quota ditolak', 'discount_global_time_only', (s) =>
-        s.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'G', scope: 'GLOBAL', percent: 10, quota: 5, endsAt: new Date(Date.now() + 3600_000) })
-      );
+      // 7. Kuota dan waktu berlaku untuk GLOBAL juga: kuota saja, waktu saja, keduanya.
+      try {
+        await tx.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'GQ', scope: 'GLOBAL', percent: 10, quota: 5 });
+        await tx
+          .insert(discount)
+          .values({ id: randomUUID(), businessId: biz, name: 'GT', scope: 'GLOBAL', percent: 10, endsAt: new Date(Date.now() + 3600_000) });
+        await tx.insert(discount).values({
+          id: randomUUID(),
+          businessId: biz,
+          name: 'GB',
+          scope: 'GLOBAL',
+          percent: 10,
+          quota: 5,
+          endsAt: new Date(Date.now() + 3600_000)
+        });
+        ok('GLOBAL kuota saja / waktu saja / keduanya valid', true);
+      } catch (e) {
+        ok('GLOBAL kuota saja / waktu saja / keduanya valid', false, String(e).slice(0, 160));
+      }
       // 8. Baris item tak valid.
       const badItem = (over: Record<string, number>) =>
         tx.transaction(async (s) =>
@@ -139,9 +165,15 @@ async function main() {
         }
       }
       // 9. Insert valid: PRODUCT (quota null, endsAt null) & GLOBAL (endsAt terisi).
+      // P-OK pakai produk lain: Q5 masih aktif-open di produk fixture sehingga
+      // exclusion overlap menolak produk yang sama.
       try {
-        await tx.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'P-OK', scope: 'PRODUCT', percent: 15, productId: prod });
-        await tx.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'G-OK', scope: 'GLOBAL', percent: 10, endsAt: new Date(Date.now() + 3600_000) });
+        const prodB = randomUUID();
+        await tx.insert(product).values({ id: prodB, businessId: biz, name: 'Fixture Produk B', costPrice: 6000, sellingPrice: 10000, stock: 100 });
+        await tx.insert(discount).values({ id: randomUUID(), businessId: biz, name: 'P-OK', scope: 'PRODUCT', percent: 15, productId: prodB });
+        await tx
+          .insert(discount)
+          .values({ id: randomUUID(), businessId: biz, name: 'G-OK', scope: 'GLOBAL', percent: 10, endsAt: new Date(Date.now() + 3600_000) });
         ok('insert PRODUCT & GLOBAL valid sukses', true);
       } catch (e) {
         ok('insert PRODUCT & GLOBAL valid sukses', false, String(e).slice(0, 160));
@@ -166,17 +198,29 @@ async function main() {
         ok('hapus produk → diskon cascade hilang', false, String(e).slice(0, 160));
       }
 
-      // 12. Paritas: selama semua discount_amount = 0, sum(lineNet) harus
-      // sama dengan sum(qty×price): di seluruh data (termasuk fixture
-      // di atas yang semuanya berdikon-nol).
+      // 12. Paritas: sum(lineNet) = sum(qty×price) − sum(diskon); subset tanpa
+      // diskon tetap net == gross. Data salinan asli boleh punya baris terdiskon.
       {
         const [par] = await tx
           .select({
             net: sql<string>`coalesce(sum(${lineNet}), 0)::text`,
-            gross: sql<string>`coalesce(sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale}), 0)::text`
+            gross: sql<string>`coalesce(sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale}), 0)::text`,
+            disc: sql<string>`coalesce(sum(${transactionItem.discountAmount}), 0)::text`
           })
           .from(transactionItem);
-        ok('paritas sum(net) == sum(gross) saat diskon 0', par.net === par.gross, `net=${par.net} gross=${par.gross}`);
+        ok(
+          'paritas sum(net) == sum(gross) - sum(diskon)',
+          BigInt(par.net) === BigInt(par.gross) - BigInt(par.disc),
+          `net=${par.net} gross=${par.gross} disc=${par.disc}`
+        );
+        const [sub] = await tx
+          .select({
+            net: sql<string>`coalesce(sum(${lineNet}), 0)::text`,
+            gross: sql<string>`coalesce(sum(${transactionItem.quantity}::bigint * ${transactionItem.priceAtSale}), 0)::text`
+          })
+          .from(transactionItem)
+          .where(eq(transactionItem.discountAmount, 0));
+        ok('subset tanpa diskon: net == gross', sub.net === sub.gross, `net=${sub.net} gross=${sub.gross}`);
       }
 
       // 13. Kesesuaian SQL vs JS: 1 struk fixture (2 item, salah satunya
@@ -185,8 +229,26 @@ async function main() {
         const fxTx = randomUUID();
         await tx.insert(transaction).values({ id: fxTx, businessId: biz });
         await tx.insert(transactionItem).values([
-          { id: randomUUID(), transactionId: fxTx, productId: prod, quantity: 3, priceAtSale: 10000, costAtSale: 6000, discountedQty: 3, discountAmount: 4500 },
-          { id: randomUUID(), transactionId: fxTx, productId: prod, quantity: 1, priceAtSale: 20000, costAtSale: 12000, discountedQty: 0, discountAmount: 0 }
+          {
+            id: randomUUID(),
+            transactionId: fxTx,
+            productId: prod,
+            quantity: 3,
+            priceAtSale: 10000,
+            costAtSale: 6000,
+            discountedQty: 3,
+            discountAmount: 4500
+          },
+          {
+            id: randomUUID(),
+            transactionId: fxTx,
+            productId: prod,
+            quantity: 1,
+            priceAtSale: 20000,
+            costAtSale: 12000,
+            discountedQty: 0,
+            discountAmount: 0
+          }
         ]);
         const [crow] = await tx
           .select({ net: sql<string>`coalesce(sum(${lineNet}), 0)::text` })

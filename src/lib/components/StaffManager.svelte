@@ -67,7 +67,13 @@
     }
     const created = await res.json();
     pendingInvites = [
-      { id: created.id, username: created.username, name: created.name ?? (name.trim() || null), expiresAt: created.expiresAt, createdAt: new Date().toISOString() },
+      {
+        id: created.id,
+        username: created.username,
+        name: created.name ?? (name.trim() || null),
+        expiresAt: created.expiresAt,
+        createdAt: new Date().toISOString()
+      },
       ...pendingInvites
     ];
     createdInvite = { username: created.username, link: inviteLink(created.token) };
@@ -92,9 +98,7 @@
       return;
     }
     const created = await res.json();
-    pendingInvites = pendingInvites.map((i) =>
-      i.id === inviteId ? { ...i, id: created.id, expiresAt: created.expiresAt } : i
-    );
+    pendingInvites = pendingInvites.map((i) => (i.id === inviteId ? { ...i, id: created.id, expiresAt: created.expiresAt } : i));
     createdInvite = { username: created.username, link: inviteLink(created.token) };
     copied = false;
   }
@@ -190,8 +194,8 @@
     <!-- Bar judul putih (bukan biru) biar tidak monoton ketemu thead
          tabel yang biru: putih → biru → zebra. -->
     <div>
-      <div class="flex flex-wrap items-center justify-between gap-3 bg-ink-navy  px-5 py-3 rounded-t-panel border border-border-cool border-b-1">
-        <h3 class="text-headline-sm text-white ">Daftar Staff</h3>
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-ink-navy px-5 py-3 rounded-t-panel border border-border-cool border-b-1">
+        <h3 class="text-headline-sm text-white">Daftar Staff</h3>
         <span class="text-body-sm text-white tabular">{staffList.length} orang</span>
       </div>
 
@@ -201,7 +205,12 @@
         </Card>
       {:else}
         <div class="[&>div]:!rounded-t-none [&>div]:!border-t-0">
-          {#if listError}<p role="alert" class="rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative mb-3">{listError}</p>{/if}
+          {#if listError}<p
+              role="alert"
+              class="rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative mb-3"
+            >
+              {listError}
+            </p>{/if}
           <Table headers={['Nama', 'Username', 'Role', 'Aksi']}>
             {#each staffList as staff}
               <tr>
@@ -317,10 +326,14 @@
 
 {#if createdInvite}
   <div class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Undangan dibuat">
-    <button type="button" class="absolute inset-0 bg-ink/40 border-none cursor-default p-0" aria-label="Tutup" on:click={() => (createdInvite = null)}></button>
+    <button type="button" class="absolute inset-0 bg-ink/40 border-none cursor-default p-0" aria-label="Tutup" on:click={() => (createdInvite = null)}
+    ></button>
     <div class="relative w-full max-w-sm rounded-panel border border-border-cool bg-surface p-5 shadow-level3">
       <h3 class="text-headline-sm text-ink mb-2">Undangan dibuat</h3>
-      <p class="text-body-md text-muted">Teruskan link ini ke <strong class="text-ink">@{createdInvite.username}</strong> (mis. via WA). Link tampil <strong class="text-ink">sekali ini saja</strong>, berlaku 48 jam dan sekali pakai.</p>
+      <p class="text-body-md text-muted">
+        Teruskan link ini ke <strong class="text-ink">@{createdInvite.username}</strong> (mis. via WA). Link tampil
+        <strong class="text-ink">sekali ini saja</strong>, berlaku 48 jam dan sekali pakai.
+      </p>
       <div class="mt-3 flex gap-2">
         <Input value={createdInvite.link} readonly class="flex-1" aria-label="Link undangan" />
         <Button variant="secondary" on:click={() => createdInvite && copyLink(createdInvite.link)}>{copied ? 'Tersalin!' : 'Salin'}</Button>
@@ -334,10 +347,13 @@
 
 {#if pendingReset}
   <div class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Konfirmasi reset password">
-    <button type="button" class="absolute inset-0 bg-ink/40 border-none cursor-default p-0" aria-label="Batal" on:click={() => (pendingReset = null)}></button>
+    <button type="button" class="absolute inset-0 bg-ink/40 border-none cursor-default p-0" aria-label="Batal" on:click={() => (pendingReset = null)}
+    ></button>
     <div class="relative w-full max-w-sm rounded-panel border border-border-cool bg-surface p-5 shadow-level3">
       <h3 class="text-headline-sm text-ink mb-2">Reset password?</h3>
-      <p class="text-body-md text-muted">“{pendingReset.name}” langsung keluar dari semua perangkat dan password lamanya mati. Kamu dapat password sementara untuk diteruskan ke dia.</p>
+      <p class="text-body-md text-muted">
+        “{pendingReset.name}” langsung keluar dari semua perangkat dan password lamanya mati. Kamu dapat password sementara untuk diteruskan ke dia.
+      </p>
       <div class="flex gap-2 mt-4">
         <Button variant="secondary" class="flex-1" on:click={() => (pendingReset = null)}>Batal</Button>
         <Button class="flex-1" disabled={resetting} on:click={resetPassword}>{resetting ? 'Memproses...' : 'Reset'}</Button>
@@ -348,10 +364,14 @@
 
 {#if resetResult}
   <div class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Password sementara">
-    <button type="button" class="absolute inset-0 bg-ink/40 border-none cursor-default p-0" aria-label="Tutup" on:click={() => (resetResult = null)}></button>
+    <button type="button" class="absolute inset-0 bg-ink/40 border-none cursor-default p-0" aria-label="Tutup" on:click={() => (resetResult = null)}
+    ></button>
     <div class="relative w-full max-w-sm rounded-panel border border-border-cool bg-surface p-5 shadow-level3">
       <h3 class="text-headline-sm text-ink mb-2">Password sementara</h3>
-      <p class="text-body-md text-muted">Teruskan ke <strong class="text-ink">{resetResult.name}</strong> (mis. via WA) lalu minta dia segera ganti sendiri di halaman <strong class="text-ink">Akun</strong>. Password ini tampil <strong class="text-ink">sekali ini saja</strong>.</p>
+      <p class="text-body-md text-muted">
+        Teruskan ke <strong class="text-ink">{resetResult.name}</strong> (mis. via WA) lalu minta dia segera ganti sendiri di halaman
+        <strong class="text-ink">Akun</strong>. Password ini tampil <strong class="text-ink">sekali ini saja</strong>.
+      </p>
       <div class="mt-3 flex gap-2">
         <Input value={resetResult.tempPassword} readonly class="flex-1 tabular" aria-label="Password sementara" />
         <Button variant="secondary" on:click={() => resetResult && copyLink(resetResult.tempPassword)}>{copied ? 'Tersalin!' : 'Salin'}</Button>
@@ -365,7 +385,8 @@
 
 {#if pendingDelete}
   <div class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Konfirmasi hapus staff">
-    <button type="button" class="absolute inset-0 bg-ink/40 border-none cursor-default p-0" aria-label="Batal" on:click={() => (pendingDelete = null)}></button>
+    <button type="button" class="absolute inset-0 bg-ink/40 border-none cursor-default p-0" aria-label="Batal" on:click={() => (pendingDelete = null)}
+    ></button>
     <div class="relative w-full max-w-sm rounded-panel border border-border-cool bg-surface p-5 shadow-level3">
       <h3 class="text-headline-sm text-ink mb-2">Hapus staff?</h3>
       <p class="text-body-md text-muted">“{pendingDelete.name}” tidak bisa login lagi. Riwayat transaksinya tetap tampil dengan nama ini.</p>
@@ -379,7 +400,12 @@
 
 {#if editingUsername}
   <div class="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Atur username">
-    <button type="button" class="absolute inset-0 bg-ink/40 border-none cursor-default p-0" aria-label="Batal" on:click={() => (editingUsername = null)}></button>
+    <button
+      type="button"
+      class="absolute inset-0 bg-ink/40 border-none cursor-default p-0"
+      aria-label="Batal"
+      on:click={() => (editingUsername = null)}
+    ></button>
     <div class="relative w-full max-w-sm rounded-panel border border-border-cool bg-surface p-5 shadow-level3">
       <h3 class="text-headline-sm text-ink mb-2">Username “{editingUsername.name}”</h3>
       <p class="text-body-sm text-muted mb-3">Dipakai staff untuk masuk. 3–20 karakter: huruf kecil, angka, titik, underscore, strip.</p>
@@ -387,7 +413,12 @@
         Username
         <Input id="staff-username-edit" type="text" placeholder="mis. budi" bind:value={usernameValue} />
       </label>
-      {#if listError}<p role="alert" class="rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative mt-3">{listError}</p>{/if}
+      {#if listError}<p
+          role="alert"
+          class="rounded border border-status-negative-border bg-status-negative-bg px-3 py-2 text-body-sm text-status-negative mt-3"
+        >
+          {listError}
+        </p>{/if}
       <div class="flex gap-2 mt-4">
         <Button variant="secondary" class="flex-1" on:click={() => (editingUsername = null)}>Batal</Button>
         <Button class="flex-1" disabled={savingUsername} on:click={saveUsername}>{savingUsername ? 'Menyimpan...' : 'Simpan'}</Button>

@@ -23,19 +23,11 @@
   <div class="flex flex-col gap-3">
     <label class="flex flex-col gap-1 text-body-md text-ink">
       Dari
-      <input
-        type="date"
-        bind:value={draftFrom}
-        class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-md text-ink"
-      />
+      <input type="date" bind:value={draftFrom} class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-md text-ink" />
     </label>
     <label class="flex flex-col gap-1 text-body-md text-ink">
       Sampai
-      <input
-        type="date"
-        bind:value={draftTo}
-        class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-md text-ink"
-      />
+      <input type="date" bind:value={draftTo} class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-md text-ink" />
     </label>
   </div>
   <svelte:fragment slot="actions">

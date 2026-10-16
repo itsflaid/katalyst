@@ -40,12 +40,7 @@
     <div class="content-col">
       <!-- Mobile: topbar + hamburger -->
       <header class="mobile-bar">
-        <button
-          type="button"
-          class="hamburger"
-          aria-label="Buka navigasi"
-          on:click={() => (sidebarOpen = true)}
-        >
+        <button type="button" class="hamburger" aria-label="Buka navigasi" on:click={() => (sidebarOpen = true)}>
           <Menu size={20} aria-hidden="true" />
         </button>
         <span class="mobile-brand">Katalyst</span>

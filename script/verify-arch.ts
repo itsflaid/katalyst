@@ -45,12 +45,11 @@ const R1_ALLOW = [
   'src/lib/server/db/seed-', // prefix (seed-demo.ts, seed-real.ts, dst.)
   'src/lib/server/domains/facts/',
   'src/lib/analytics/',
-  'src/lib/simulation.ts',
   'src/lib/server/sql.ts',
   'src/routes/transactions/',
   // Jalur tulis snapshot (calculateCart, quotaDeltas): satu-satunya tempat
   // diskon dihitung dari persen selain simulasi; tanpanya baris penulis tak bisa dihapus.
-  'src/lib/discount.ts',
+  'src/lib/shared/discount.ts',
   // Pembaca item per baris yang sah, seperti routes/transactions/.
   'src/lib/server/domains/transactions/'
 ];
@@ -74,7 +73,7 @@ function r2Scope(file: string): boolean {
   return file.startsWith('src/routes/') || file.endsWith('domains/stats/loaders.ts');
 }
 
-const R3_SCOPE = ['src/lib/analytics/', 'src/lib/simulation.ts', 'src/lib/shared/', 'src/lib/discount.ts'];
+const R3_SCOPE = ['src/lib/analytics/', 'src/lib/shared/'];
 const R3_IMPORT_RE = /\b(import|from|require\()\b.*?(server|\$env|\$app|drizzle-orm|postgres|@neondatabase)/;
 const R3_LIB_RE = /from\s+['"]\$lib\//;
 
@@ -83,16 +82,35 @@ function r3Scope(file: string): boolean {
 }
 
 function r4Scope(file: string): boolean {
-  return (
-    file.startsWith('src/lib/analytics/') ||
-    file === 'src/lib/simulation.ts' ||
-    file === 'src/lib/shared/period.ts'
-  );
+  return file.startsWith('src/lib/analytics/') || file === 'src/lib/shared/period.ts';
 }
 // R4: yang dilarang BACAAAN JAM (konstruksi kosong / Date.now), bukan
 // konstruksi deterministik new Date(x) dari komponen kalender (dipakai
 // sah di shared/period.ts untuk tgl 1 dan previousWindow).
 const R4_RES = [/\bnew\s+Date\s*\(\s*\)/, /\bDate\s*\.\s*now\s*\(/];
+
+// R6: role dan identitas hanya lewat Tenant di route; allowlist = pendaratan
+// berbasis peran (pengunjung anonim tak boleh kena 401).
+const R6_ALLOW = ['src/routes/+page.server.ts', 'src/routes/login/+page.server.ts'];
+const R6_RES = [
+  /\blocals\.user\s*\.\s*role\b/,
+  /\blocals\.user\s+as\b/,
+  /\blocals\.user\s*!/,
+  /\bbusinessId\s+as\s+string\b/,
+  /\buser\.id\s+as\s+string\b/
+];
+
+function r6Scope(file: string): boolean {
+  return file.startsWith('src/routes/') && (file.endsWith('+page.server.ts') || file.endsWith('+server.ts'));
+}
+
+// R7: route hanya adaptasi HTTP; query lewat domain. Allowlist kosong.
+const R7_IMPORT_RE = /from\s+['"]\$lib\/server\/db['"]/;
+const R7_DB_RE = /\bdb\s*\.\s*(select|insert|update|delete|execute|batch|transaction)\s*\(/;
+
+function r7Scope(file: string): boolean {
+  return file === 'src/hooks.server.ts' || r6Scope(file);
+}
 
 const R5_BANNER_RE = /^[-=─━*#~_+]{4,}\s*$|^[-=─━*#~_+]{2,}\s*\S.*\S\s*[-=─━*#~_+]{2,}$/;
 const R5_DOC_REF_RE = /§\s*\d|\bSPEC\b|\bFase\s*\d|\bPR\s?-?[A-Z]?\d|\bTahap\s*\d/;
@@ -111,7 +129,9 @@ function extractCommentText(line: string): string | null {
 }
 
 function isDirective(text: string): boolean {
-  return /@ts-(?:expect-error|ignore|nocheck|check)|eslint-(?:disable|enable)|svelte-ignore|prettier-ignore|\/\/\/\s*<reference|@vite-ignore/.test(text);
+  return /@ts-(?:expect-error|ignore|nocheck|check)|eslint-(?:disable|enable)|svelte-ignore|prettier-ignore|\/\/\/\s*<reference|@vite-ignore/.test(
+    text
+  );
 }
 
 function r5Check(file: string, lines: string[]) {
@@ -151,7 +171,7 @@ function r5Check(file: string, lines: string[]) {
       currentBlock.push(commentText);
     } else {
       if (currentBlock.length > 3) {
-        const allFormula = currentBlock.every(c => R5_FORMULA_LINE_RE.test(c));
+        const allFormula = currentBlock.every((c) => R5_FORMULA_LINE_RE.test(c));
         if (!allFormula) {
           violations.push({ file, line: i - currentBlock.length + 1, rule: 'R5e:long-block', snippet: `${currentBlock.length} baris` });
         }
@@ -160,7 +180,7 @@ function r5Check(file: string, lines: string[]) {
     }
   }
   if (currentBlock.length > 3) {
-    const allFormula = currentBlock.every(c => R5_FORMULA_LINE_RE.test(c));
+    const allFormula = currentBlock.every((c) => R5_FORMULA_LINE_RE.test(c));
     if (!allFormula) {
       violations.push({ file, line: lines.length - currentBlock.length + 1, rule: 'R5e:long-block', snippet: `${currentBlock.length} baris` });
     }
@@ -208,8 +228,23 @@ function main() {
           violations.push({ file, line: lineNo, rule: 'R4:now', snippet: raw.trim().slice(0, 120) });
         }
       }
+      // R6
+      if (r6Scope(file) && !R6_ALLOW.includes(file)) {
+        const hit = R6_RES.find((re) => re.test(raw));
+        if (hit) {
+          violations.push({ file, line: lineNo, rule: 'R6:tenant', snippet: raw.trim().slice(0, 120) });
+        }
+      }
+      // R7
+      if (r7Scope(file)) {
+        const t = raw.trim();
+        const isComment = t.startsWith('//') || t.startsWith('*') || t.startsWith('<!--');
+        if (!isComment && (R7_IMPORT_RE.test(raw) || R7_DB_RE.test(raw))) {
+          violations.push({ file, line: lineNo, rule: 'R7:db', snippet: raw.trim().slice(0, 120) });
+        }
+      }
     });
-    
+
     // R5
     r5Check(file, lines);
   }

@@ -1,4 +1,4 @@
-import { type BizTime, makeTime } from './shared/time';
+import { type BizTime, makeTime } from './time';
 
 export type DiscountScope = 'PRODUCT' | 'GLOBAL';
 export type DiscountStatus = 'INACTIVE' | 'SCHEDULED' | 'EXPIRED' | 'SOLD_OUT' | 'ACTIVE';
@@ -67,14 +67,8 @@ export interface CartOut {
   total: number;
 }
 
-function selectProductDiscount(
-  discounts: DiscountLike[],
-  productId: string,
-  now: Date
-): DiscountLike | null {
-  const active = discounts.filter(
-    (d) => d.scope === 'PRODUCT' && d.productId === productId && getDiscountStatus(d, now) === 'ACTIVE'
-  );
+function selectProductDiscount(discounts: DiscountLike[], productId: string, now: Date): DiscountLike | null {
+  const active = discounts.filter((d) => d.scope === 'PRODUCT' && d.productId === productId && getDiscountStatus(d, now) === 'ACTIVE');
   if (active.length === 0) return null;
   active.sort((a, b) => {
     if (b.createdAt.getTime() !== a.createdAt.getTime()) return b.createdAt.getTime() - a.createdAt.getTime();
@@ -84,19 +78,18 @@ function selectProductDiscount(
 }
 
 // line.gross          = qty × price
-// line.discountedQty  = qty bila kuota tak terbatas atau diskon GLOBAL; selain itu min(qty, sisa kuota); 0 bila tanpa diskon
+// line.discountedQty  = qty bila kuota tak terbatas; selain itu min(qty, sisa kuota); 0 bila tanpa diskon
 // line.discountAmount = discountedQty × unitDiscount(price, percent)
 // line.net            = gross − discountAmount
 // subtotal = Σ line.gross;  discountTotal = Σ line.discountAmount
 // total    = subtotal − discountTotal
-export function calculateCart(
-  lines: CartLineIn[],
-  ctx: { productDiscounts: DiscountLike[]; global: DiscountLike | null; now: Date }
-): CartOut {
+export function calculateCart(lines: CartLineIn[], ctx: { productDiscounts: DiscountLike[]; global: DiscountLike | null; now: Date }): CartOut {
   const { productDiscounts, global, now } = ctx;
   const linesOut: CartLineOut[] = [];
   let subtotal = 0;
   let discountTotal = 0;
+  // Sisa kuota global dipakai lintas baris: tiap baris mengurangi sisa untuk baris berikutnya.
+  let globalRemaining = global ? remainingQuota(global) : null;
 
   for (const line of lines) {
     const { productId, qty, price, cost } = line;
@@ -118,7 +111,8 @@ export function calculateCart(
       source = 'PRODUCT';
       unitDisc = unitDiscount(price, productDiscount.percent);
     } else if (global && getDiscountStatus(global, now) === 'ACTIVE' && global.scope === 'GLOBAL') {
-      applied = qty;
+      applied = globalRemaining === null ? qty : Math.min(qty, globalRemaining);
+      if (globalRemaining !== null) globalRemaining -= applied;
       discountId = global.id;
       discountName = global.name;
       discountPercent = global.percent;

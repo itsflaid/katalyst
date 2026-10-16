@@ -1,7 +1,7 @@
 import { fmtInt, fmtPercent, fmtQty, fmtRupiah, fmtDeltaPct, fmtPoin } from '../shared/format';
-import { unitDiscount } from '../discount';
-import { DEMAND_ELASTICITY, DEMAND_MAX_FACTOR, PRICE_RANGE_LIMIT_PCT, optimalEffectivePrice } from '../simulation';
-import type { SimInput, SimResult } from '../simulation';
+import { unitDiscount } from '../shared/discount';
+import { DEMAND_ELASTICITY, DEMAND_MAX_FACTOR, PRICE_RANGE_LIMIT_PCT, optimalEffectivePrice } from './simulation';
+import type { SimInput, SimResult } from './simulation';
 
 export interface ExplainStep {
   label: string;
@@ -49,7 +49,12 @@ function discountPart(r: SimResult, levers: Levers): ExplainStep {
   if (d?.kind === 'percent') {
     const perUnit = unitDiscount(r.unit.listPrice, d.pct);
     const covered = d.units === undefined ? s.qty : Math.min(s.qty, d.units);
-    return { label: 'diskon', expr: `${fmtQty(covered)} unit × ${fmtRupiah(perUnit)}`, result: fmtRupiah(s.discount), approx: !Number.isInteger(covered) };
+    return {
+      label: 'diskon',
+      expr: `${fmtQty(covered)} unit × ${fmtRupiah(perUnit)}`,
+      result: fmtRupiah(s.discount),
+      approx: !Number.isInteger(covered)
+    };
   }
   return { label: 'diskon', expr: `${fmtRupiah(s.gross)} × ${fmtPercent(r.actual.discountRate)}`, result: fmtRupiah(s.discount), approx: true };
 }
@@ -72,7 +77,10 @@ function explainRevenue(r: SimResult, levers: Levers): Explain {
     formula: 'revenue = gross − diskon',
     main: { expr: `${fmtRupiah(s.gross)} − ${fmtRupiah(s.discount)}`, result: fmtRupiah(s.revenue), approx: false },
     parts: [grossPart, dPart],
-    versus: r.qty.baseline === 0 ? null : deltaStep('(simulasi − sekarang) ÷ |sekarang|', r.statusQuo.revenue, s.revenue, r.impact.vsStatusQuo.revenue, fmtRupiah),
+    versus:
+      r.qty.baseline === 0
+        ? null
+        : deltaStep('(simulasi − sekarang) ÷ |sekarang|', r.statusQuo.revenue, s.revenue, r.impact.vsStatusQuo.revenue, fmtRupiah),
     notes
   };
 }
@@ -92,7 +100,10 @@ function explainProfit(r: SimResult, levers: Levers): Explain {
         approx: fractional
       }
     ],
-    versus: r.qty.baseline === 0 ? null : deltaStep('(simulasi − sekarang) ÷ |sekarang|', r.statusQuo.profit, s.profit, r.impact.vsStatusQuo.profit, fmtRupiah),
+    versus:
+      r.qty.baseline === 0
+        ? null
+        : deltaStep('(simulasi − sekarang) ÷ |sekarang|', r.statusQuo.profit, s.profit, r.impact.vsStatusQuo.profit, fmtRupiah),
     notes: fractional ? ['Qty pecahan dari model permintaan; ditampilkan dibulatkan 1 desimal.'] : []
   };
 }
@@ -135,7 +146,10 @@ function explainQty(r: SimResult, levers: Levers): Explain {
   const versus =
     r.qty.baseline === 0
       ? null
-      : { ...deltaStep('(simulasi − sekarang) ÷ sekarang', r.qty.baseline, r.qty.simulated, r.impact.vsStatusQuo.qty, fmtQty), label: '(simulasi − sekarang) ÷ sekarang' };
+      : {
+          ...deltaStep('(simulasi − sekarang) ÷ sekarang', r.qty.baseline, r.qty.simulated, r.impact.vsStatusQuo.qty, fmtQty),
+          label: '(simulasi − sekarang) ÷ sekarang'
+        };
   if (levers.volume?.kind === 'override') {
     return {
       title: 'Unit terjual',

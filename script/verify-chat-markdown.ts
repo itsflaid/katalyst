@@ -18,14 +18,8 @@ ok(
     return html.includes('&lt;script&gt;') && !html.includes('<script>');
   })()
 );
-ok(
-  'daftar dirender',
-  renderChatMarkdown('- Kopi\n- Gula').includes('<ul><li>Kopi</li><li>Gula</li></ul>')
-);
-ok(
-  'daftar bernomor dirender',
-  renderChatMarkdown('1. Pertama\n2. Kedua').includes('<ol><li>Pertama</li><li>Kedua</li></ol>')
-);
+ok('daftar dirender', renderChatMarkdown('- Kopi\n- Gula').includes('<ul><li>Kopi</li><li>Gula</li></ul>'));
+ok('daftar bernomor dirender', renderChatMarkdown('1. Pertama\n2. Kedua').includes('<ol><li>Pertama</li><li>Kedua</li></ol>'));
 ok(
   'tabel dirender',
   (() => {

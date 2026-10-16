@@ -102,10 +102,7 @@ export async function addMessage(
     toolName: msg.toolName ?? null,
     toolResult: (msg.toolResult ?? null) as Record<string, unknown> | null
   });
-  await db
-    .update(copilotConversation)
-    .set({ updatedAt: new Date() })
-    .where(eq(copilotConversation.id, conversationId));
+  await db.update(copilotConversation).set({ updatedAt: new Date() }).where(eq(copilotConversation.id, conversationId));
   return true;
 }
 
@@ -124,10 +121,7 @@ export async function deleteConversation(db: Db, businessId: string, conversatio
 }
 
 export async function deleteAllConversations(db: Db, businessId: string): Promise<number> {
-  const rows = await db
-    .select({ id: copilotConversation.id })
-    .from(copilotConversation)
-    .where(eq(copilotConversation.businessId, businessId));
+  const rows = await db.select({ id: copilotConversation.id }).from(copilotConversation).where(eq(copilotConversation.businessId, businessId));
   if (rows.length === 0) return 0;
   await db.delete(copilotConversation).where(eq(copilotConversation.businessId, businessId));
   return rows.length;

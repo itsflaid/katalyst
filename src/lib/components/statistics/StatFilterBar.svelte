@@ -1,6 +1,4 @@
 <script lang="ts">
-  import Button from '$lib/components/ui/Button.svelte';
-  import SlideOver from '$lib/components/ui/SlideOver.svelte';
   import { Calendar, CalendarDays, ChevronDown } from 'lucide-svelte';
   import type { PeriodKey } from '$lib/shared/period';
   export let activeRange: string;
@@ -9,6 +7,7 @@
   export let toInput: string;
   export let onSelect: (key: PeriodKey) => void;
   export let onApply: () => void;
+  export let desktopOnly = true;
   export let ranges: { value: string; label: string }[] = [
     { value: 'today', label: 'Hari ini' },
     { value: 'week', label: 'Minggu ini' },
@@ -16,32 +15,6 @@
     { value: '30d', label: '30 hari' },
     { value: 'month', label: 'Bulan ini' }
   ];
-
-  let sheetOpen = false;
-  let draftFrom = '';
-  let draftTo = '';
-
-  $: activeName = activeRange === 'custom' ? 'Custom' : (ranges.find((r) => r.value === activeRange)?.label ?? '');
-
-  function openSheet() {
-    draftFrom = fromInput;
-    draftTo = toInput;
-    sheetOpen = true;
-  }
-  function pickPreset(key: string) {
-    sheetOpen = false;
-    onSelect(key as PeriodKey);
-  }
-  function applyDraft() {
-    if (!draftFrom && !draftTo) return;
-    // Assignment ke prop bind terpropagasi sinkron ke induk sebelum onApply dibaca.
-    fromInput = draftFrom;
-    toInput = draftTo;
-    sheetOpen = false;
-    onApply();
-  }
-  const presetClass = (active: boolean) =>
-    `w-full rounded border px-2.5 py-1.5 text-left text-body-sm ${active ? 'border-ink-navy bg-ink-navy font-semibold text-white' : 'border-border-input bg-white text-ink hover:bg-table-header'}`;
 
   function pick(e: Event) {
     onSelect((e.currentTarget as HTMLSelectElement).value as PeriodKey);
@@ -57,7 +30,11 @@
   }
 </script>
 
-<div class="hidden sm:flex items-stretch gap-0 divide-x divide-border-stat">
+<div
+  class={desktopOnly
+    ? 'hidden sm:flex items-stretch gap-0 divide-x divide-border-stat'
+    : 'flex flex-col sm:flex-row items-stretch gap-0 divide-y sm:divide-y-0 sm:divide-x divide-border-stat'}
+>
   <div class="flex flex-col justify-center gap-1 px-4 py-3">
     <span class="text-body-sm text-muted">Periode</span>
     <span class="relative inline-flex">
@@ -112,44 +89,3 @@
     </div>
   {/if}
 </div>
-
-<div class="flex flex-col gap-2 p-5 sm:hidden">
-  <button
-    type="button"
-    on:click={openSheet}
-    aria-haspopup="dialog"
-    class="inline-flex h-9 items-center justify-between rounded border border-border-input bg-white px-3 text-body-md text-ink"
-  >
-    <span>Periode: <strong>{activeName}</strong></span>
-    <span aria-hidden="true" class="text-muted">▾</span>
-  </button>
-  {#if rangeLabel}
-    <span class="text-body-sm text-muted">Dipakai: <strong class="text-ink">{rangeLabel}</strong></span>
-  {/if}
-</div>
-
-{#if sheetOpen}
-  <SlideOver title="Pilih Periode" onClose={() => (sheetOpen = false)}>
-    <div class="flex flex-col gap-2">
-      {#each ranges as r}
-        <button type="button" on:click={() => pickPreset(r.value)} class={presetClass(activeRange === r.value)}>{r.label}</button>
-      {/each}
-      <div class="flex flex-col gap-2 rounded border border-border-cool p-3">
-        <label class="flex flex-col gap-1 text-body-md text-ink">
-          Dari
-          <input type="date" bind:value={draftFrom} class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink" />
-        </label>
-        <label class="flex flex-col gap-1 text-body-md text-ink">
-          Sampai
-          <input
-            type="date"
-            bind:value={draftTo}
-            min={draftFrom || undefined}
-            class="h-9 w-full min-w-0 rounded border border-border-input bg-white px-2 text-body-sm text-ink"
-          />
-        </label>
-        <Button class="w-full" disabled={!draftFrom && !draftTo} on:click={applyDraft}>Terapkan</Button>
-      </div>
-    </div>
-  </SlideOver>
-{/if}

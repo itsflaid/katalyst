@@ -17,12 +17,12 @@
 </script>
 
 <script lang="ts">
-  import type { SubmitFunction } from "@sveltejs/kit";
-  import { enhance } from "$app/forms";
-  import Button from "$lib/components/ui/Button.svelte";
-  import Table from "$lib/components/ui/Table.svelte";
-  import DiscountStatusBadge from "$lib/components/discounts/DiscountStatusBadge.svelte";
-  import type { BizTime } from "$lib/shared/time";
+  import type { SubmitFunction } from '@sveltejs/kit';
+  import { enhance } from '$app/forms';
+  import Button from '$lib/components/ui/Button.svelte';
+  import Table from '$lib/components/ui/Table.svelte';
+  import DiscountStatusBadge from '$lib/components/discounts/DiscountStatusBadge.svelte';
+  import type { BizTime } from '$lib/shared/time';
 
   export let discounts: DiscountRow[];
   export let T: BizTime;
