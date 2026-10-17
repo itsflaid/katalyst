@@ -17,6 +17,7 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "db:seed:demo": "tsx src/lib/server/db/seed-demo.ts",
     "db:seed:real": "tsx src/lib/server/db/seed-real.ts",
+    "db:seed:client-final": "tsx src/lib/server/db/seed-client-final.ts",
     "verify:engine": "tsx script/verify-engine.ts",
     "verify:time": "tsx script/verify-time.ts",
     "verify:tz-sql": "tsx script/verify-tz-sql.ts",
