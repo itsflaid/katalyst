@@ -12,7 +12,8 @@ import { toModelView } from '$lib/server/domains/copilot/model-view';
 import { detectProductMention } from '$lib/server/domains/copilot/product-mention';
 import { rateLimitMessage } from '$lib/server/domains/copilot/rate-limit';
 import { sanitizeText } from '$lib/server/domains/copilot/sanitize';
-import { verifyGrounding } from '$lib/server/domains/copilot/grounding';
+import { stripUnsupported, verifyGrounding } from '$lib/server/domains/copilot/grounding';
+import { cutToLastSentence } from '$lib/server/domains/copilot/finish';
 import { canUseCopilot, dailyLimitFrom } from '$lib/server/domains/copilot/limits';
 import { copilotPrompt } from '$lib/server/domains/copilot/prompt';
 import {
@@ -177,7 +178,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
         const toolResults: unknown[] = [];
         const toolCache = new Map<string, unknown>();
         let finalText: string | null = null;
-        let grounding: 'ok' | 'retried' | 'failed' = 'ok';
+        let grounding: 'ok' | 'retried' | 'trimmed' | 'failed' = 'ok';
         for (let step = 0; step < MAX_STEPS && finalText === null; step++) {
           let textBuf = '';
           const pending: { id: string; name: string; argsJson: string }[] = [];
@@ -278,11 +279,11 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             history.push({ role: 'tool', toolCallId: call.id, content: JSON.stringify(toModelView(result)) });
           }
         }
-        // Teks kosong tanpa tool call (mis. kuota keluaran habis untuk token penalaran):
-        // ulang sekali tanpa daftar tool dengan kuota keluaran lebih besar. Tanpa daftar tool
-        // panggilan tool tidak mungkin; toolChoice 'none' saja masih bisa memicu panggilan lalu 400 di Groq.
-        if (finalText?.trim() === '') {
-          logDone('empty_retry');
+        // Teks kosong atau jawaban kepotong batas token: ulang sekali tanpa daftar tool, kuota keluaran lebih besar.
+        // Tanpa daftar tool panggilan tool tidak mungkin; toolChoice 'none' saja masih bisa memicu panggilan lalu 400 di Groq.
+        const empty = finalText?.trim() === '';
+        if (empty || (finalText !== null && finishReason === 'length')) {
+          logDone(empty ? 'empty_retry' : 'length_retry');
           let retryText = '';
           for await (const ev of client.stream(
             {
@@ -305,16 +306,18 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             else if (ev.type === 'finish') finishReason = ev.reason;
           }
           if (retryText.trim() !== '') finalText = retryText;
+          // Batas token kedua: jawaban masih bisa berhenti di tengah kalimat atau angka.
+          if (finishReason === 'length' && finalText !== null) finalText = cutToLastSentence(finalText);
         }
         if (finalText) {
           const checked = verifyGrounding(finalText, toolResults, priorAnswers);
           if (!checked.ok) {
             console.log(JSON.stringify({ outcome: 'grounding_rejected', unsupported: checked.unsupported, steps, model }));
-            grounding = 'retried';
+            const rejected = [...new Set(checked.unsupported)].slice(0, 5).join(', ');
             let retryText = '';
             for await (const ev of client.stream(
               {
-                system: `${system} Jawaban sebelumnya ditolak karena memuat angka yang tidak ada di hasil tool atau jawaban sebelumnya. Jawab ulang tanpa tool dan hanya gunakan angka dari keduanya.`,
+                system: `${system} Angka ditolak: ${rejected}. Jawab ulang tanpa tool; salin angka persis dari hasil tool (format Rp8.100.000, jangan "juta" atau "jt").`,
                 messages: history,
                 tools: [],
                 toolChoice: 'none',
@@ -331,10 +334,20 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
                 outputTokens += ev.outputTokens;
               } else if (ev.type === 'text') retryText += ev.delta;
             }
-            if (retryText && verifyGrounding(retryText, toolResults, priorAnswers).ok) finalText = retryText;
-            else {
-              finalText = null;
-              grounding = 'failed';
+            const candidate = retryText.trim() !== '' ? retryText : finalText;
+            if (verifyGrounding(candidate, toolResults, priorAnswers).ok) {
+              finalText = candidate;
+              grounding = 'retried';
+            } else {
+              const trimmed = stripUnsupported(candidate, toolResults, priorAnswers);
+              if (trimmed.text !== '') {
+                // Catatan kaki memasang teks tanpa angka, jadi tak perlu diverifikasi ulang.
+                finalText = `${trimmed.text}\n\nSebagian kalimat dihapus karena memuat angka yang tidak dapat diverifikasi; lihat hasil tool di atas.`;
+                grounding = 'trimmed';
+              } else {
+                finalText = null;
+                grounding = 'failed';
+              }
             }
           }
         }
@@ -369,7 +382,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
           }
           send('text', { text: finalText });
           send('done', donePayload);
-          logDone(grounding === 'retried' ? 'ok_retried' : 'ok');
+          logDone(grounding === 'trimmed' ? 'ok_trimmed' : grounding === 'retried' ? 'ok_retried' : 'ok');
         }
       } catch (e) {
         if (cancelled || (e as Error)?.name === 'AbortError' || request.signal.aborted) return;

@@ -16,6 +16,7 @@ import { detectProductMention } from '../src/lib/server/domains/copilot/product-
 import { rateLimitMessage } from '../src/lib/server/domains/copilot/rate-limit';
 import { makeTime } from '../src/lib/shared/time';
 import { verifyGrounding } from '../src/lib/server/domains/copilot/grounding';
+import { cutToLastSentence } from '../src/lib/server/domains/copilot/finish';
 import { copilotPrompt } from '../src/lib/server/domains/copilot/prompt';
 
 let passCount = 0;
@@ -324,6 +325,15 @@ async function main() {
     const withProduct = copilotPrompt({ businessName: 'X', dateLabel: '5 Jan 2027', tz: 'Asia/Makassar', lastProductName: 'Abon Ikan' });
     ok('baris produk terakhir muncul', withProduct.includes('Produk terakhir: Abon Ikan.'));
     ok('tahun tidak di-hardcode', !p.includes('2026'));
+  }
+
+  console.log('\n== finish ==');
+  {
+    ok('potong ke kalimat utuh terakhir', cutToLastSentence('Omzet Rp125.000. Profit Rp99') === 'Omzet Rp125.000.');
+    ok('kalimat utuh terakhir dipertahankan', cutToLastSentence('Satu utuh. Dua kepot') === 'Satu utuh.');
+    ok('tanpa tanda baca dikembalikan apa adanya', cutToLastSentence('Tanpa titik') === 'Tanpa titik');
+    ok('teks sudah utuh tidak berubah', cutToLastSentence('Selesai.') === 'Selesai.');
+    ok('daftar dipotong di baris utuh terakhir', cutToLastSentence('- a.\n- b kepo') === '- a.');
   }
 
   console.log(`\n${passCount} passed, ${failCount} failed\n`);

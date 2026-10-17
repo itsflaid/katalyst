@@ -125,7 +125,7 @@ export const TOOL_REGISTRY: RegisteredTool[] = [
   {
     name: 'query_metrics',
     description:
-      'Ukuran: omzet=revenue, untung=laba=profit, unit=qty, struk=tx_count, total diskon=discount_total, rata-rata per struk=avg_ticket. Kelompok: none, product, day, week, month, weekday, hour; "paling ramai"=tx_count+weekday/hour+desc.',
+      'Ukuran: omzet=revenue, untung=laba=profit, unit=qty, struk=tx_count, total diskon=discount_total, rata-rata per struk=avg_ticket. "paling ramai"=tx_count+weekday/hour+desc.',
     maxQueries: 2,
     enabled: true,
     parameters: {

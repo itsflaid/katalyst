@@ -6,21 +6,25 @@ export interface GroundingResult {
 // Bilangan yang ditulis dengan kata ("dua kali lipat") tidak diperiksa;
 // pemeriksa hanya membaca digit.
 
+// Kunci teknis dan nama produk bukan sumber angka sah: UUID dan ukuran di nama ("1500 ml") tidak boleh melonggarkan satuan.
+const SKIP_KEYS = new Set(['id', 'productId', 'conversationId', 'key', 'code', 'simulatorLink', 'name']);
+
 function collectAllow(value: unknown, strings: string[], numbers: number[]) {
-  if (Array.isArray(value)) {
-    value.forEach((item) => collectAllow(item, strings, numbers));
+  if (typeof value === 'string') {
+    strings.push(value);
     return;
   }
   if (typeof value === 'number' && Number.isFinite(value)) {
     numbers.push(value);
     return;
   }
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectAllow(item, strings, numbers));
+    return;
+  }
   if (!value || typeof value !== 'object') return;
   for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
-    if (typeof item === 'string' && (key.endsWith('Text') || key === 'label' || key.endsWith('Label') || key === 'summary')) {
-      strings.push(item);
-    }
-    collectAllow(item, strings, numbers);
+    if (!SKIP_KEYS.has(key)) collectAllow(item, strings, numbers);
   }
 }
 
@@ -111,4 +115,23 @@ export function verifyGrounding(text: string, toolResults: unknown[], priorTexts
     if (value === null || !magnitudes.has(value)) unsupported.push(raw);
   }
   return { ok: unsupported.length === 0, unsupported };
+}
+
+// Buang kalimat yang memuat angka tak terverifikasi; baris dan daftar tetap utuh.
+export function stripUnsupported(text: string, toolResults: unknown[], priorTexts: string[] = []): { text: string; removed: number } {
+  let removed = 0;
+  const lines: string[] = [];
+  for (const line of text.split('\n')) {
+    const sentences = line.split(/(?<=[.!?])\s+/).filter((part) => part.trim() !== '');
+    const kept = sentences.filter((part) => verifyGrounding(part, toolResults, priorTexts).ok);
+    removed += sentences.length - kept.length;
+    if (kept.length > 0 || line.trim() === '') lines.push(kept.join(' '));
+  }
+  return {
+    text: lines
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim(),
+    removed
+  };
 }

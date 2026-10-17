@@ -1,6 +1,8 @@
-import { verifyGrounding } from '../src/lib/server/domains/copilot/grounding';
+import { stripUnsupported, verifyGrounding } from '../src/lib/server/domains/copilot/grounding';
 import { buildSummaryData } from '../src/lib/server/domains/copilot/tools/summary';
 import { buildComparePeriodsData } from '../src/lib/server/domains/copilot/tools/compare-periods';
+import { buildSimulatePriceData } from '../src/lib/server/domains/copilot/tools/simulate-price';
+import { failure } from '../src/lib/server/domains/copilot/envelope';
 
 let failed = 0;
 function ok(label: string, pass: boolean) {
@@ -87,5 +89,32 @@ ok('angka dari jawaban sebelumnya diterima', verifyGrounding('Modal Rp308.638.90
 ok('angka baru tetap ditolak walau ada jawaban sebelumnya', !verifyGrounding('Modal Rp999.999.', [], [jawabanLalu]).ok);
 ok('singkatan juta tetap ditolak walau ada jawaban sebelumnya', !verifyGrounding('Modal sekitar 308 juta.', [], [jawabanLalu]).ok);
 ok('tanpa jawaban sebelumnya angka tetap ditolak', !verifyGrounding('Modal Rp308.638.903.', []).ok);
+
+const lowMargin = buildSimulatePriceData({
+  product: { id: 'p1', name: 'Cleo 3D 1500 ml', sellingPrice: 10000, costPrice: 9000 },
+  baseline: { qty: 100, gross: 1000000, discount: 0, cost: 900000, discountedQty: 0 },
+  period: 'last_30d',
+  windowLabel: '30 hari terakhir',
+  targetPrice: 10500,
+  pricePct: 5,
+  volumePcts: [0]
+});
+ok('angka di teks flag diterima', verifyGrounding('Margin simulasi di bawah 15%.', [lowMargin]).ok);
+ok('angka karangan tetap ditolak walau ada teks flag', !verifyGrounding('Margin simulasi di bawah 16%.', [lowMargin]).ok);
+const batas = failure('simulate_price', 'INVALID_ARGS', 'Perubahan harga Copilot dibatasi hingga ±30% dari harga saat ini.');
+ok('angka di pesan error diterima', verifyGrounding('Perubahan harga dibatasi ±30%.', [batas]).ok);
+const ambigu = failure('simulate_price', 'AMBIGUOUS_PRODUCT', "Ada 3 produk yang cocok dengan 'cleo'.", [
+  { id: '019ff3e1-6821-7776-b171-3fbb467b2b91', name: 'Cleo 3D 1500 ml' }
+]);
+ok('jumlah di pesan error diterima', verifyGrounding('Ada 3 produk yang cocok.', [ambigu]).ok);
+ok('angka di nama produk bukan sumber satuan', !verifyGrounding('Ada 1500 produk.', [ambigu]).ok);
+ok('angka di id bukan sumber satuan', !verifyGrounding('Ada 6821 produk.', [ambigu]).ok);
+
+const dibuang = stripUnsupported('Omzet Rp125.000. Profit Rp999.999 bulan ini.', [kecil]);
+ok('kalimat angka karangan dibuang, sisanya tetap', dibuang.text === 'Omzet Rp125.000.' && dibuang.removed === 1);
+ok('jawaban bersih tidak berubah', stripUnsupported('Omzet Rp125.000.', [kecil]).removed === 0);
+ok('semua kalimat bermasalah jadi kosong', stripUnsupported('Omzet Rp999.999.', [kecil]).text === '');
+const daftar = stripUnsupported('Ringkasan:\n- Omzet Rp125.000.\n- Profit Rp999.999.\n- Margin 20,0%.', [kecil]);
+ok('daftar tetap berbaris, baris bermasalah hilang', daftar.text === 'Ringkasan:\n- Omzet Rp125.000.\n- Margin 20,0%.' && daftar.removed === 1);
 
 if (failed) process.exit(1);
