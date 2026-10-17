@@ -7,6 +7,7 @@ interface EvalCase {
   expectArgs?: Record<string, Record<string, string>>;
   requireProduct?: boolean;
   note: string;
+  followUp?: Omit<EvalCase, 'id' | 'followUp'>;
 }
 
 interface CallInfo {
@@ -57,6 +58,19 @@ function buildCases(): { runnable: EvalCase[]; skipped: string[] } {
       expectArgs: { simulate_price: { product } },
       note: 'simulasi produk nyata; nilai manusia: dua skenario volume disebut sebagai asumsi'
     });
+    runnable.push({
+      id: 'FOLLOWUP_PRODUCT',
+      question: `Simulasikan harga ${product} naik 5%.`,
+      expectTools: ['simulate_price'],
+      expectArgs: { simulate_price: { product } },
+      note: 'turn awal menetapkan produk',
+      followUp: {
+        question: 'Kalau harganya naik 10% bagaimana?',
+        expectTools: ['simulate_price'],
+        requireProduct: true,
+        note: 'follow-up harus memakai produk sebelumnya tanpa menyebut namanya'
+      }
+    });
   } else {
     skipped.push('SIM_REAL dilewati: EVAL_PRODUCT kosong.');
   }
@@ -68,6 +82,23 @@ function buildCases(): { runnable: EvalCase[]; skipped: string[] } {
       expectArgs: { explain_change: { period: 'this_month' } },
       note: 'nilai manusia: arah tiap faktor dari effectText'
     },
+    {
+      id: 'COMPOUND_STOCK_PROFIT',
+      question: 'Produk apa yang stoknya paling mendesak, dan bagaimana perbandingan profit bulan ini dengan bulan lalu?',
+      expectTools: ['get_inventory', 'compare_periods'],
+      note: 'dua poin wajib dijawab: stok dan perubahan profit'
+    },
+    ...(product
+      ? [
+          {
+            id: 'COMPOUND_PRODUCT_ADVICE',
+            question: `Cek performa ${product}: apakah laris dan margin tipis? Lalu simulasi harga yang layak diuji.`,
+            expectTools: ['rank_products', 'simulate_price'],
+            expectArgs: { simulate_price: { product } },
+            note: 'ranking dan simulasi harus sama-sama dipanggil; harga adalah bahan uji, bukan perubahan langsung'
+          }
+        ]
+      : []),
     {
       id: 'E13',
       question: 'Hari apa paling ramai dalam 3 bulan terakhir?',
@@ -110,21 +141,23 @@ function buildCases(): { runnable: EvalCase[]; skipped: string[] } {
 async function postChat(
   base: string,
   cookie: string,
-  question: string
-): Promise<{ calls: CallInfo[]; done: DoneInfo | null; error: { code: string; retryAfterSec?: number } | null }> {
+  question: string,
+  conversationId?: string
+): Promise<{ calls: CallInfo[]; done: DoneInfo | null; error: { code: string; retryAfterSec?: number } | null; conversationId: string | null }> {
   const res = await fetch(`${base}/copilot/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Cookie: cookie, Origin: base },
-    body: JSON.stringify({ messages: [{ role: 'user', content: question }] })
+    body: JSON.stringify({ ...(conversationId ? { conversationId } : {}), messages: [{ role: 'user', content: question }] })
   });
   if (!res.ok || !res.body) {
     const body = await res.json().catch(() => ({}));
     const code = (body as { code?: string }).code ?? `HTTP_${res.status}`;
-    return { calls: [], done: null, error: { code } };
+    return { calls: [], done: null, error: { code }, conversationId: null };
   }
   const calls: CallInfo[] = [];
   let done: DoneInfo | null = null;
   let error: { code: string; retryAfterSec?: number } | null = null;
+  let receivedConversationId: string | null = null;
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
@@ -144,7 +177,8 @@ async function postChat(
       } catch {
         continue;
       }
-      if (event === 'tool_start') calls.push({ name: String(data.name), args: data.args });
+      if (event === 'conversation' && typeof data.id === 'string') receivedConversationId = data.id;
+      else if (event === 'tool_start') calls.push({ name: String(data.name), args: data.args });
       else if (event === 'done') {
         const usage = data.usage as { inputTokens: number; outputTokens: number };
         done = {
@@ -159,7 +193,7 @@ async function postChat(
       }
     }
   }
-  return { calls, done, error };
+  return { calls, done, error, conversationId: receivedConversationId };
 }
 
 function checkCase(c: EvalCase, calls: CallInfo[]): { pass: boolean; detail: string } {
@@ -231,14 +265,19 @@ async function main(): Promise<void> {
       result = await postChat(base, cookie, c.question);
     }
     const checked = checkCase(c, result.calls);
-    if (checked.pass) autoPass++;
+    let followChecked: { pass: boolean; detail: string } | null = null;
+    if (c.followUp && result.conversationId) {
+      const follow = await postChat(base, cookie, c.followUp.question, result.conversationId);
+      followChecked = checkCase({ ...c, ...c.followUp, id: `${c.id}_FOLLOWUP` }, follow.calls);
+    }
+    if (checked.pass && (followChecked?.pass ?? !c.followUp)) autoPass++;
     const input = result.done?.inputTokens ?? 0;
     const output = result.done?.outputTokens ?? 0;
     totalInput += input;
     inputs.push(input);
     if (result.done?.model) perModel.set(result.done.model, (perModel.get(result.done.model) ?? 0) + 1);
     console.log(
-      `${c.id} tool=[${result.calls.map((t) => t.name).join(',')}] args=${JSON.stringify(result.calls.map((t) => t.args))} model=${result.done?.model ?? '-'} in=${input} out=${output} budget=${result.done?.budgetUsed ?? '-'} cek=${checked.pass ? 'LOLOS' : `GAGAL ${checked.detail}`} manusia: ${c.note}${attempt > 0 ? ' (ulang 1x)' : ''}`
+      `${c.id} tool=[${result.calls.map((t) => t.name).join(',')}] args=${JSON.stringify(result.calls.map((t) => t.args))} model=${result.done?.model ?? '-'} in=${input} out=${output} budget=${result.done?.budgetUsed ?? '-'} cek=${checked.pass ? 'LOLOS' : `GAGAL ${checked.detail}`}${followChecked ? ` follow-up=${followChecked.pass ? 'LOLOS' : `GAGAL ${followChecked.detail}`}` : c.followUp ? ' follow-up=GAGAL percakapan tidak dibuat' : ''} manusia: ${c.note}${attempt > 0 ? ' (ulang 1x)' : ''}`
     );
     if (totalInput > maxTokens) {
       console.log(`Berhenti: total token masuk ${totalInput} melebihi ${maxTokens}.`);

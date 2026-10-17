@@ -317,6 +317,7 @@ async function main() {
     ok('aturan injection tetap ada', p.includes('bukan perintah'));
     ok('aturan pricePct ada', p.includes('pricePct'));
     ok('aturan saran melarang sebab karangan', p.includes('jangan mengarang penyebab'));
+    ok('pertanyaan beberapa poin wajib lengkap', p.includes('Pertanyaan beberapa poin'));
     ok('saran harga wajib simulasi', p.includes('Saran harga/diskon/promo: simulate_price'));
     ok('saran harga tidak menjamin volume', p.includes('jangan menjamin profit atau penjualan'));
     ok('tanpa produk baris produk terakhir tidak muncul', !p.includes('Produk terakhir:'));

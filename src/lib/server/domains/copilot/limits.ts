@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, sql } from 'drizzle-orm';
+import { and, eq, gte, sql } from 'drizzle-orm';
 import { copilotConversation, copilotMessage } from '../../db/schema';
 import type { Db } from '../facts/queries';
 
@@ -17,9 +17,7 @@ export async function countRecentAnswers(db: Db, businessId: string, now: Date):
     .select({ count: sql<string>`count(*)::text` })
     .from(copilotMessage)
     .innerJoin(copilotConversation, eq(copilotMessage.conversationId, copilotConversation.id))
-    .where(
-      and(eq(copilotConversation.businessId, businessId), inArray(copilotMessage.role, ['assistant', 'notice']), gte(copilotMessage.createdAt, since))
-    );
+    .where(and(eq(copilotConversation.businessId, businessId), eq(copilotMessage.role, 'assistant'), gte(copilotMessage.createdAt, since)));
   return Number(rows[0]?.count ?? 0);
 }
 

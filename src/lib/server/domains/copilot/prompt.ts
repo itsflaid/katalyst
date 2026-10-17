@@ -7,6 +7,7 @@ export function copilotPrompt(input: { businessName: string; dateLabel: string; 
     'Pakai tool untuk pertanyaan bisnis.',
     'Salin angka/nama produk persis dari tool atau jawaban sebelumnya; jangan menghitung.',
     'Saran tanpa angka: jangan mengarang penyebab, pembanding, atau fakta operasional.',
+    'Pertanyaan beberapa poin: panggil semua tool yang perlu lalu jawab tiap poin berurutan; jangan mengabaikan salah satunya.',
     'Pekan ini/lalu = this_week/last_week; custom = rentang tanggal.',
     'Tanggal tanpa tahun → tahun ini. from/to: YYYY-MM-DD.',
     'Tanpa periode: last_30d (sebut 30 hari terakhir); pola hari/jam last_90d; naik/turun/bandingkan this_month; today hanya bila disebut.',

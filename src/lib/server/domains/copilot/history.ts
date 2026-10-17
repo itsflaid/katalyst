@@ -181,7 +181,7 @@ function productNameOf(toolResult: unknown): string | null {
   return clean.length > 0 ? clean : null;
 }
 
-// Benar bila pesan user terakhir sama persis dan belum dijawab assistant/notice;
+// Benar bila pesan user terakhir sama persis dan belum dijawab assistant;
 // mencegah pertanyaan kembar mengisi konteks saat kirim ulang setelah gagal.
 export async function hasPendingQuestion(db: Db, businessId: string, conversationId: string, content: string): Promise<boolean> {
   if (!(await ownedConversationId(db, businessId, conversationId))) return false;
@@ -192,7 +192,7 @@ export async function hasPendingQuestion(db: Db, businessId: string, conversatio
     .orderBy(desc(copilotMessage.createdAt), desc(copilotMessage.id))
     .limit(50);
   for (const row of rows) {
-    if (row.role === 'assistant' || row.role === 'notice') return false;
+    if (row.role === 'assistant') return false;
     if (row.role === 'user') return row.content === content;
   }
   return false;

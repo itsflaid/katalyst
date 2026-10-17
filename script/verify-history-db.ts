@@ -119,6 +119,8 @@ async function main() {
       ok('produk terakhir tanpa tool null', (await lastToolProduct(tx, bizA, c1.id)) === null);
       ok('pertanyaan menunggu terdeteksi', await hasPendingQuestion(tx, bizA, c3.id, 'harga naik?'));
       ok('pertanyaan lain tidak dianggap kembar', !(await hasPendingQuestion(tx, bizA, c3.id, 'stok?')));
+      await addMessage(tx, bizA, c3.id, { id: randomUUID(), role: 'notice', content: 'provider bermasalah' });
+      ok('pertanyaan setelah notice gagal tetap menunggu', await hasPendingQuestion(tx, bizA, c3.id, 'harga naik?'));
       await addMessage(tx, bizA, c3.id, { id: d.a2, role: 'assistant', content: 'jawab' });
       await tx
         .update(copilotMessage)
