@@ -30,6 +30,18 @@ const multi = buildSimulatePriceData({
 ok('lima skenario volume', multi.volumeScenarios.map((s) => s.volumePct).join(',') === '-20,-10,0,10,20');
 ok('skenario memakai harga baru', multi.scenario.priceText === 'Rp12.000' && multi.scenario.priceChangeText === '+Rp2.000');
 ok('tanpa diskon teks null', multi.scenario.discountPctText === null);
+ok('tanpa persen harga teks null', multi.scenario.pricePctText === null);
+
+const pct = buildSimulatePriceData({
+  product,
+  baseline,
+  period: 'last_30d',
+  windowLabel: '30 hari terakhir',
+  targetPrice: 10500,
+  pricePct: 5,
+  volumePcts: [0]
+});
+ok('teks persen harga terisi', pct.scenario.pricePctText === '5,0%');
 
 const single = buildSimulatePriceData({
   product,

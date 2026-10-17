@@ -12,6 +12,8 @@ import {
   deleteConversation,
   getConversation,
   hasConversation,
+  hasPendingQuestion,
+  lastToolProduct,
   listConversations,
   recentTextContext,
   renameFromFirstMessage,
@@ -89,6 +91,43 @@ async function main() {
       ok('konteks kronologis', ctx[0]?.content === 'omzet bulan ini?' && ctx[2]?.content === 'lalu apa?');
       ok('konteks asing kosong', (await recentTextContext(tx, bizB, c1.id)).length === 0);
 
+      const c3 = await createConversation(tx, bizA, randomUUID());
+      const d = { u1: randomUUID(), t1: randomUUID(), n1: randomUUID(), u2: randomUUID(), a2: randomUUID() };
+      await addMessage(tx, bizA, c3.id, { id: d.u1, role: 'user', content: 'harga naik?' });
+      await addMessage(tx, bizA, c3.id, {
+        id: d.t1,
+        role: 'tool',
+        content: 'simulate_price',
+        toolName: 'simulate_price',
+        toolResult: { ok: true, tool: 'simulate_price', data: { product: { id: 'p1', name: 'Amplang\nIkan' } }, notes: [] }
+      });
+      await addMessage(tx, bizA, c3.id, { id: d.n1, role: 'notice', content: 'gagal' });
+      await addMessage(tx, bizA, c3.id, { id: d.u2, role: 'user', content: 'harga naik?' });
+      const base3 = Date.now();
+      for (const [i, id] of [d.u1, d.t1, d.n1, d.u2].entries()) {
+        await tx
+          .update(copilotMessage)
+          .set({ createdAt: new Date(base3 + i * 1000) })
+          .where(eq(copilotMessage.id, id));
+      }
+      const once = await recentTextContext(tx, bizA, c3.id);
+      ok(
+        'pesan user kembar disisakan sekali',
+        once.filter((m) => m.role === 'user').length === 1 && once[once.length - 1]?.content === 'harga naik?'
+      );
+      ok('produk terakhir dari hasil tool', (await lastToolProduct(tx, bizA, c3.id)) === 'Amplang Ikan');
+      ok('produk terakhir tanpa tool null', (await lastToolProduct(tx, bizA, c1.id)) === null);
+      ok('pertanyaan menunggu terdeteksi', await hasPendingQuestion(tx, bizA, c3.id, 'harga naik?'));
+      ok('pertanyaan lain tidak dianggap kembar', !(await hasPendingQuestion(tx, bizA, c3.id, 'stok?')));
+      await addMessage(tx, bizA, c3.id, { id: randomUUID(), role: 'notice', content: 'provider bermasalah' });
+      ok('pertanyaan setelah notice gagal tetap menunggu', await hasPendingQuestion(tx, bizA, c3.id, 'harga naik?'));
+      await addMessage(tx, bizA, c3.id, { id: d.a2, role: 'assistant', content: 'jawab' });
+      await tx
+        .update(copilotMessage)
+        .set({ createdAt: new Date(base3 + 4000) })
+        .where(eq(copilotMessage.id, d.a2));
+      ok('pertanyaan yang sudah dijawab tidak dianggap menunggu', !(await hasPendingQuestion(tx, bizA, c3.id, 'harga naik?')));
+
       const bigId = randomUUID();
       const big = await addMessage(tx, bizA, c1.id, { id: bigId, role: 'user', content: 'y'.repeat(9000) });
       await tx
@@ -116,7 +155,7 @@ async function main() {
       const removed = await deleteAllConversations(tx, bizA);
       const leftA = await listConversations(tx, bizA);
       const leftB = await listConversations(tx, bizB);
-      ok('hapus semua sesuai bisnis', removed === 1 && leftA.length === 0 && leftB.length === 1 && leftB[0].id === cb.id);
+      ok('hapus semua sesuai bisnis', removed === 2 && leftA.length === 0 && leftB.length === 1 && leftB[0].id === cb.id);
 
       throw ROLLBACK;
     });

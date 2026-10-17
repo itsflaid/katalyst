@@ -56,6 +56,10 @@ const turun = buildComparePeriodsData({
   baselineLabel: '30 hari sebelumnya'
 });
 ok('persen turun diterima', verifyGrounding('Profit turun 18,0%.', [turun]).ok);
+ok('persen tanpa desimal setara', verifyGrounding('Profit turun 18%.', [turun]).ok);
+ok('persen dibulatkan dalam toleransi', verifyGrounding('Profit turun 18,04%.', [turun]).ok);
+ok('persen dengan digit karangan tetap ditolak', !verifyGrounding('Profit turun 18,3%.', [turun]).ok);
+ok('persen dengan bilangan berbeda tetap ditolak', !verifyGrounding('Profit turun 5%.', [turun]).ok);
 ok('jumlah hari dari label diterima', verifyGrounding('Periode 30 hari.', [ringkas]).ok);
 ok('satuan struk boleh disebut transaksi', verifyGrounding('Ada 775 transaksi.', [ringkas]).ok);
 

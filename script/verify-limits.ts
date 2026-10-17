@@ -73,9 +73,9 @@ async function main() {
         }))
       );
       const used = await countRecentAnswers(tx, biz, now);
-      ok('hanya assistant/notice dihitung', used === 39, `used=${used}`);
+      ok('hanya jawaban assistant dihitung', used === 38, `used=${used}`);
       ok('di bawah batas boleh', (await canUseCopilot(tx, biz, 40, now)).ok);
-      ok('tepat di batas ditolak', !(await canUseCopilot(tx, biz, 39, now)).ok);
+      ok('tepat di batas ditolak', !(await canUseCopilot(tx, biz, 38, now)).ok);
       ok('bisnis lain diabaikan', (await countRecentAnswers(tx, other, now)) === 100);
       throw ROLLBACK;
     });

@@ -12,6 +12,7 @@ import { resolveNamedPeriod } from '../src/lib/shared/period';
 import { makeTime } from '../src/lib/shared/time';
 import { factsOfItem, metricsOf, sumFacts } from '../src/lib/analytics';
 import { verifyGrounding } from '../src/lib/server/domains/copilot/grounding';
+import { fmtRupiah } from '../src/lib/shared/format';
 
 let failed = 0;
 function ok(label: string, pass: boolean) {
@@ -42,7 +43,7 @@ async function main() {
       ok(`${name} sukses dan JSON aman`, result?.ok === true && !json.includes('NaN') && !json.includes('Infinity') && ctx.budget.used <= 45);
     }
     const [sampleProduct] = await db
-      .select({ name: product.name })
+      .select({ name: product.name, sellingPrice: product.sellingPrice })
       .from(product)
       .where(and(eq(product.businessId, current.id), eq(product.isActive, true)))
       .limit(1);
@@ -67,6 +68,31 @@ async function main() {
         !withVolumeJson.includes('Infinity') &&
         ctx.budget.used <= 45
     );
+    const pct = sampleProduct && simulate ? await simulate.run(ctx, { product: sampleProduct.name, pricePct: 5 }) : null;
+    const pctData = pct?.ok === true ? (pct.data as { scenario: { priceText: string; pricePctText: string | null } }) : null;
+    ok(
+      'simulate_price pricePct naik dari harga jual',
+      sampleProduct !== undefined &&
+        pctData?.scenario.priceText === fmtRupiah(Math.round(sampleProduct.sellingPrice * 1.05)) &&
+        pctData?.scenario.pricePctText === '5,0%'
+    );
+    const pctDown = sampleProduct && simulate ? await simulate.run(ctx, { product: sampleProduct.name, pricePct: -10 }) : null;
+    const pctDownData = pctDown?.ok === true ? (pctDown.data as { scenario: { priceText: string } }) : null;
+    ok(
+      'simulate_price pricePct negatif',
+      sampleProduct !== undefined && pctDownData?.scenario.priceText === fmtRupiah(Math.round(sampleProduct.sellingPrice * 0.9))
+    );
+    const pctClash = sampleProduct && simulate ? await simulate.run(ctx, { product: sampleProduct.name, pricePct: 5, priceDelta: 1000 }) : null;
+    ok('simulate_price tolak pricePct + priceDelta', pctClash?.ok === false);
+    const pctPriceClash = sampleProduct && simulate ? await simulate.run(ctx, { product: sampleProduct.name, price: 20000, pricePct: 5 }) : null;
+    ok('simulate_price tolak price + pricePct', pctPriceClash?.ok === false);
+    const pctTooFar = sampleProduct && simulate ? await simulate.run(ctx, { product: sampleProduct.name, pricePct: 31 }) : null;
+    ok('simulate_price tolak perubahan harga di atas 30%', pctTooFar?.ok === false);
+    const priceTooFar =
+      sampleProduct && simulate
+        ? await simulate.run(ctx, { product: sampleProduct.name, price: Math.round(sampleProduct.sellingPrice * 1.31) })
+        : null;
+    ok('simulate_price tolak harga langsung di atas 30%', priceTooFar?.ok === false);
     const dirtyId = randomUUID();
     try {
       await db

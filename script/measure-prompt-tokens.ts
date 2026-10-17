@@ -1,18 +1,26 @@
 import { copilotPrompt } from '../src/lib/server/domains/copilot/prompt';
 import { TOOL_REGISTRY } from '../src/lib/server/domains/copilot/registry';
 
-const system = copilotPrompt({ businessName: 'Toko Contoh', dateLabel: '9 Okt 2026', tz: 'Asia/Makassar' });
-const tokensOf = (s: string) => s.length / 3;
-let total = tokensOf(system);
-console.log(`system prompt: ${total.toFixed(0)} token (${system.length} karakter)`);
+const CHARS_LIMIT = 6400;
+
+// Diukur dengan baris produk terakhir terisi nama sepanjang batas potong (40 karakter).
+const system = copilotPrompt({
+  businessName: 'Toko Contoh',
+  dateLabel: '9 Okt 2026',
+  tz: 'Asia/Makassar',
+  lastProductName: 'Amplang Ikan Pesut Mahakam Premium 250g'
+});
+let chars = system.length;
+console.log(`system prompt: ${system.length} karakter`);
 for (const tool of TOOL_REGISTRY.filter((t) => t.enabled)) {
   const spec = JSON.stringify({ name: tool.name, description: tool.description, parameters: tool.parameters });
-  const tokens = tokensOf(spec);
-  total += tokens;
-  console.log(`${tool.name}: ${tokens.toFixed(0)} token (${spec.length} karakter)`);
+  chars += spec.length;
+  console.log(`${tool.name}: ${spec.length} karakter`);
 }
-console.log(`TOTAL system + spesifikasi: ${total.toFixed(0)} token (batas 1800)`);
-if (total > 1800) {
+// Guard ukuran dalam karakter, bukan token. Live gpt-oss-120b: spec ≈5,7rb karakter
+// terbaca ≈1,5rb token; request penuh (10 pesan konteks + 1 hasil tool) ≈2,2rb token.
+console.log(`TOTAL system + spesifikasi: ${chars} karakter (batas ${CHARS_LIMIT})`);
+if (chars > CHARS_LIMIT) {
   console.log('MELEBIHI BATAS');
   process.exit(1);
 }

@@ -30,6 +30,22 @@ function normalize(token: string): string {
   return token.replace(/\s+/g, '').replace(/^[+-]/, '');
 }
 
+// Persen dibandingkan sebagai angka: "5%" ≡ "5,0%"; toleransi 0,5% relatif untuk pembulatan penyajian.
+function percentEquivalent(token: string, allowed: Set<string>): boolean {
+  if (allowed.has(token)) return true;
+  const match = /^(\d+(?:,\d+)?)%$/.exec(token);
+  if (!match) return false;
+  const value = Number(match[1].replace(',', '.'));
+  if (!Number.isFinite(value)) return false;
+  for (const candidate of allowed) {
+    const other = /^(\d+(?:,\d+)?)%$/.exec(candidate);
+    if (!other) continue;
+    const candidateValue = Number(other[1].replace(',', '.'));
+    if (Number.isFinite(candidateValue) && Math.abs(value - candidateValue) <= Math.max(0.05, Math.abs(candidateValue) * 0.005)) return true;
+  }
+  return false;
+}
+
 // Angka format Indonesia: titik = ribuan, koma = desimal.
 function parseAmount(raw: string): number | null {
   const compact = raw.replace(/\s+/g, '');
@@ -84,7 +100,7 @@ export function verifyGrounding(text: string, toolResults: unknown[], priorTexts
     if (!allowedRupiah.has(token)) unsupported.push(token);
   }
   for (const token of tokensOf(PERCENT_RE, text)) {
-    if (!allowedPercent.has(token)) unsupported.push(token);
+    if (!percentEquivalent(token, allowedPercent)) unsupported.push(token);
   }
   for (const token of tokensOf(POINTS_RE, text)) {
     if (!allowedPoints.has(token)) unsupported.push(token);

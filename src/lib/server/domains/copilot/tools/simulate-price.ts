@@ -13,6 +13,7 @@ import { validateArgs } from '../validate';
 const TOOL = 'simulate_price';
 const periods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'last_30d', 'last_7d', 'last_90d', 'custom'] as const;
 const DEFAULT_VOLUMES = [-20, -10, 0, 10, 20];
+const MAX_PRICE_CHANGE_PCT = 30;
 
 export function simFlagText(flag: SimFlag): string {
   switch (flag) {
@@ -73,7 +74,7 @@ export interface SimulatePriceData {
   window: { key: NamedPeriodKey; label: string };
   current: { profit: number; profitText: string; margin: number; marginText: string; qty: number; qtyText: string };
   simulated: { profit: number; profitText: string; margin: number; marginText: string; qty: number; qtyText: string };
-  scenario: { priceText: string; priceChangeText: string | null; discountPctText: string | null };
+  scenario: { priceText: string; priceChangeText: string | null; pricePctText: string | null; discountPctText: string | null };
   volumeScenarios: VolumeScenario[];
   breakEven: { volumePct: number | null; volumePctText: string | null; text: string | null };
   impact: { profit: number | null; profitText: string; marginPoints: number; marginPointsText: string };
@@ -119,6 +120,7 @@ export function buildSimulatePriceData(input: {
   windowLabel: string;
   targetPrice: number;
   priceDelta?: number;
+  pricePct?: number;
   discountPct?: number;
   volumePcts: number[];
 }): SimulatePriceData {
@@ -192,6 +194,7 @@ export function buildSimulatePriceData(input: {
     scenario: {
       priceText: fmtRupiah(input.targetPrice),
       priceChangeText: input.priceDelta === undefined ? null : `${input.priceDelta < 0 ? '-' : '+'}${fmtRupiah(Math.abs(input.priceDelta))}`,
+      pricePctText: input.pricePct === undefined ? null : fmtPercent(input.pricePct / 100),
       discountPctText: input.discountPct === undefined ? null : fmtPercent(input.discountPct / 100)
     },
     volumeScenarios,
@@ -246,6 +249,7 @@ export async function simulatePrice(ctx: ToolContext, input: unknown): Promise<T
     to: { type: 'string' },
     priceDelta: { type: 'integer' },
     price: { type: 'integer', min: 0 },
+    pricePct: { type: 'integer', min: -MAX_PRICE_CHANGE_PCT, max: MAX_PRICE_CHANGE_PCT },
     discountPct: { type: 'integer', min: 0, max: 100 },
     volumePct: { type: 'integer', min: -100, max: 1000 }
   });
@@ -277,9 +281,22 @@ export async function simulatePrice(ctx: ToolContext, input: unknown): Promise<T
   const baseline = facts.get(selected.id) ?? ZERO_FACTS;
   const price = checked.value.price as number | undefined;
   const priceDelta = checked.value.priceDelta as number | undefined;
-  if (price !== undefined && priceDelta !== undefined) return failure(TOOL, 'INVALID_ARGS', 'Pakai price atau priceDelta, bukan keduanya.');
-  const targetPrice = price ?? (priceDelta === undefined ? selected.sellingPrice : selected.sellingPrice + priceDelta);
+  const pricePct = checked.value.pricePct as number | undefined;
+  if ([price, priceDelta, pricePct].filter((v) => v !== undefined).length > 1) {
+    return failure(TOOL, 'INVALID_ARGS', 'Pakai salah satu dari price, priceDelta, atau pricePct.');
+  }
+  // targetPrice = harga jual saat ini × (1 + pricePct/100) (pricePct persen, boleh negatif)
+  const targetPrice =
+    price ??
+    (pricePct !== undefined
+      ? Math.round(selected.sellingPrice * (1 + pricePct / 100))
+      : priceDelta === undefined
+        ? selected.sellingPrice
+        : selected.sellingPrice + priceDelta);
   if (targetPrice < 0) return failure(TOOL, 'INVALID_ARGS', 'Harga hasil simulasi tidak boleh negatif.');
+  if (selected.sellingPrice > 0 && Math.abs(targetPrice / selected.sellingPrice - 1) > MAX_PRICE_CHANGE_PCT / 100) {
+    return failure(TOOL, 'INVALID_ARGS', 'Perubahan harga Copilot dibatasi hingga ±30% dari harga saat ini.');
+  }
   const volumePct = checked.value.volumePct as number | undefined;
   const volumePcts = volumePct === undefined ? DEFAULT_VOLUMES : [volumePct];
   try {
@@ -290,6 +307,7 @@ export async function simulatePrice(ctx: ToolContext, input: unknown): Promise<T
       windowLabel: window.label,
       targetPrice,
       ...(priceDelta === undefined ? {} : { priceDelta }),
+      ...(pricePct === undefined ? {} : { pricePct }),
       ...(checked.value.discountPct === undefined ? {} : { discountPct: checked.value.discountPct as number }),
       volumePcts
     });
