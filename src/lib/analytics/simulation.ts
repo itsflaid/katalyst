@@ -3,6 +3,7 @@
 // unitDiscount (bulat per unit, sama seperti kasir) dan boleh dibatasi kuota unit.
 import { deltaRatio, factsOfItem, metricsOf, sumFacts, type Facts, type Metrics } from './facts';
 import type { TransactionItemLike } from './core';
+import { MARGIN_THIN } from './margin';
 import { isBelowCost, unitDiscount } from '../shared/discount';
 
 export type DiscountLever = { kind: 'keep' } | { kind: 'percent'; pct: number; units?: number };
@@ -206,7 +207,7 @@ export function simulate(input: SimInput): SimResult {
   const flags: SimFlag[] = [];
   if (baseline.qty === 0) flags.push('NO_HISTORY');
   if (simQty > 0 && unitProfit < 0) flags.push('BELOW_COST');
-  if (simQty > 0 && simulated.margin < 0.15) flags.push('LOW_MARGIN');
+  if (simQty > 0 && simulated.margin < MARGIN_THIN) flags.push('LOW_MARGIN');
   if (discountLever?.kind === 'percent' && P2 !== P) flags.push('DISCOUNT_ON_CHANGED_PRICE');
   if ((discountLever === undefined || discountLever.kind === 'keep') && volumeChanged) {
     flags.push('PROMO_SCALED_WITH_VOLUME');

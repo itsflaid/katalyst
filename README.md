@@ -9,11 +9,13 @@ Semua angka (omzet, modal, untung, margin) dihitung langsung dari data transaksi
 - **Dashboard owner** — KPI revenue, transaksi, profit, margin + tren harian 30 hari terakhir dan delta vs 30 hari sebelumnya, top 5 produk, transaksi terbaru, dan insight otomatis (misal produk laris tapi margin tipis).
 - **Produk** — CRUD, aktif/nonaktif, badge margin, ambang menipis per produk, restock/koreksi tercatat, tab riwayat stok (Owner), halaman detail per produk (terjual, revenue, profit, margin) + deep-link ke simulator.
 - **Transaksi (kasir)** — keranjang multi-produk, 1 struk tersimpan sebagai 1 transaksi + N item dengan snapshot harga. Riwayat dikelompokkan Hari > Struk > Item + subtotal. Struk yang salah catat dibatalkan utuh oleh owner lalu dibuatkan struk koreksi (tanpa edit diam-diam, biar teraudit).
+- **Diskon** — harga coret otomatis: per produk (berlaku sendiri) atau global (dipilih di kasir), dengan persen, kuota unit, dan jendela waktu; status mengikuti jadwal/kuota (Aktif/Terjadwal/Selesai); peringatan bila harga jatuh di bawah modal; draf dari Simulator bisa langsung disimpan.
 - **Statistik** — laporan per periode: tren revenue/profit (unit adaptif rb/jt), performa per produk (toggle Revenue/Profit/Margin), struk per hari, jam tersibuk & pola hari (WITA), penjualan per kasir, panel inventori (nilai stok, estimasi hari stok, stok mati), pergerakan stok mingguan, dan matriks Volume vs Margin.
 - **Simulator "what-if"** — lab satu produk: geser harga jual, diskon, modal, volume, langsung lihat dampak revenue/profit/margin, titik impas, dan diskon maksimum. Baseline bisa hari ini, minggu ini, bulan ini, atau custom.
 - **Copilot** — tanya jawab Owner berbasis data transaksi: ringkasan, ranking produk, perbandingan periode, penyebab perubahan profit, stok, dan simulasi harga. Angka ditahan bila tidak berasal dari hasil tool.
 - **Zakat perdagangan** — estimasi 2,5% dari aset bersih (stok + kas + piutang − utang) bila mencapai nisab emas dan genap 1 haul (±354 hari). Kas, piutang, utang, dan harga emas diisi manual; Simulator menampilkan dampak skenario ke zakat.
 - **Pengaturan** — identitas bisnis + kelola staff (tambah/hapus, role OWNER/STAFF). Riwayat struk staff yang sudah dihapus tetap menampilkan namanya.
+- **Log Aktivitas** — catatan aksi Owner & staff (login/logout, transaksi & void, produk, diskon, kelola staff) lengkap dengan perangkat, filter orang/jenis/tanggal, dan muat riwayat lebih lama.
 
 ## Preview
 
@@ -34,6 +36,8 @@ Copilot sekarang berjalan dari halaman `/copilot`; preview akan diperbarui setel
 Zona waktu diatur per bisnis di halaman Pengaturan (Owner), default WITA (`Asia/Makassar`). Pilihan: WIB (`Asia/Jakarta`), WITA (`Asia/Makassar`), WIT (`Asia/Jayapura`). Semua angka harian/jam mengikuti zona bisnis, bukan zona perangkat.
 
 ## Cara jalan
+
+Syarat: Node.js 22.x atau 24.x dan npm 11 ke atas (lihat `engines` di package.json).
 
 1. `cp .env.example .env`, isi `DATABASE_URL` (Neon, pooled endpoint) dan `BETTER_AUTH_SECRET`
 2. `npm install`

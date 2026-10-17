@@ -256,8 +256,8 @@ export async function getStatistikPageData(businessId: string, url: URL, tz: Biz
       totalQty: sum(cur, (p) => p.quantitySold)
     },
     rows,
-    // lowMargin = getLowMarginProducts(cur, 0.15); margin = profit/revenue < 15%.
-    lowMargin: getLowMarginProducts(cur, 0.15).map((p) => ({ name: p.name, margin: p.margin }))
+    // lowMargin = getLowMarginProducts(cur); margin = profit/revenue < 15%.
+    lowMargin: getLowMarginProducts(cur).map((p) => ({ name: p.name, margin: p.margin }))
   };
 }
 

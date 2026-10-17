@@ -10,6 +10,7 @@
   import { makeTime, DEFAULT_TZ } from '$lib/shared/time';
   import { handoffUrl } from '$lib/shared/copilot-handoff';
   import { fmtInt, fmtPercent, fmtRupiah } from '$lib/shared/format';
+  import { MARGIN_THIN } from '$lib/analytics/margin';
   export let data;
   $: T = makeTime(data.timezone ?? DEFAULT_TZ);
   $: fmtDate = (d: string | Date) => T.fmt(d, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -64,8 +65,8 @@
     <p class="text-label-sm uppercase text-muted mb-1 truncate">Margin</p>
     <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{fmtPercent(data.summary.margin)}</p>
     <p class="text-body-sm text-muted mb-1.5">30 hari terakhir</p>
-    <Badge tone={data.summary.margin >= 0.3 ? 'positive' : 'warning'} class="text-[11px] sm:text-label-md">
-      {data.summary.margin >= 0.3 ? 'Sehat' : 'Perlu perhatian'}
+    <Badge tone={data.summary.margin >= MARGIN_THIN ? 'positive' : 'warning'} class="text-[11px] sm:text-label-md">
+      {data.summary.margin >= MARGIN_THIN ? 'Sehat' : 'Tipis'}
     </Badge>
   </Card>
 </div>

@@ -31,7 +31,7 @@ function missingProductArgs(name: string, args: unknown): boolean {
   if (typeof args !== 'object' || args === null) return false;
   const a = args as Record<string, unknown>;
   if (name === 'query_metrics') return a['group_by'] !== 'product' && !a['product'];
-  return (name === 'simulate_price' || name === 'get_product_detail') && !a['product'];
+  return name === 'simulate_price' && !a['product'];
 }
 
 function parseMessages(body: unknown): { ok: true; messages: LlmMessage[] } | { ok: false; message: string } {

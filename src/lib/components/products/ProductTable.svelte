@@ -6,6 +6,7 @@
   import ActiveToggle from '$lib/components/products/ActiveToggle.svelte';
   import RowActions from '$lib/components/products/RowActions.svelte';
   import { fmtRupiah } from '$lib/shared/format';
+  import { MARGIN_THIN_PCT } from '$lib/analytics/margin';
 
   type Product = {
     id: string;
@@ -26,7 +27,7 @@
 
   const marginOf = (p: { costPrice: number; sellingPrice: number }) =>
     p.sellingPrice > 0 ? Math.round(((p.sellingPrice - p.costPrice) / p.sellingPrice) * 100) : null;
-  const marginTone = (m: number | null) => (m === null ? 'neutral' : m >= 30 ? 'positive' : 'warning');
+  const marginTone = (m: number | null) => (m === null ? 'neutral' : m >= MARGIN_THIN_PCT ? 'positive' : 'warning');
 </script>
 
 <Table headers={['Produk', 'Modal', 'Jual', 'Margin', 'Stok', 'Status', 'Aksi']} headCellClass="py-3 font-bold">

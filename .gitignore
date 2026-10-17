@@ -9,3 +9,5 @@ build
 .DS_Store
 .golden/
 docs/copilot/
+
+src/lib/server/db/seed-client-final.ts
