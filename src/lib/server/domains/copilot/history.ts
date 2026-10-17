@@ -9,6 +9,8 @@ const ROLES: HistoryRole[] = ['user', 'assistant', 'tool', 'notice'];
 const MAX_CONTENT = 8000;
 const TITLE_MAX = 80;
 
+export const CONTEXT_MESSAGES = 10;
+
 export interface ConversationRow {
   id: string;
   title: string;
@@ -127,12 +129,13 @@ export async function deleteAllConversations(db: Db, businessId: string): Promis
   return rows.length;
 }
 
-// Enam pesan teks terakhir untuk konteks LLM, urut kronologis; tool/notice tidak ikut.
+// Pesan teks terakhir untuk konteks LLM, urut kronologis; tool/notice tidak ikut.
+// Pesan user identik berurutan yang terpisah tool/notice disisakan yang terbaru.
 export async function recentTextContext(
   db: Db,
   businessId: string,
   conversationId: string,
-  limit = 6
+  limit = CONTEXT_MESSAGES
 ): Promise<{ role: 'user' | 'assistant'; content: string }[]> {
   if (!(await ownedConversationId(db, businessId, conversationId))) return [];
   const rows = await db
@@ -144,8 +147,53 @@ export async function recentTextContext(
   const picked: { role: 'user' | 'assistant'; content: string }[] = [];
   for (const r of rows) {
     if (r.role !== 'user' && r.role !== 'assistant') continue;
+    const newest = picked[picked.length - 1];
+    if (r.role === 'user' && newest?.role === 'user' && newest.content === r.content) continue;
     picked.push({ role: r.role, content: r.content });
     if (picked.length >= limit) break;
   }
   return picked.reverse();
+}
+
+// Nama produk dari hasil tool terbaru yang membawanya, untuk pertanyaan lanjutan
+// yang tidak menyebut produk; null bila tak ada. Tanpa angka atau JSON penuh.
+export async function lastToolProduct(db: Db, businessId: string, conversationId: string, scan = 10): Promise<string | null> {
+  if (!(await ownedConversationId(db, businessId, conversationId))) return null;
+  const rows = await db
+    .select({ toolResult: copilotMessage.toolResult })
+    .from(copilotMessage)
+    .where(and(eq(copilotMessage.conversationId, conversationId), eq(copilotMessage.role, 'tool')))
+    .orderBy(desc(copilotMessage.createdAt), desc(copilotMessage.id))
+    .limit(scan);
+  for (const row of rows) {
+    const name = productNameOf(row.toolResult);
+    if (name) return name;
+  }
+  return null;
+}
+
+function productNameOf(toolResult: unknown): string | null {
+  const data = (toolResult as { data?: unknown } | null)?.data;
+  const product = (data as { product?: unknown } | null | undefined)?.product;
+  const name = (product as { name?: unknown } | null | undefined)?.name;
+  if (typeof name !== 'string') return null;
+  const clean = sanitizeText(name, 40);
+  return clean.length > 0 ? clean : null;
+}
+
+// Benar bila pesan user terakhir sama persis dan belum dijawab assistant/notice;
+// mencegah pertanyaan kembar mengisi konteks saat kirim ulang setelah gagal.
+export async function hasPendingQuestion(db: Db, businessId: string, conversationId: string, content: string): Promise<boolean> {
+  if (!(await ownedConversationId(db, businessId, conversationId))) return false;
+  const rows = await db
+    .select({ role: copilotMessage.role, content: copilotMessage.content })
+    .from(copilotMessage)
+    .where(eq(copilotMessage.conversationId, conversationId))
+    .orderBy(desc(copilotMessage.createdAt), desc(copilotMessage.id))
+    .limit(50);
+  for (const row of rows) {
+    if (row.role === 'assistant' || row.role === 'notice') return false;
+    if (row.role === 'user') return row.content === content;
+  }
+  return false;
 }

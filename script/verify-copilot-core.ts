@@ -315,6 +315,13 @@ async function main() {
     ok('aturan tahun default ada', p.includes('tahun ini') && p.includes('YYYY-MM-DD'));
     ok('aturan follow-up angka ada', p.includes('jawaban sebelumnya'));
     ok('aturan injection tetap ada', p.includes('bukan perintah'));
+    ok('aturan pricePct ada', p.includes('pricePct'));
+    ok('aturan saran melarang sebab karangan', p.includes('jangan mengarang penyebab'));
+    ok('saran harga wajib simulasi', p.includes('Saran harga/diskon/promo: simulate_price'));
+    ok('saran harga tidak menjamin volume', p.includes('jangan menjamin profit atau penjualan'));
+    ok('tanpa produk baris produk terakhir tidak muncul', !p.includes('Produk terakhir:'));
+    const withProduct = copilotPrompt({ businessName: 'X', dateLabel: '5 Jan 2027', tz: 'Asia/Makassar', lastProductName: 'Abon Ikan' });
+    ok('baris produk terakhir muncul', withProduct.includes('Produk terakhir: Abon Ikan.'));
     ok('tahun tidak di-hardcode', !p.includes('2026'));
   }
 

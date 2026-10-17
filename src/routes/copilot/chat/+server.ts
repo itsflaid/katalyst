@@ -15,7 +15,15 @@ import { sanitizeText } from '$lib/server/domains/copilot/sanitize';
 import { verifyGrounding } from '$lib/server/domains/copilot/grounding';
 import { canUseCopilot, dailyLimitFrom } from '$lib/server/domains/copilot/limits';
 import { copilotPrompt } from '$lib/server/domains/copilot/prompt';
-import { addMessage, createConversation, hasConversation, recentTextContext, renameFromFirstMessage } from '$lib/server/domains/copilot/history';
+import {
+  addMessage,
+  createConversation,
+  hasConversation,
+  hasPendingQuestion,
+  lastToolProduct,
+  recentTextContext,
+  renameFromFirstMessage
+} from '$lib/server/domains/copilot/history';
 import { countedDb } from '$lib/server/domains/copilot/db';
 import type { Db } from '$lib/server/domains/facts/queries';
 import { requireTenant } from '$lib/server/domains/auth/guards';
@@ -65,6 +73,7 @@ async function loadHistory(
   }
   const fresh = incoming.filter((m) => m.role === 'user');
   for (const m of fresh) {
+    if (await hasPendingQuestion(db, businessId, conversationId, m.content)) continue;
     await addMessage(db, businessId, conversationId, { id: globalThis.crypto.randomUUID(), role: 'user', content: m.content });
   }
   const stored = await recentTextContext(db, businessId, conversationId);
@@ -128,7 +137,12 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
   const history: LlmMessage[] = loaded.history;
   const priorAnswers = loaded.history.filter((m) => m.role === 'assistant').map((m) => m.content);
   const T = makeTime(tz);
-  const system = copilotPrompt({ businessName: business.name, dateLabel: T.fmt(now, { day: 'numeric', month: 'short', year: 'numeric' }), tz });
+  const system = copilotPrompt({
+    businessName: business.name,
+    dateLabel: T.fmt(now, { day: 'numeric', month: 'short', year: 'numeric' }),
+    tz,
+    lastProductName: await lastToolProduct(requestDb, business.id, loaded.conversationId)
+  });
 
   const encoder = new TextEncoder();
   let cancelled = false;
@@ -139,13 +153,25 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
       };
       let steps = 0;
+      let model = '';
+      let finishReason: string | null = null;
       const convId = loaded.conversationId;
       const saveFailure = { code: 'SAVE_FAILED', message: 'Gagal menyimpan riwayat, jawaban tetap ditampilkan.' };
+      // Satu baris log per request selesai; outcome + finishReason membedakan stop/length/gagal.
+      const logDone = (outcome: string) =>
+        console.log(JSON.stringify({ outcome, finishReason, steps, model, budgetUsed: budget.used, wallMs: Date.now() - startMs }));
+      // Notice disimpan agar bertahan setelah refresh; gagal simpan tidak menghentikan aliran.
+      const saveNotice = async (notice: string) => {
+        try {
+          await addMessage(requestDb, business.id, convId, { id: globalThis.crypto.randomUUID(), role: 'notice', content: notice });
+        } catch (saveError) {
+          console.error(JSON.stringify({ save: 'notice', error: String(saveError) }));
+        }
+      };
       try {
         send('conversation', { id: convId });
         let inputTokens = 0;
         let outputTokens = 0;
-        let model = '';
         let failovers = 0;
         const called: string[] = [];
         const toolResults: unknown[] = [];
@@ -160,7 +186,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             {
               system,
               messages: history,
-              tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
+              tools: step === MAX_STEPS - 1 ? [] : tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
               toolChoice: step === MAX_STEPS - 1 ? 'none' : 'auto',
               maxTokens: 600,
               temperature: 0
@@ -177,6 +203,8 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
               textBuf += ev.delta;
             } else if (ev.type === 'tool_call') {
               pending.push(ev);
+            } else if (ev.type === 'finish') {
+              finishReason = ev.reason;
             }
           }
           if (pending.length === 0) {
@@ -250,16 +278,45 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             history.push({ role: 'tool', toolCallId: call.id, content: JSON.stringify(toModelView(result)) });
           }
         }
+        // Teks kosong tanpa tool call (mis. kuota keluaran habis untuk token penalaran):
+        // ulang sekali tanpa daftar tool dengan kuota keluaran lebih besar. Tanpa daftar tool
+        // panggilan tool tidak mungkin; toolChoice 'none' saja masih bisa memicu panggilan lalu 400 di Groq.
+        if (finalText?.trim() === '') {
+          logDone('empty_retry');
+          let retryText = '';
+          for await (const ev of client.stream(
+            {
+              system,
+              messages: history,
+              tools: [],
+              toolChoice: 'none',
+              maxTokens: 1200,
+              temperature: 0
+            },
+            request.signal
+          )) {
+            if (ev.type === 'model') {
+              model = ev.model;
+              failovers = ev.failovers;
+            } else if (ev.type === 'usage') {
+              inputTokens += ev.inputTokens;
+              outputTokens += ev.outputTokens;
+            } else if (ev.type === 'text') retryText += ev.delta;
+            else if (ev.type === 'finish') finishReason = ev.reason;
+          }
+          if (retryText.trim() !== '') finalText = retryText;
+        }
         if (finalText) {
           const checked = verifyGrounding(finalText, toolResults, priorAnswers);
           if (!checked.ok) {
+            console.log(JSON.stringify({ outcome: 'grounding_rejected', unsupported: checked.unsupported, steps, model }));
             grounding = 'retried';
             let retryText = '';
             for await (const ev of client.stream(
               {
                 system: `${system} Jawaban sebelumnya ditolak karena memuat angka yang tidak ada di hasil tool atau jawaban sebelumnya. Jawab ulang tanpa tool dan hanya gunakan angka dari keduanya.`,
                 messages: history,
-                tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
+                tools: [],
                 toolChoice: 'none',
                 maxTokens: 600,
                 temperature: 0
@@ -281,6 +338,8 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
             }
           }
         }
+        // Jawaban yang hanya berisi spasi dianggap kosong; teks disimpan tanpa spasi tepi.
+        if (finalText !== null) finalText = finalText.trim();
         const donePayload = {
           usage: { inputTokens, outputTokens },
           toolCalls: called,
@@ -290,17 +349,17 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
           grounding
         };
         if (finalText === null || finalText === '') {
-          console.log(JSON.stringify({ budgetUsed: budget.used, steps, wallMs: Date.now() - startMs }));
+          logDone(grounding === 'failed' ? 'unverified' : 'empty');
           if (grounding === 'failed') {
             const notice = 'Jawaban memuat angka yang tidak dapat diverifikasi; lihat hasil tool di atas.';
-            try {
-              await addMessage(requestDb, business.id, convId, { id: globalThis.crypto.randomUUID(), role: 'notice', content: notice });
-            } catch (saveError) {
-              console.error(JSON.stringify({ save: 'notice', error: String(saveError) }));
-            }
+            await saveNotice(notice);
             send('notice', { code: 'UNVERIFIED', message: notice });
             send('done', donePayload);
-          } else send('error', { code: 'PROVIDER', message: 'Belum ada jawaban final, coba lagi sebentar.' });
+          } else {
+            const notice = 'Belum ada jawaban final, coba lagi sebentar.';
+            await saveNotice(notice);
+            send('error', { code: 'PROVIDER', message: notice });
+          }
         } else {
           try {
             await addMessage(requestDb, business.id, convId, { id: globalThis.crypto.randomUUID(), role: 'assistant', content: finalText });
@@ -310,18 +369,21 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
           }
           send('text', { text: finalText });
           send('done', donePayload);
-          console.log(JSON.stringify({ budgetUsed: budget.used, steps, wallMs: Date.now() - startMs }));
+          logDone(grounding === 'retried' ? 'ok_retried' : 'ok');
         }
       } catch (e) {
         if (cancelled || (e as Error)?.name === 'AbortError' || request.signal.aborted) return;
-        console.log(JSON.stringify({ budgetUsed: budget.used, steps, wallMs: Date.now() - startMs }));
         const code = e instanceof LlmHttpError && e.status === 429 ? 'RATE_LIMITED' : 'PROVIDER';
+        logDone(
+          e instanceof Error && e.message === 'BUDGET_EXCEEDED' ? 'budget_exceeded' : code === 'RATE_LIMITED' ? 'rate_limited' : 'provider_error'
+        );
         const limited = code === 'RATE_LIMITED' ? rateLimitMessage(e instanceof LlmHttpError ? e.retryAfterMs : null) : null;
         const message = limited
           ? limited.message
           : e instanceof Error && e.message === 'BUDGET_EXCEEDED'
             ? 'Anggaran komputasi habis, persempit pertanyaan.'
             : 'Penyedia AI bermasalah, coba lagi sebentar.';
+        await saveNotice(message);
         send('error', limited ? { code, message, retryAfterSec: limited.retryAfterSec } : { code, message });
       } finally {
         // Stream yang sudah di-cancel client menolak close().

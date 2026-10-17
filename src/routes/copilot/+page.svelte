@@ -33,6 +33,7 @@
   let messages: ChatMessage[] = [];
   let draft = '';
   let sending = false;
+  let awaitingText = false;
   let cooldownSec = 0;
   let cooldownTimer: ReturnType<typeof setInterval> | null = null;
   let loadingList = true;
@@ -207,6 +208,7 @@
     }
     addLocal({ id: newId(), role: 'user', content: question });
     sending = true;
+    awaitingText = true;
     try {
       const response = await fetch('/copilot/chat', {
         method: 'POST',
@@ -226,6 +228,7 @@
       });
     } finally {
       sending = false;
+      awaitingText = false;
       await refreshAfterStream();
       // Input sempat disabled selama kirim sehingga fokus browser lepas;
       // kembalikan hanya bila pengguna tidak memindah fokus ke kontrol lain.
@@ -283,8 +286,10 @@
       const messageId = toolMessages.get(String(data.id));
       if (messageId) updateToolMessage(messageId, data.result as ToolResult);
     } else if (event === 'text' && typeof data.text === 'string') {
+      awaitingText = false;
       addLocal({ id: newId(), role: 'assistant', content: data.text });
     } else if ((event === 'notice' || event === 'error') && typeof data.message === 'string') {
+      awaitingText = false;
       addLocal({ id: newId(), role: 'assistant', content: data.message });
       if (event === 'error' && data.code === 'RATE_LIMITED' && typeof data.retryAfterSec === 'number') {
         startCooldown(data.retryAfterSec);
@@ -404,6 +409,20 @@
             </div>
           {/if}
         {/each}
+        {#if sending && awaitingText}
+          <div class="flex min-w-0 gap-3" transition:fade={{ duration: 120 }}>
+            <img src="/logo/logo-copilot.png" alt="" class="mt-1 hidden h-7 w-7 shrink-0 rounded object-cover sm:block" />
+            <div
+              role="status"
+              aria-label="Copilot sedang menyusun jawaban"
+              class="typing-bubble flex items-center gap-1.5 rounded-panel rounded-tl-sm bg-[#F7F1E6] px-4 py-3"
+            >
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+            </div>
+          </div>
+        {/if}
       </div>
     </div>
     <form class="copilot-form shrink-0 border-t border-white/10 px-4 py-4 sm:px-6" on:submit|preventDefault={() => ask()}>
@@ -480,6 +499,37 @@
   }
   .wrap-anywhere {
     overflow-wrap: anywhere;
+  }
+  .typing-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 9999px;
+    background: rgba(48, 52, 59, 0.45);
+    animation: typing-bounce 1.1s infinite ease-in-out;
+  }
+  .typing-dot:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  .typing-dot:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+  @keyframes typing-bounce {
+    0%,
+    60%,
+    100% {
+      transform: translateY(0);
+      opacity: 0.45;
+    }
+    30% {
+      transform: translateY(-5px);
+      opacity: 1;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .typing-dot {
+      animation: none;
+      opacity: 0.7;
+    }
   }
   .md :global(p) {
     margin: 0 0 0.5rem;

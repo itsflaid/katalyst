@@ -101,7 +101,7 @@ export const TOOL_REGISTRY: RegisteredTool[] = [
   },
   {
     name: 'simulate_price',
-    description: 'Simulasi harga/diskon/volume satu produk aktif.',
+    description: 'Simulasi harga/diskon/volume produk aktif; persen harga pakai pricePct.',
     maxQueries: 2,
     enabled: true,
     parameters: {
@@ -113,6 +113,7 @@ export const TOOL_REGISTRY: RegisteredTool[] = [
         to: { type: 'string' },
         priceDelta: { type: 'integer' },
         price: { type: 'integer' },
+        pricePct: { type: 'integer', minimum: -30, maximum: 30 },
         discountPct: { type: 'integer' },
         volumePct: { type: 'integer' }
       },
@@ -124,7 +125,7 @@ export const TOOL_REGISTRY: RegisteredTool[] = [
   {
     name: 'query_metrics',
     description:
-      'Ukuran: omzet=revenue, untung=laba=profit, unit=qty, struk=tx_count, total diskon=discount_total, rata-rata per struk=avg_ticket. Kelompok: none total, product, day, week, month, weekday, hour; "paling ramai"=tx_count+weekday/hour+order desc.',
+      'Ukuran: omzet=revenue, untung=laba=profit, unit=qty, struk=tx_count, total diskon=discount_total, rata-rata per struk=avg_ticket. Kelompok: none, product, day, week, month, weekday, hour; "paling ramai"=tx_count+weekday/hour+desc.',
     maxQueries: 2,
     enabled: true,
     parameters: {
