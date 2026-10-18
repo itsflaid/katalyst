@@ -15,6 +15,7 @@
   import type { PeriodKey } from '$lib/shared/period';
   import { goto } from '$app/navigation';
   import { fmtInt, fmtPercent, fmtRupiah } from '$lib/shared/format';
+  import { MARGIN_THIN } from '$lib/analytics/margin';
   export let data;
   const deltaTone = (d: number | null) => (d === null || d >= 0 ? 'positive' : 'negative');
   const fmtDelta = (d: number | null) => (d === null ? 'baru' : `${d >= 0 ? '+' : ''}${d.toFixed(1)}%`);
@@ -135,6 +136,41 @@
 {/if}
 
 {#key [data.range, data.rangeFrom, data.rangeTo, data.trend.labels.join(',')].join('|')}
+  <div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4 mb-6">
+    <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
+      <p class="text-label-sm uppercase text-muted mb-1 truncate">Revenue</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{fmtRupiah(data.kpi.revenue)}</p>
+      <p class="text-body-sm text-muted mb-1.5">{data.rangeLabel}</p>
+      <Badge tone={deltaTone(data.deltas.revenue)} class="text-[11px] sm:text-label-md"
+        >{fmtDelta(data.deltas.revenue)}<span class="hidden sm:inline">&nbsp;vs periode sebelumnya</span></Badge
+      >
+    </Card>
+    <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
+      <p class="text-label-sm uppercase text-muted mb-1 truncate">Transaksi</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{fmtInt(data.kpi.tx)}</p>
+      <p class="text-body-sm text-muted mb-1.5">{data.rangeLabel}</p>
+      <Badge tone={deltaTone(data.deltas.transactions)} class="text-[11px] sm:text-label-md"
+        >{fmtDelta(data.deltas.transactions)}<span class="hidden sm:inline">&nbsp;vs periode sebelumnya</span></Badge
+      >
+    </Card>
+    <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
+      <p class="text-label-sm uppercase text-muted mb-1 truncate">Profit</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{fmtRupiah(data.kpi.profit)}</p>
+      <p class="text-body-sm text-muted mb-1.5">{data.rangeLabel}</p>
+      <Badge tone={deltaTone(data.deltas.profit)} class="text-[11px] sm:text-label-md"
+        >{fmtDelta(data.deltas.profit)}<span class="hidden sm:inline">&nbsp;vs periode sebelumnya</span></Badge
+      >
+    </Card>
+    <Card class="min-w-0 overflow-hidden p-3 sm:p-5">
+      <p class="text-label-sm uppercase text-muted mb-1 truncate">Margin</p>
+      <p class="text-[15px] leading-5 font-bold sm:text-num-display text-ink tabular mb-1.5 break-words">{fmtPercent(data.kpi.margin)}</p>
+      <p class="text-body-sm text-muted mb-1.5">{data.rangeLabel}</p>
+      <Badge tone={data.kpi.margin >= MARGIN_THIN ? 'positive' : 'warning'} class="text-[11px] sm:text-label-md">
+        {data.kpi.margin >= MARGIN_THIN ? 'Sehat' : 'Tipis'}
+      </Badge>
+    </Card>
+  </div>
+
   <div class="grid grid-cols-2 gap-4 lg:grid-cols-4 mb-6">
     <StatCard tone="navy" class="min-w-0 overflow-hidden lg:min-h-[162px]">
       <p class="text-label-md uppercase text-white mb-1 truncate">Rata-rata struk</p>
